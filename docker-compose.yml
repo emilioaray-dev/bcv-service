@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  bcv-service:
+    build: .
+    container_name: bcv-service
+    ports:
+      # Mapea el puerto 3000 del host al puerto 3000 del contenedor
+      # Para usar un puerto diferente, cambia el primer número (ej: "4000:3000")
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000  # Asegura que la aplicación escuche en el puerto correcto
+      - BCV_WEBSITE_URL=https://www.bcv.org.ve/
+      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcvdb?authSource=bcvdb
+      - CRON_SCHEDULE=0 2,10,18 * * *  # Cada 8 horas: 2am, 10am, 6pm
+      - SAVE_TO_DATABASE=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Opcional: Redis para cache adicional
+  redis:
+    image: redis:7-alpine
+    container_name: bcv-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:

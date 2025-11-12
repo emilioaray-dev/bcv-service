@@ -1,0 +1,50 @@
+{
+  "name": "bcv-service",
+  "version": "1.0.0",
+  "description": "Microservicio para consultar la tasa de cambio del BCV",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "dev": "tsx watch src/app.ts",
+    "lint": "biome check src",
+    "lint:fix": "biome check --fix src",
+    "format": "biome format --write src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docker:build": "docker build -t bcv-service .",
+    "docker:run": "docker run -p 3000:3000 bcv-service"
+  },
+  "keywords": [
+    "bcv",
+    "tasa-cambio",
+    "venezuela",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "RCV-APP",
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@types/cheerio": "^1.0.0",
+    "@types/express": "^5.0.5",
+    "@types/mongodb": "^4.0.7",
+    "@types/node": "^20.14.11",
+    "@types/node-cron": "^3.0.11",
+    "@types/ws": "^8.18.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.2.1",
+    "mongodb": "^6.10.0",
+    "node-cron": "^3.0.3",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  }
+}
