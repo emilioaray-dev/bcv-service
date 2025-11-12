@@ -32,7 +32,7 @@ Thumbs.db
 
 # Tests
 coverage/
-__tests__/
+.vitest/
 
 # Secrets
 secrets/
