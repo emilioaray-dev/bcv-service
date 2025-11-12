@@ -2,159 +2,330 @@
 
 Microservicio en Node.js con TypeScript que consulta periódicamente la tasa oficial de cambio del Banco Central de Venezuela, almacenando los datos localmente y notificando a servicios suscriptores mediante WebSockets cuando hay cambios.
 
-## Características
+## 🚀 Características
 
-- Consulta la tasa de cambio cada 8 horas
-- Scraping directo del sitio oficial del BCV (www.bcv.org.ve) 
-- Almacenamiento en MongoDB
-- Modo consola (sin almacenamiento en base de datos)
-- Notificaciones en tiempo real mediante WebSockets
-- API REST para consultas programáticas
-- Docker y Docker Compose para contenerización
-- Formateo y calidad de código con Biome
+### Core Features
+- ✅ Consulta automatizada de tasa de cambio cada 8 horas
+- ✅ Scraping directo del sitio oficial del BCV (www.bcv.org.ve)
+- ✅ Almacenamiento en MongoDB con modo consola opcional
+- ✅ Notificaciones en tiempo real mediante WebSockets
+- ✅ API REST con autenticación por API Key
+- ✅ Rate limiting para protección contra abuso
 
-## Requisitos
+### Arquitectura y Calidad
+- ✅ **Arquitectura SOLID** con Inversify para Dependency Injection
+- ✅ Logging estructurado con Winston
+- ✅ Testing con Vitest
+- ✅ Gestión segura de secretos con Docker Secrets
+- ✅ Formateo y calidad de código con Biome
+
+### Observability
+- ✅ **Health Checks** para Kubernetes (liveness/readiness probes)
+- ✅ **Métricas de Prometheus** para monitoreo
+- ✅ Tracking automático de requests HTTP
+- ✅ Métricas de negocio (tasas BCV, clientes WebSocket)
+
+## 📋 Requisitos
 
 - Node.js 18+
 - pnpm
 - MongoDB (opcional en modo consola)
 - Docker (opcional, para contenedores)
 
-## Instalación
-
-1. Clona el repositorio
-2. Instala las dependencias:
+## 🔧 Instalación Rápida
 
 ```bash
+# Clonar el repositorio
+git clone https://github.com/emilioaray-dev/bcv-service.git
+cd bcv-service
+
+# Instalar dependencias
 pnpm install
+
+# Configurar variables de entorno
+cp .env.example .env
+
+# Iniciar en desarrollo
+pnpm dev
 ```
 
-3. Crea un archivo `.env` con las variables de entorno necesarias (ver `.env.example`)
+Para más detalles, ver [Guía de Configuración Local](docs/guides/SETUP_LOCAL.md) o [Quick Start](docs/guides/QUICK_START.md).
 
-## Variables de Entorno
+## 📚 Documentación
 
-### Obligatorias
-- `PORT`: Puerto donde correrá el servicio (por defecto: 3000)
-- `MONGODB_URI`: URL de conexión a la base de datos MongoDB
-- `BCV_WEBSITE_URL`: URL del sitio web oficial del BCV (por defecto: https://www.bcv.org.ve/)
+La documentación está organizada en las siguientes secciones:
 
-### Opcionales
-- `REDIS_URL`: URL de conexión a Redis (por defecto: redis://localhost:6379)
-- `CRON_SCHEDULE`: Programación para tareas periódicas (por defecto: cada 8 horas)
-- `NODE_ENV`: Entorno de ejecución (development/production)
-- `SAVE_TO_DATABASE`: Habilita/deshabilita el almacenamiento en base de datos (por defecto: true)
+### Guías
+- [**Quick Start**](docs/guides/QUICK_START.md) - Inicio rápido del proyecto
+- [**Setup Local**](docs/guides/SETUP_LOCAL.md) - Configuración del entorno local
+- [**Secrets Management**](docs/guides/SECRETS_MANAGEMENT.md) - Gestión segura de credenciales
+- [**Logging**](docs/guides/LOGGING.md) - Sistema de logging estructurado
+- [**Observability**](docs/guides/OBSERVABILITY.md) - Health checks y métricas de Prometheus
 
-## Modo Consola
+### Arquitectura
+- [**Plan de Arquitectura**](docs/architecture/PLAN.md) - Planificación arquitectónica
+- [**Mejoras**](docs/architecture/MEJORAS.md) - Mejoras implementadas
+- [**Resumen de Mejoras**](docs/architecture/RESUMEN_MEJORAS.md) - Resumen ejecutivo
 
-El servicio incluye un modo especial de consola que permite probar y verificar la obtención de datos del BCV sin almacenarlos en la base de datos:
+### Desarrollo
+- [**Branch Strategy**](docs/development/BRANCH_STRATEGY.md) - Estrategia de branching
+- [**Tasks**](docs/development/TASKS.md) - Tareas y roadmap del proyecto
 
-- **Activar modo consola**: `SAVE_TO_DATABASE=false`
-- En este modo, el servicio:
-  - No se conecta a MongoDB
-  - Sigue haciendo scraping del sitio oficial del BCV
-  - Muestra los resultados en consola con el mensaje: `[MODO CONSOLA] Tasa cambiada: [valor] ([fecha]) - NO se almacenó en DB`
-  - Los endpoints de API devuelven error 405 indicando que está en modo consola
-  - La funcionalidad de WebSockets se mantiene operativa
+## 🔌 API Endpoints
 
-## Scripts Disponibles
+### REST API (requiere autenticación)
+```bash
+# Obtener la tasa más reciente
+GET /api/rate/latest
 
-- `pnpm build`: Compila el código TypeScript
-- `pnpm start`: Inicia el servicio en modo producción
-- `pnpm dev`: Inicia el servicio en modo desarrollo con auto-reload
-- `pnpm lint`: Verifica el código con Biome
-- `pnpm lint:fix`: Corrige errores de código con Biome
-- `pnpm format`: Formatea el código con Biome
-- `pnpm test`: Ejecuta las pruebas unitarias
+# Obtener historial (máximo 30 registros)
+GET /api/rate/history?limit=30
 
-## API Endpoints
+# Obtener tasa para fecha específica
+GET /api/rate/:date  # formato: YYYY-MM-DD
+```
 
-- `GET /api/rate/latest` - Obtener la tasa más reciente
-- `GET /api/rate/history?limit=30` - Obtener historial de tasas (máximo 30 registros)
-- `GET /api/rate/:date` - Obtener tasa para una fecha específica (formato: YYYY-MM-DD)
+**Autenticación**: Incluir header `X-API-Key` con tu API key.
 
-**Nota**: Estos endpoints solo funcionan cuando `SAVE_TO_DATABASE=true`
+### Health Checks (sin autenticación)
+```bash
+# Health check completo
+GET /health
 
-## WebSockets
+# Kubernetes liveness probe
+GET /healthz
 
-El servicio expone un servidor WebSocket para notificaciones en tiempo real. Los clientes pueden conectarse al servidor y recibir eventos cuando hay actualizaciones en la tasa de cambio.
+# Kubernetes readiness probe
+GET /readyz
 
-Evento: `rate-update`
+# Health checks individuales
+GET /health/mongodb
+GET /health/scheduler
+GET /health/bcv
+GET /health/websocket
+```
+
+### Métricas (sin autenticación)
+```bash
+# Métricas de Prometheus
+GET /metrics
+```
+
+Ver [Documentación de Observability](docs/guides/OBSERVABILITY.md) para más detalles.
+
+## 🌐 WebSockets
+
+Conéctate para recibir actualizaciones en tiempo real:
+
+```javascript
+const ws = new WebSocket('ws://localhost:3000');
+
+ws.on('message', (data) => {
+  const update = JSON.parse(data);
+  console.log('Tasa actualizada:', update);
+});
+```
+
+**Formato del evento:**
 ```json
 {
-  "timestamp": "2025-11-11T10:30:00.000Z",
-  "rate": 36.1500,
-  "change": 0.0050,
+  "timestamp": "2025-11-12T10:30:00.000Z",
+  "rate": 36.50,
+  "rates": [
+    { "currency": "USD", "rate": 36.50, "name": "Dólar" },
+    { "currency": "EUR", "rate": 39.20, "name": "Euro" }
+  ],
+  "change": 0.05,
   "eventType": "rate-update"
 }
 ```
 
-## Docker
+## ⚙️ Variables de Entorno
 
-Para construir y ejecutar con Docker:
-
+### Obligatorias
 ```bash
-# Construir la imagen
-docker build -t bcv-service .
-
-# Ejecutar el contenedor
-docker run -p 3000:3000 bcv-service
+PORT=3000                    # Puerto del servicio
+MONGODB_URI=mongodb://...    # Conexión a MongoDB
+BCV_WEBSITE_URL=https://...  # URL del sitio del BCV
+API_KEY=your-secret-key      # API key para autenticación
 ```
 
-O con docker-compose (sin servicio MongoDB interno):
+### Opcionales
+```bash
+CRON_SCHEDULE="0 2,10,18 * * *"  # Cada 8 horas (2am, 10am, 6pm)
+NODE_ENV=development              # Entorno de ejecución
+SAVE_TO_DATABASE=true             # Habilitar almacenamiento en DB
+LOG_LEVEL=info                    # Nivel de logs (error, warn, info, debug)
+```
 
+Ver [Secrets Management](docs/guides/SECRETS_MANAGEMENT.md) para gestión segura de credenciales.
+
+## 🐳 Docker
+
+### Desarrollo
 ```bash
 docker-compose up -d
 ```
 
-**Nota**: El docker-compose.yml no incluye el servicio MongoDB para permitir escalabilidad y desacoplamiento, conectándose a un MongoDB externo a través de MONGODB_URI.
+### Producción
+```bash
+# Construir imagen
+docker build -t bcv-service:latest .
 
-## Arquitectura
+# Ejecutar contenedor
+docker run -p 3000:3000 \
+  -e MONGODB_URI=mongodb://... \
+  -e API_KEY=your-key \
+  bcv-service:latest
+```
 
-- `src/services/`: Lógica de negocio (consulta BCV, caché, WebSockets)
-- `src/controllers/`: Controladores para la API REST
-- `src/models/`: Modelos de datos
-- `src/config/`: Configuración de la aplicación
-- `src/utils/`: Utilidades generales
+## 🏗️ Arquitectura SOLID
 
-## Optimización de Escritura
+El proyecto implementa los principios SOLID con Inversify para Dependency Injection:
 
-El servicio implementa una lógica de verificación para evitar escrituras innecesarias en la base de datos:
-- Antes de guardar una nueva tasa, compara con la última almacenada
-- Solo escribe en la base de datos si hay un cambio significativo (más de 0.0001 de diferencia)
-- Si no hay cambios, muestra: `Tasa sin cambios: [valor], no se almacenó`
+```
+src/
+├── Application.ts              # Bootstrap de la aplicación
+├── config/
+│   ├── inversify.config.ts    # Configuración del contenedor IoC
+│   └── types.ts               # Symbols para DI
+├── interfaces/                # Abstracciones (DIP)
+│   ├── IBCVService.ts
+│   ├── IWebSocketService.ts
+│   ├── ISchedulerService.ts
+│   ├── IHealthCheckService.ts
+│   └── IMetricsService.ts
+├── services/                  # Implementaciones de servicios
+│   ├── bcv.service.ts
+│   ├── websocket.service.ts
+│   ├── scheduler.service.ts
+│   ├── health-check.service.ts
+│   └── metrics.service.ts
+├── controllers/               # Controladores HTTP
+│   ├── rate.controller.ts
+│   ├── health.controller.ts
+│   └── metrics.controller.ts
+├── middleware/                # Middleware de Express
+└── utils/                     # Utilidades compartidas
+```
 
-## Solución de Problemas
+**Beneficios:**
+- ✅ Testabilidad mejorada con mocking sencillo
+- ✅ Desacoplamiento entre componentes
+- ✅ Extensibilidad sin modificar código existente
+- ✅ Cumplimiento de principios SOLID
 
-### Puerto ya en uso (EADDRINUSE)
+## 🧪 Testing
 
-Si recibes el error `Error: listen EADDRINUSE: address already in use :::3000`:
+```bash
+# Ejecutar todos los tests
+pnpm test
 
-- El puerto 3000 ya está ocupado por otro proceso
-- Soluciones:
-  1. Encuentra el proceso: `lsof -i :3000`
-  2. Termina el proceso: `kill -9 <PID>` (reemplaza <PID> con el ID del proceso)
-  3. O cambia el puerto en la variable de entorno `PORT`
+# Tests con coverage
+pnpm test:coverage
 
-### Problemas de Scraping
+# Tests en modo watch
+pnpm test:watch
 
-- Si el scraping falla, puede ser porque:
-  - El sitio web del BCV ha cambiado su estructura HTML
-  - Hay problemas temporales de conexión
-  - Se requiere actualización de los selectores CSS
+# UI de tests
+pnpm test:ui
+```
 
-### Certificados SSL
+## 📊 Monitoreo
 
-En algunos entornos puede haber problemas con la verificación de certificados del sitio del BCV. En entornos de desarrollo, estos se manejan automáticamente por la librería axios.
+### Prometheus + Grafana
 
-## Contribución
+1. **Configurar Prometheus** para scraping del endpoint `/metrics`
+2. **Crear dashboards** en Grafana con las métricas expuestas
+3. **Configurar alertas** basadas en las métricas de negocio
 
-1. Haz un fork del proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-feature`)
-3. Asegúrate de seguir las reglas de formateo con Biome
-4. Haz commit de tus cambios (`git commit -m 'Añadir nueva feature'`)
-5. Haz push a la rama (`git push origin feature/nueva-feature`)
-6. Abre un Pull Request
+Ver [Documentación de Observability](docs/guides/OBSERVABILITY.md) para configuración detallada.
 
-## Licencia
+### Métricas Clave
+
+- `http_requests_total`: Requests HTTP por endpoint
+- `http_request_duration_seconds`: Latencia de requests
+- `bcv_websocket_connected_clients`: Clientes WebSocket activos
+- `bcv_update_total`: Actualizaciones exitosas/fallidas
+- `bcv_latest_rate`: Última tasa obtenida
+
+## 🔍 Scripts Disponibles
+
+```bash
+pnpm build          # Compilar TypeScript
+pnpm start          # Iniciar en producción
+pnpm dev            # Iniciar en desarrollo con auto-reload
+pnpm test           # Ejecutar tests
+pnpm test:coverage  # Tests con coverage
+pnpm test:ui        # UI de tests
+pnpm lint           # Verificar código con Biome
+pnpm lint:fix       # Corregir errores de código
+pnpm format         # Formatear código
+```
+
+## 💡 Modo Consola
+
+Para desarrollo/testing sin MongoDB:
+
+```bash
+SAVE_TO_DATABASE=false pnpm dev
+```
+
+En este modo:
+- ❌ No se conecta a MongoDB
+- ✅ Scraping del BCV funciona normalmente
+- ✅ Logs muestran las tasas obtenidas
+- ✅ WebSockets siguen operativos
+- ❌ API REST retorna error 405
+
+## 🛠️ Solución de Problemas
+
+### Puerto en uso
+```bash
+# Encontrar proceso
+lsof -i :3000
+
+# Terminar proceso
+kill -9 <PID>
+
+# O cambiar puerto
+PORT=3001 pnpm dev
+```
+
+### Problemas de scraping
+- Verificar conectividad con www.bcv.org.ve
+- El sitio puede haber cambiado su estructura HTML
+- Revisar logs en `logs/combined.log`
+
+### Problemas de certificados SSL
+- En desarrollo, axios maneja certificados automáticamente
+- En producción, configurar certificados válidos
+
+Ver [Setup Local](docs/guides/SETUP_LOCAL.md) para más troubleshooting.
+
+## 🤝 Contribución
+
+1. Fork del proyecto
+2. Crear feature branch (`git checkout -b feature/amazing-feature`)
+3. Seguir convenciones de código (Biome)
+4. Escribir tests para nuevas features
+5. Commit con convención (`git commit -m 'feat: add amazing feature'`)
+6. Push a la rama (`git push origin feature/amazing-feature`)
+7. Abrir Pull Request
+
+Ver [Branch Strategy](docs/development/BRANCH_STRATEGY.md) para más detalles.
+
+## 📝 Licencia
 
 MIT
+
+## 🔗 Links Útiles
+
+- [Sitio oficial BCV](https://www.bcv.org.ve/)
+- [Documentación de Prometheus](https://prometheus.io/docs/)
+- [Inversify Documentation](https://inversify.io/)
+- [Vitest Documentation](https://vitest.dev/)
+
+---
+
+**Mantenido por**: [@emilioaray-dev](https://github.com/emilioaray-dev)

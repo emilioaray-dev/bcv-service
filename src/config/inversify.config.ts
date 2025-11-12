@@ -9,15 +9,21 @@ import { BCVService } from '@/services/bcv.service';
 import { MongoService } from '@/services/mongo.service';
 import { WebSocketService } from '@/services/websocket.service';
 import { SchedulerService } from '@/services/scheduler.service';
+import { HealthCheckService } from '@/services/health-check.service';
+import { MetricsService } from '@/services/metrics.service';
 
 // Interfaces
 import { IBCVService } from '@/interfaces/IBCVService';
 import { ICacheService } from '@/services/cache.interface';
 import { IWebSocketService } from '@/interfaces/IWebSocketService';
 import { ISchedulerService } from '@/interfaces/ISchedulerService';
+import { IHealthCheckService } from '@/interfaces/IHealthCheckService';
+import { IMetricsService } from '@/interfaces/IMetricsService';
 
 // Controllers
 import { RateController } from '@/controllers/rate.controller';
+import { HealthController } from '@/controllers/health.controller';
+import { MetricsController } from '@/controllers/metrics.controller';
 
 /**
  * Inversify IoC Container Configuration
@@ -74,9 +80,13 @@ export function createContainer(server: HttpServer): Container {
 
   container.bind<IWebSocketService>(TYPES.WebSocketService).to(WebSocketService).inSingletonScope();
   container.bind<ISchedulerService>(TYPES.SchedulerService).to(SchedulerService).inSingletonScope();
+  container.bind<IHealthCheckService>(TYPES.HealthCheckService).to(HealthCheckService).inSingletonScope();
+  container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService).inSingletonScope();
 
   // Bind Controllers
   container.bind<RateController>(TYPES.RateController).to(RateController).inSingletonScope();
+  container.bind<HealthController>(TYPES.HealthController).to(HealthController).inSingletonScope();
+  container.bind<MetricsController>(TYPES.MetricsController).to(MetricsController).inSingletonScope();
 
   return container;
 }

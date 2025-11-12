@@ -11,10 +11,14 @@ export const TYPES = {
   CacheService: Symbol.for('CacheService'),
   WebSocketService: Symbol.for('WebSocketService'),
   SchedulerService: Symbol.for('SchedulerService'),
+  HealthCheckService: Symbol.for('HealthCheckService'),
+  MetricsService: Symbol.for('MetricsService'),
   LoggerService: Symbol.for('LoggerService'),
 
   // Controllers
   RateController: Symbol.for('RateController'),
+  HealthController: Symbol.for('HealthController'),
+  MetricsController: Symbol.for('MetricsController'),
 
   // Infrastructure
   HttpServer: Symbol.for('HttpServer'),

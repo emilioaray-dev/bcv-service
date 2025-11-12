@@ -37,6 +37,16 @@ vi.mock('@/utils/logger', () => ({
   }
 }));
 
+// Helper function to create mock IMetricsService
+const createMockMetricsService = () => ({
+  getMetrics: vi.fn(),
+  requestMiddleware: vi.fn(),
+  incrementBCVUpdateSuccess: vi.fn(),
+  incrementBCVUpdateFailure: vi.fn(),
+  setLatestRate: vi.fn(),
+  setConnectedClients: vi.fn(),
+});
+
 describe('WebSocketService', () => {
   describe('module structure', () => {
     it('should export WebSocketService class', async () => {
@@ -50,14 +60,16 @@ describe('WebSocketService', () => {
     it('should be constructable with a server parameter', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
       const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockMetricsService = createMockMetricsService();
 
-      expect(() => new WebSocketService(mockServer)).not.toThrow();
+      expect(() => new WebSocketService(mockServer, mockMetricsService as any)).not.toThrow();
     });
 
     it('should have required methods', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
       const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
-      const instance = new WebSocketService(mockServer);
+      const mockMetricsService = createMockMetricsService();
+      const instance = new WebSocketService(mockServer, mockMetricsService as any);
 
       expect(instance.broadcastRateUpdate).toBeDefined();
       expect(instance.getConnectedClientsCount).toBeDefined();
@@ -70,7 +82,8 @@ describe('WebSocketService', () => {
     it('should accept RateUpdateEvent for broadcastRateUpdate', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
       const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
-      const instance = new WebSocketService(mockServer);
+      const mockMetricsService = createMockMetricsService();
+      const instance = new WebSocketService(mockServer, mockMetricsService as any);
 
       const validEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
@@ -87,7 +100,8 @@ describe('WebSocketService', () => {
     it('should handle multi-currency rate updates', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
       const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
-      const instance = new WebSocketService(mockServer);
+      const mockMetricsService = createMockMetricsService();
+      const instance = new WebSocketService(mockServer, mockMetricsService as any);
 
       const multiCurrencyEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
@@ -109,7 +123,8 @@ describe('WebSocketService', () => {
     it('should return number from getConnectedClientsCount', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
       const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
-      const instance = new WebSocketService(mockServer);
+      const mockMetricsService = createMockMetricsService();
+      const instance = new WebSocketService(mockServer, mockMetricsService as any);
 
       const count = instance.getConnectedClientsCount();
       expect(typeof count).toBe('number');

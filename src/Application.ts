@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { Container } from 'inversify';
 import { createContainer } from '@/config/inversify.config';
@@ -16,6 +17,11 @@ import { ICacheService } from '@/services/cache.interface';
 import { ISchedulerService } from '@/interfaces/ISchedulerService';
 import { IWebSocketService } from '@/interfaces/IWebSocketService';
 import { IBCVService } from '@/interfaces/IBCVService';
+import { IMetricsService } from '@/interfaces/IMetricsService';
+
+// Controllers
+import { HealthController } from '@/controllers/health.controller';
+import { MetricsController } from '@/controllers/metrics.controller';
 
 /**
  * Application Class - Bootstrap de la aplicación
@@ -39,6 +45,7 @@ export class Application {
   private schedulerService: ISchedulerService;
   private webSocketService: IWebSocketService;
   private bcvService: IBCVService;
+  private metricsService: IMetricsService;
 
   constructor() {
     // Inicializar Express y HTTP Server
@@ -53,6 +60,7 @@ export class Application {
     this.schedulerService = this.container.get<ISchedulerService>(TYPES.SchedulerService);
     this.webSocketService = this.container.get<IWebSocketService>(TYPES.WebSocketService);
     this.bcvService = this.container.get<IBCVService>(TYPES.BCVService);
+    this.metricsService = this.container.get<IMetricsService>(TYPES.MetricsService);
 
     // Configurar la aplicación
     this.configure();
@@ -72,6 +80,12 @@ export class Application {
     // Middleware básico
     this.app.use(express.json());
 
+    // Servir archivos estáticos desde la carpeta public
+    this.app.use(express.static(path.join(__dirname, '..', 'public')));
+
+    // Metrics middleware (debe estar antes de otros middlewares para trackear todo)
+    this.app.use(this.metricsService.requestMiddleware());
+
     // Rate limiting middleware
     const apiLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutos
@@ -90,7 +104,15 @@ export class Application {
     // API Key authentication
     this.app.use('/api/', apiKeyAuth);
 
-    // Rutas
+    // Metrics endpoint (sin autenticación ni rate limiting, para Prometheus)
+    const metricsController = this.container.get<MetricsController>(TYPES.MetricsController);
+    this.app.use(metricsController.router);
+
+    // Health check routes (sin autenticación ni rate limiting)
+    const healthController = this.container.get<HealthController>(TYPES.HealthController);
+    this.app.use(healthController.router);
+
+    // Rutas de API (con autenticación y rate limiting)
     this.app.use(createRoutes(this.cacheService));
 
     // Ruta principal

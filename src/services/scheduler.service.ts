@@ -4,6 +4,7 @@ import { ISchedulerService } from '@/interfaces/ISchedulerService';
 import { IBCVService } from '@/interfaces/IBCVService';
 import { ICacheService } from '@/services/cache.interface';
 import { IWebSocketService } from '@/interfaces/IWebSocketService';
+import { IMetricsService } from '@/interfaces/IMetricsService';
 import { TYPES } from '@/config/types';
 import log from '@/utils/logger';
 
@@ -30,6 +31,7 @@ export class SchedulerService implements ISchedulerService {
     @inject(TYPES.BCVService) private bcvService: IBCVService,
     @inject(TYPES.CacheService) private cacheService: ICacheService,
     @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
+    @inject(TYPES.MetricsService) private metricsService: IMetricsService,
     @inject(TYPES.Config) config: { cronSchedule: string; saveToDatabase: boolean }
   ) {
     this.cronSchedule = config.cronSchedule;
@@ -76,8 +78,12 @@ export class SchedulerService implements ISchedulerService {
 
       if (!currentData) {
         log.error('No se pudo obtener la tasa de cambio del BCV');
+        this.metricsService.incrementBCVUpdateFailure();
         return;
       }
+
+      // Actualizar métrica de última tasa obtenida
+      this.metricsService.setLatestRate(currentData.rate);
 
       // Obtener la tasa almacenada previamente
       const previousRate = await this.cacheService.getLatestRate();
@@ -112,12 +118,18 @@ export class SchedulerService implements ISchedulerService {
             change,
             eventType: 'rate-update'
           });
+
+          // Métrica de actualización exitosa
+          this.metricsService.incrementBCVUpdateSuccess();
         } else {
           log.info('Modo consola: Tasa cambiada - NO se almacenó en DB', {
             rate: currentData.rate,
             date: currentData.date,
             detailedRates: currentData.rates
           });
+
+          // Métrica de actualización exitosa (incluso en modo consola)
+          this.metricsService.incrementBCVUpdateSuccess();
         }
       } else {
         log.debug('Tasa sin cambios, no se almacenó', { rate: currentData.rate });

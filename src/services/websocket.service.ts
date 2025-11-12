@@ -3,6 +3,7 @@ import { Server as WebSocketServer, WebSocket } from 'ws';
 import { RateUpdateEvent } from '@/models/rate';
 import log from '@/utils/logger';
 import { IWebSocketService } from '@/interfaces/IWebSocketService';
+import { IMetricsService } from '@/interfaces/IMetricsService';
 import { TYPES } from '@/config/types';
 import type { Server as HttpServer } from 'http';
 
@@ -22,7 +23,8 @@ export class WebSocketService implements IWebSocketService {
   private clients: Set<WebSocket> = new Set();
 
   constructor(
-    @inject(TYPES.HttpServer) server: HttpServer
+    @inject(TYPES.HttpServer) server: HttpServer,
+    @inject(TYPES.MetricsService) private metricsService: IMetricsService
   ) {
     this.wss = new WebSocketServer({ server });
     this.wss.on('connection', (ws: WebSocket) => {
@@ -31,11 +33,17 @@ export class WebSocketService implements IWebSocketService {
         totalClients: this.clients.size
       });
 
+      // Actualizar métrica de clientes conectados
+      this.metricsService.setConnectedClients(this.clients.size);
+
       ws.on('close', () => {
         this.clients.delete(ws);
         log.info('Cliente WebSocket desconectado', {
           totalClients: this.clients.size
         });
+
+        // Actualizar métrica de clientes conectados
+        this.metricsService.setConnectedClients(this.clients.size);
       });
     });
   }
