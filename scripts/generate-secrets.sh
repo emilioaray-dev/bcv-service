@@ -80,6 +80,44 @@ echo -e "${BOLD}Configurando secretos...${NC}\n"
 # MongoDB URI
 prompt_mongodb_uri
 
+# API Keys
+echo ""
+echo -e "${GREEN}Configuración de API Keys${NC}"
+echo "Generando API keys para autenticación del servicio..."
+echo ""
+
+read -p "¿Deseas generar API keys automáticamente? (s/n): " AUTO_GEN_API
+echo ""
+
+if [ "$AUTO_GEN_API" = "s" ] || [ "$AUTO_GEN_API" = "S" ]; then
+    # Generar múltiples API keys
+    API_KEY_1=$(generate_password)
+    API_KEY_2=$(generate_password)
+
+    echo -e "${GREEN}✓ API Keys generadas:${NC}"
+    echo -e "${YELLOW}Key 1 (Principal): ${API_KEY_1}${NC}"
+    echo -e "${YELLOW}Key 2 (Secundaria): ${API_KEY_2}${NC}"
+    echo -e "${RED}⚠️  GUARDA ESTAS API KEYS DE FORMA SEGURA${NC}"
+    echo ""
+
+    # Guardar como lista (una por línea)
+    echo "$API_KEY_1" > "$SECRETS_DIR/api_keys.txt"
+    echo "$API_KEY_2" >> "$SECRETS_DIR/api_keys.txt"
+else
+    echo "Ingresa las API keys (una por línea, presiona Enter dos veces para terminar):"
+    > "$SECRETS_DIR/api_keys.txt"
+
+    while true; do
+        read -p "API Key (Enter vacío para terminar): " API_KEY
+        if [ -z "$API_KEY" ]; then
+            break
+        fi
+        echo "$API_KEY" >> "$SECRETS_DIR/api_keys.txt"
+    done
+
+    echo -e "${GREEN}✓ API Keys configuradas${NC}"
+fi
+
 # Guardar secretos
 echo "$MONGODB_URI" > "$SECRETS_DIR/mongodb_uri.txt"
 
@@ -92,11 +130,13 @@ echo "Archivos creados en $SECRETS_DIR/"
 echo ""
 echo -e "${YELLOW}Próximos pasos:${NC}"
 echo "1. Actualiza las credenciales en tu servidor MongoDB"
-echo "2. Ejecuta: docker-compose -f docker-compose.secrets.yml up -d"
-echo "3. Verifica que el servicio funcione correctamente"
+echo "2. Configura las API Keys en tus clientes"
+echo "3. Ejecuta: docker-compose up -d"
+echo "4. Verifica que el servicio funcione correctamente"
 echo ""
 echo -e "${RED}⚠️  IMPORTANTE:${NC}"
 echo "- NO comitees los archivos en $SECRETS_DIR/"
 echo "- Mantén los secretos en un gestor de contraseñas"
 echo "- Rota las credenciales regularmente"
+echo "- Comparte las API Keys solo con servicios autorizados"
 echo ""

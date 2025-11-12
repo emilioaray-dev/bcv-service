@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { readSecret, isUsingSecrets } from './secrets';
+import { readSecret, readSecretList, isUsingSecrets } from './secrets';
 
 dotenv.config();
 
@@ -18,4 +18,8 @@ export const config = {
   cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
   nodeEnv: process.env.NODE_ENV || 'development',
   saveToDatabase: process.env.SAVE_TO_DATABASE?.toLowerCase() !== 'false' && process.env.SAVE_TO_DATABASE !== '0',
+
+  // API Keys para autenticación
+  // Soporta múltiples keys separadas por coma en API_KEYS, o archivo con una key por línea en API_KEYS_FILE
+  apiKeys: readSecretList('API_KEYS', 'API_KEYS_FILE', []),
 };

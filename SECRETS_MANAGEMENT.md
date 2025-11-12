@@ -19,9 +19,12 @@ bcv-service/
 │   └── generate-secrets.sh      # Script de generación
 ├── secrets/
 │   ├── .gitkeep                 # Mantiene el directorio en git
-│   └── mongodb_uri.txt          # Secreto (NO en git)
-└── src/config/
-    └── secrets.ts               # Utilidad para leer secretos
+│   ├── mongodb_uri.txt          # Secreto MongoDB (NO en git)
+│   └── api_keys.txt             # API Keys (NO en git)
+├── src/config/
+│   └── secrets.ts               # Utilidad para leer secretos
+└── src/middleware/
+    └── auth.middleware.ts       # Middleware de autenticación
 ```
 
 ## 🚀 Paso 1: Rotar Credenciales de MongoDB
@@ -63,14 +66,22 @@ exit
 ```
 
 El script te preguntará:
-1. Usuario de MongoDB
-2. Si quieres generar password automático (recomendado)
-3. Host, puerto, base de datos
+1. **MongoDB**: Usuario, password, host, puerto, base de datos
+2. **API Keys**: Si quieres generar automáticamente (recomendado) o ingresar manualmente
 
-Creará: `secrets/mongodb_uri.txt` con formato:
+Creará:
+- `secrets/mongodb_uri.txt` - Conexión a MongoDB:
 ```
 mongodb://bcv_user_new:PASSWORD@host:port/bcvdb?authSource=bcvdb
 ```
+
+- `secrets/api_keys.txt` - API keys (una por línea):
+```
+AbCd1234EfGh5678IjKl9012MnOp
+QrSt3456UvWx7890YzAb1234CdEf
+```
+
+**IMPORTANTE**: Guarda estas API keys en un gestor de contraseñas. Las necesitarás para configurar tus clientes.
 
 ## 🐳 Paso 3: Configurar Docker Compose
 
@@ -294,18 +305,124 @@ docker-compose exec bcv-service env | grep MONGODB
 # MONGODB_URI=mongodb://...
 ```
 
+## 🔑 Autenticación con API Keys
+
+### ¿Cómo funciona?
+
+El servicio BCV requiere que los clientes incluyan un header `X-API-Key` en cada petición:
+
+```bash
+# Ejemplo con curl
+curl -H "X-API-Key: tu-api-key-aqui" http://localhost:3000/api/rate
+
+# Ejemplo con fetch (JavaScript)
+fetch('http://localhost:3000/api/rate', {
+  headers: {
+    'X-API-Key': 'tu-api-key-aqui'
+  }
+})
+```
+
+### Respuestas de Autenticación
+
+**✅ API Key válida (200 OK)**:
+```json
+{
+  "rate": 45.67,
+  "date": "2025-11-11",
+  "rates": [...]
+}
+```
+
+**❌ API Key faltante (401 Unauthorized)**:
+```json
+{
+  "error": "Unauthorized",
+  "message": "API key es requerida. Incluye el header X-API-Key en tu petición.",
+  "code": "MISSING_API_KEY"
+}
+```
+
+**❌ API Key inválida (403 Forbidden)**:
+```json
+{
+  "error": "Forbidden",
+  "message": "API key inválida.",
+  "code": "INVALID_API_KEY"
+}
+```
+
+### Modo Desarrollo (Sin Autenticación)
+
+Si **NO** configuras ninguna API key, el servicio funcionará **sin autenticación**:
+- Útil para desarrollo local
+- No recomendado para producción
+- Aparecerá un warning en los logs
+
+### Configuración en Clientes
+
+#### Opción 1: Variable de Entorno (Desarrollo)
+
+```bash
+# .env en tu cliente
+API_KEYS=key1,key2,key3
+```
+
+#### Opción 2: Docker Secrets (Producción)
+
+```yaml
+# docker-compose.yml
+services:
+  mi-app:
+    environment:
+      - API_KEY=tu-api-key-aqui
+```
+
+### Rotar API Keys
+
+```bash
+# 1. Generar nuevas API keys
+./scripts/generate-secrets.sh
+
+# 2. Actualizar clientes con al menos UNA nueva key
+#    (mantén una key vieja temporalmente para compatibilidad)
+
+# 3. Reiniciar servicio BCV
+docker-compose restart bcv-service
+
+# 4. Verificar que los clientes funcionan con la nueva key
+
+# 5. Actualizar todos los clientes a las nuevas keys
+
+# 6. Regenerar secrets SIN las keys viejas
+./scripts/generate-secrets.sh
+
+# 7. Reiniciar servicio de nuevo
+docker-compose restart bcv-service
+```
+
+### Múltiples API Keys
+
+Puedes tener múltiples API keys activas simultáneamente:
+- Una key por cliente/servicio
+- Facilita auditoría (saber qué servicio hace qué peticiones)
+- Permite rotar keys individualmente
+
 ## 📚 Referencias
 
 - [Docker Secrets Documentation](https://docs.docker.com/engine/swarm/secrets/)
 - [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
+- [OWASP API Security](https://owasp.org/www-project-api-security/)
 - [12 Factor App - Config](https://12factor.net/config)
 
 ## ⏭️ Próximos Pasos
 
-1. **Implementado**: Docker Secrets básico
-2. **Pendiente Fase 1**: API Key authentication
+1. **Implementado ✅**: Docker Secrets básico
+2. **Implementado ✅**: API Key authentication
 3. **Pendiente Fase 2**: Structured logging con Winston
-4. **Pendiente Fase 4**: Vault integration (opcional)
+4. **Pendiente Fase 2**: Testing (unit tests, integration tests)
+5. **Pendiente Fase 3**: Health checks y métricas
+6. **Pendiente Fase 4**: Vault integration (opcional)
 
 ---
 

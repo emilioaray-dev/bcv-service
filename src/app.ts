@@ -8,6 +8,7 @@ import { BCVService, BCVRateData } from './services/bcv.service';
 import { RateController } from './controllers/rate.controller';
 import { createRoutes } from './utils/routes';
 import { Rate } from './models/rate';
+import { apiKeyAuth } from './middleware/auth.middleware';
 import cron from 'node-cron';
 
 const app: express.Application = express();
@@ -32,6 +33,11 @@ const apiLimiter = rateLimit({
 
 // Aplicar rate limiting a todas las rutas /api
 app.use('/api/', apiLimiter);
+
+// API Key authentication
+// Si no hay API keys configuradas, el middleware permite el acceso (modo desarrollo)
+// En producción, debe configurarse al menos una API key para proteger los endpoints
+app.use('/api/', apiKeyAuth);
 
 // Inicializar servicios
 const bcvService = new BCVService(config.bcvWebsiteUrl || 'https://www.bcv.org.ve/');
