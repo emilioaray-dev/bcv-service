@@ -3,6 +3,8 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 import { Container } from 'inversify';
 import { createContainer } from '@/config/inversify.config';
 import { config } from '@/config';
@@ -11,6 +13,7 @@ import { apiKeyAuth } from '@/middleware/auth.middleware';
 import { createRoutes } from '@/utils/routes';
 import { TYPES } from '@/config/types';
 import log from '@/utils/logger';
+import { swaggerOptions } from '@/config/swagger.config';
 
 // Interfaces
 import { ICacheService } from '@/services/cache.interface';
@@ -112,6 +115,14 @@ export class Application {
     const healthController = this.container.get<HealthController>(TYPES.HealthController);
     this.app.use(healthController.router);
 
+    // Swagger API Documentation (sin autenticación ni rate limiting)
+    const swaggerSpec = swaggerJsdoc(swaggerOptions);
+    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'BCV Service API Docs'
+    }));
+    log.info('Swagger UI disponible en /api-docs');
+
     // Rutas de API (con autenticación y rate limiting)
     this.app.use(createRoutes(this.cacheService));
 
@@ -121,7 +132,8 @@ export class Application {
         message: 'Microservicio BCV Tasa de Cambio',
         status: 'running',
         connectedClients: this.webSocketService.getConnectedClientsCount(),
-        architecture: 'SOLID with Inversify DI'
+        architecture: 'SOLID with Inversify DI',
+        documentation: '/api-docs'
       });
     });
   }
