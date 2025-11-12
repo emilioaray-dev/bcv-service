@@ -2,6 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
+ * IMPORTANTE: Este módulo NO puede importar el logger
+ * porque se ejecuta durante la inicialización de la configuración,
+ * y el logger depende de la configuración (dependencia circular).
+ * Por eso usamos console.log/warn/error directamente aquí.
+ */
+
+/**
  * Lee un secreto desde un archivo
  * Útil para Docker Secrets que se montan en /run/secrets/
  *
@@ -28,17 +35,19 @@ export function readSecret(
       const resolvedPath = resolve(filePath);
       const secret = readFileSync(resolvedPath, 'utf-8').trim();
       if (secret) {
-        // Usamos console.log aquí porque el logger aún no está disponible durante la carga inicial
+        // eslint-disable-next-line no-console
         console.log(`✓ Secreto cargado desde archivo: ${filePathVar}`);
         return secret;
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(`⚠️  Error leyendo secreto desde archivo ${filePath}:`, error);
     }
   }
 
   // Retornar valor por defecto
   if (defaultValue) {
+    // eslint-disable-next-line no-console
     console.warn(`⚠️  Usando valor por defecto para ${envVar}`);
   }
 
@@ -77,17 +86,19 @@ export function readSecretList(
         .filter(line => line.length > 0);
 
       if (secrets.length > 0) {
-        // Usamos console.log aquí porque el logger aún no está disponible durante la carga inicial
+        // eslint-disable-next-line no-console
         console.log(`✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`);
         return secrets;
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(`⚠️  Error leyendo secretos desde archivo ${filePath}:`, error);
     }
   }
 
   // Retornar valor por defecto
   if (defaultValue.length > 0) {
+    // eslint-disable-next-line no-console
     console.warn(`⚠️  Usando valores por defecto para ${envVar}`);
   }
 

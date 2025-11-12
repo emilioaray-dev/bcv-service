@@ -1,12 +1,29 @@
+import { injectable, inject } from 'inversify';
 import { Server as WebSocketServer, WebSocket } from 'ws';
-import { RateUpdateEvent } from '../models/rate';
-import log from '../utils/logger';
+import { RateUpdateEvent } from '@/models/rate';
+import log from '@/utils/logger';
+import { IWebSocketService } from '@/interfaces/IWebSocketService';
+import { TYPES } from '@/config/types';
+import type { Server as HttpServer } from 'http';
 
-export class WebSocketService {
+/**
+ * WebSocketService - Servicio de comunicación en tiempo real
+ *
+ * Implementa el principio de Single Responsibility (SRP):
+ * - Responsabilidad única: Gestionar conexiones WebSocket y broadcast
+ *
+ * Implementa el principio de Dependency Inversion (DIP):
+ * - Implementa la interfaz IWebSocketService (abstracción)
+ * - Depende del servidor HTTP a través de inyección
+ */
+@injectable()
+export class WebSocketService implements IWebSocketService {
   private wss: WebSocketServer;
   private clients: Set<WebSocket> = new Set();
 
-  constructor(server: any) {
+  constructor(
+    @inject(TYPES.HttpServer) server: HttpServer
+  ) {
     this.wss = new WebSocketServer({ server });
     this.wss.on('connection', (ws: WebSocket) => {
       this.clients.add(ws);
