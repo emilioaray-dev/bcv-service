@@ -10,11 +10,23 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3000  # Asegura que la aplicación escuche en el puerto correcto
+      - PORT=3000
       - BCV_WEBSITE_URL=https://www.bcv.org.ve/
-      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcvdb?authSource=bcvdb
       - CRON_SCHEDULE=0 2,10,18 * * *  # Cada 8 horas: 2am, 10am, 6pm
       - SAVE_TO_DATABASE=true
+
+      # Opción 1: Usar Docker Secrets (recomendado para producción)
+      # Descomenta la siguiente línea y comenta MONGODB_URI si usas secrets
+      # - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+
+      # Opción 2: Variable de entorno directa (desarrollo/testing)
+      # Comenta esta línea si usas Docker Secrets
+      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcvdb?authSource=bcvdb
+
+    # Descomenta la siguiente sección si usas Docker Secrets
+    # secrets:
+    #   - mongodb_uri
+
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
@@ -36,3 +48,8 @@ services:
 
 volumes:
   redis_data:
+
+# Descomenta esta sección si usas Docker Secrets
+# secrets:
+#   mongodb_uri:
+#     file: ./secrets/mongodb_uri.txt
