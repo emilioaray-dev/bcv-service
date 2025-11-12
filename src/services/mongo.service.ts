@@ -1,6 +1,7 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 import { Rate } from '../models/rate';
 import { ICacheService } from './cache.interface';
+import log from '../utils/logger';
 
 export class MongoService implements ICacheService {
   private client: MongoClient;
@@ -15,12 +16,19 @@ export class MongoService implements ICacheService {
 
   async connect(): Promise<void> {
     await this.client.connect();
-    console.log('Conectado a MongoDB');
-    
+    log.info('Conectado a MongoDB', {
+      database: this.db.databaseName,
+      collection: this.collection.collectionName
+    });
+
     // Crear índices
     await this.collection.createIndex({ date: 1 });
     await this.collection.createIndex({ createdAt: -1 });
     await this.collection.createIndex({ date: 1, source: 1 }, { unique: true });
+
+    log.debug('Índices de MongoDB creados', {
+      indexes: ['date', 'createdAt', 'date+source (unique)']
+    });
   }
 
   async disconnect(): Promise<void> {

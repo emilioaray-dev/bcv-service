@@ -1,6 +1,7 @@
 import axios, { type AxiosError } from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'node:https';
+import log from '../utils/logger';
 
 export interface CurrencyRate {
   currency: string;
@@ -33,7 +34,11 @@ export class BCVService {
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
         if (attempt > 0) {
-          console.log(`Reintento ${attempt}/${this.maxRetries - 1} después de ${this.retryDelay}ms...`);
+          log.info('Reintentando obtener tasa del BCV', {
+            attempt,
+            maxRetries: this.maxRetries - 1,
+            retryDelay: this.retryDelay
+          });
           await this.sleep(this.retryDelay);
         }
 
@@ -43,11 +48,19 @@ export class BCVService {
         }
       } catch (error) {
         lastError = error as Error;
-        console.error(`Intento ${attempt + 1} falló:`, this.getErrorMessage(error));
+        log.error('Intento de obtener tasa del BCV falló', {
+          attempt: attempt + 1,
+          maxRetries: this.maxRetries,
+          error: this.getErrorMessage(error)
+        });
       }
     }
 
-    console.error(`Falló después de ${this.maxRetries} intentos. Último error:`, lastError);
+    log.error('Falló obtener tasa del BCV después de todos los intentos', {
+      maxRetries: this.maxRetries,
+      lastError: lastError?.message,
+      stack: lastError?.stack
+    });
     return null;
   }
 

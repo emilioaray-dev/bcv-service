@@ -20,6 +20,7 @@ data/
 # Logs
 logs/
 *.log
+*.log.*
 
 # OS
 .DS_Store
