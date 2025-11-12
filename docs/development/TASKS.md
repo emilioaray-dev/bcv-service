@@ -111,37 +111,43 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ---
 
-## ⏳ Fase 4: Observability
+## ✅ Fase 4: Observability (COMPLETADO)
 
 ### Health Checks
-- [ ] Implementar endpoint `/health`
-- [ ] Verificar conectividad a MongoDB
-- [ ] Verificar estado del cron job
-- [ ] Health check de servicios externos
-- [ ] Readiness vs Liveness probes
+- [x] Implementar endpoint `/health`
+- [x] Verificar conectividad a MongoDB
+- [x] Verificar estado del cron job
+- [x] Health check de servicios externos
+- [x] Readiness vs Liveness probes (/healthz, /readyz)
 
 ### Metrics
-- [ ] Instalar Prometheus client (`prom-client`)
-- [ ] Exponer endpoint `/metrics`
-- [ ] Métricas custom:
-  - [ ] Contador de requests por endpoint
-  - [ ] Histograma de duración de requests
-  - [ ] Gauge de clientes WebSocket conectados
-  - [ ] Contador de actualizaciones de tasa exitosas/fallidas
-  - [ ] Gauge de última tasa obtenida
+- [x] Instalar Prometheus client (`prom-client`)
+- [x] Exponer endpoint `/metrics`
+- [x] Métricas custom:
+  - [x] Contador de requests por endpoint
+  - [x] Histograma de duración de requests
+  - [x] Gauge de clientes WebSocket conectados
+  - [x] Contador de actualizaciones de tasa exitosas/fallidas
+  - [x] Gauge de última tasa obtenida
+- [x] Incluir métricas default de Node.js y proceso
 
-### Monitoring
+### Documentation
+- [x] Crear guía de observabilidad (docs/guides/OBSERVABILITY.md)
+- [x] Documentar endpoints de health checks
+- [x] Documentar métricas de Prometheus
+- [x] Ejemplos de uso y configuración
+
+### Monitoring (Opcional - No implementado)
 - [ ] Configurar Grafana dashboards (opcional)
-- [ ] Configurar alertas en Prometheus
-- [ ] Logging estructurado de métricas
-- [ ] Performance monitoring
+- [ ] Configurar alertas en Prometheus (opcional)
 
-### Tracing (opcional avanzado)
-- [ ] OpenTelemetry integration
-- [ ] Distributed tracing
-- [ ] Request correlation IDs
+### Tracing (Opcional - No implementado)
+- [ ] OpenTelemetry integration (opcional avanzado)
+- [ ] Distributed tracing (opcional avanzado)
+- [ ] Request correlation IDs (opcional avanzado)
 
-**Meta:** Observabilidad completa para debugging en producción
+**Resultado:** Sistema completo de observabilidad con health checks y Prometheus metrics
+**Meta:** Observabilidad completa para debugging en producción ✅
 
 ---
 
@@ -152,7 +158,7 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
   - [ ] Checkout code
   - [ ] Setup Node.js
   - [ ] Install dependencies (pnpm)
-  - [ ] Run linter (ESLint)
+  - [ ] Run Biome check (lint + format)
   - [ ] Run tests con coverage
   - [ ] Build TypeScript
   - [ ] Upload coverage a Codecov (opcional)
@@ -164,11 +170,11 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
   - [ ] Push a Docker Hub/GHCR
 
 ### Code Quality
-- [ ] Configurar ESLint estricto
-- [ ] Configurar Prettier
-- [ ] Pre-commit hooks con Husky
+- [ ] Configurar Biome rules estrictas
+- [ ] Configurar Biome formatter
 - [ ] Conventional commits enforcement
 - [ ] Branch protection rules
+- [ ] Automatizar Biome check en CI
 
 ### Docker
 - [ ] Multi-stage Dockerfile optimizado
@@ -282,14 +288,13 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ## Estado Actual
 
-**Completado:** 3/8 fases (Security, Logging, Testing)
+**Completado:** 4/8 fases (Security, Logging, Testing, Observability)
 **En progreso:** Ninguna
-**Progreso total:** ~37.5%
+**Progreso total:** ~50%
 
 ## Próximos Pasos
 
-1. → Fase 4: Observability (Health checks, Metrics, Monitoring)
-2. → Fase 5: CI/CD (GitHub Actions, Code Quality)
-3. → Fase 6: Documentation (README, API docs, Architecture)
-4. → Fase 7: Performance & Optimization (Redis caching, Benchmarking)
-5. → Fase 8: Advanced Features (Multi-source support, GraphQL)
+1. → Fase 5: CI/CD (GitHub Actions con Biome, Code Quality)
+2. → Fase 6: Documentation (README, API docs, Architecture)
+3. → Fase 7: Performance & Optimization (Redis caching, Benchmarking)
+4. → Fase 8: Advanced Features (Multi-source support, GraphQL)
