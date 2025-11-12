@@ -2,8 +2,8 @@
 // para mantener la estructura más organizada
 
 import express from 'express';
-import { ICacheService } from '../services/cache.interface';
-import { RateController } from '../controllers/rate.controller';
+import { ICacheService } from '@/services/cache.interface';
+import { RateController } from '@/controllers/rate.controller';
 
 export const createRoutes = (cacheService: ICacheService): express.Router => {
   const router = express.Router();

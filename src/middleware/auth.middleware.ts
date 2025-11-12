@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { config } from '../config';
-import log from '../utils/logger';
+import { config } from '@/config';
+import log from '@/utils/logger';
 
 /**
  * Middleware de autenticación con API Key

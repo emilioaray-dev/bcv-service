@@ -1,13 +1,28 @@
+import { injectable, inject } from 'inversify';
 import { Router, Request, Response } from 'express';
-import { ICacheService } from '../services/cache.interface';
-import { config } from '../config';
-import { validateDateParam, validateHistoryQuery } from '../middleware/validation.middleware';
+import { ICacheService } from '@/services/cache.interface';
+import { config } from '@/config';
+import { validateDateParam, validateHistoryQuery } from '@/middleware/validation.middleware';
+import { TYPES } from '@/config/types';
+import log from '@/utils/logger';
 
+/**
+ * RateController - Controlador REST para endpoints de tasas
+ *
+ * Implementa el principio de Single Responsibility (SRP):
+ * - Responsabilidad única: Manejar requests HTTP para tasas de cambio
+ *
+ * Implementa el principio de Dependency Inversion (DIP):
+ * - Depende de ICacheService (abstracción) no de MongoService (concreción)
+ */
+@injectable()
 export class RateController {
   public router: Router;
   private cacheService: ICacheService;
 
-  constructor(cacheService: ICacheService) {
+  constructor(
+    @inject(TYPES.CacheService) cacheService: ICacheService
+  ) {
     this.cacheService = cacheService;
     this.router = Router();
     this.initializeRoutes();
@@ -37,7 +52,7 @@ export class RateController {
       }
       res.json(rate);
     } catch (error) {
-      console.error('Error obteniendo tasa más reciente:', error);
+      log.error('Error obteniendo tasa más reciente', { error });
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
@@ -62,7 +77,7 @@ export class RateController {
       const rates = await this.cacheService.getRateHistory(safeLimit);
       res.json(rates);
     } catch (error) {
-      console.error('Error obteniendo historial de tasas:', error);
+      log.error('Error obteniendo historial de tasas', { error });
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
@@ -89,7 +104,7 @@ export class RateController {
 
       res.json(rate);
     } catch (error) {
-      console.error('Error obteniendo tasa por fecha:', error);
+      log.error('Error obteniendo tasa por fecha', { error });
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
