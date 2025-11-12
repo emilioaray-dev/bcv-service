@@ -35,5 +35,7 @@ __tests__/
 
 # Secrets
 secrets/
+!secrets/.gitkeep
 *.key
 *.pem
+*.txt
