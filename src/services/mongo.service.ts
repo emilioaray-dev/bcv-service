@@ -1,15 +1,30 @@
+import { injectable, inject } from 'inversify';
 import { MongoClient, Db, Collection } from 'mongodb';
-import { Rate } from '../models/rate';
-import { ICacheService } from './cache.interface';
-import log from '../utils/logger';
+import { Rate } from '@/models/rate';
+import { ICacheService } from '@/services/cache.interface';
+import log from '@/utils/logger';
+import { TYPES } from '@/config/types';
 
+/**
+ * MongoService - Servicio de persistencia con MongoDB
+ *
+ * Implementa el principio de Single Responsibility (SRP):
+ * - Responsabilidad única: Gestionar persistencia de tasas en MongoDB
+ *
+ * Implementa el principio de Dependency Inversion (DIP):
+ * - Implementa la interfaz ICacheService (abstracción)
+ * - No depende de detalles de implementación externa
+ */
+@injectable()
 export class MongoService implements ICacheService {
   private client: MongoClient;
   private db: Db;
   private collection: Collection<Rate>;
 
-  constructor(mongoUri: string) {
-    this.client = new MongoClient(mongoUri);
+  constructor(
+    @inject(TYPES.Config) config: { mongoUri: string }
+  ) {
+    this.client = new MongoClient(config.mongoUri);
     this.db = this.client.db();
     this.collection = this.db.collection<Rate>('rates');
   }

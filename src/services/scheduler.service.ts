@@ -1,0 +1,132 @@
+import { injectable, inject } from 'inversify';
+import cron from 'node-cron';
+import { ISchedulerService } from '@/interfaces/ISchedulerService';
+import { IBCVService } from '@/interfaces/IBCVService';
+import { ICacheService } from '@/services/cache.interface';
+import { IWebSocketService } from '@/interfaces/IWebSocketService';
+import { TYPES } from '@/config/types';
+import log from '@/utils/logger';
+
+/**
+ * SchedulerService - Servicio de programación de tareas
+ *
+ * Implementa el principio de Single Responsibility (SRP):
+ * - Responsabilidad única: Gestionar la programación y ejecución de actualizaciones periódicas
+ *
+ * Implementa el principio de Dependency Inversion (DIP):
+ * - Depende de abstracciones (interfaces) no de concreciones
+ *
+ * Implementa el principio de Open/Closed (OCP):
+ * - Abierto a extensión (se pueden agregar más tareas programadas)
+ * - Cerrado a modificación (no requiere cambios para nuevas tareas)
+ */
+@injectable()
+export class SchedulerService implements ISchedulerService {
+  private cronJob: cron.ScheduledTask | null = null;
+  private readonly cronSchedule: string;
+  private readonly saveToDatabase: boolean;
+
+  constructor(
+    @inject(TYPES.BCVService) private bcvService: IBCVService,
+    @inject(TYPES.CacheService) private cacheService: ICacheService,
+    @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
+    @inject(TYPES.Config) config: { cronSchedule: string; saveToDatabase: boolean }
+  ) {
+    this.cronSchedule = config.cronSchedule;
+    this.saveToDatabase = config.saveToDatabase;
+  }
+
+  /**
+   * Inicia la ejecución de tareas programadas
+   */
+  start(): void {
+    log.info('Tarea programada configurada', { schedule: this.cronSchedule });
+
+    this.cronJob = cron.schedule(this.cronSchedule, async () => {
+      await this.updateRate();
+    });
+  }
+
+  /**
+   * Detiene la ejecución de tareas programadas
+   */
+  stop(): void {
+    if (this.cronJob) {
+      this.cronJob.stop();
+      log.info('Tarea programada detenida');
+    }
+  }
+
+  /**
+   * Ejecuta manualmente una actualización inmediata
+   */
+  async executeImmediately(): Promise<void> {
+    await this.updateRate();
+  }
+
+  /**
+   * Lógica interna de actualización de tasas
+   * Encapsula toda la lógica de obtención, comparación y guardado
+   */
+  private async updateRate(): Promise<void> {
+    log.info('Ejecutando tarea programada para actualizar tasa de cambio');
+
+    try {
+      const currentData = await this.bcvService.getCurrentRate();
+
+      if (!currentData) {
+        log.error('No se pudo obtener la tasa de cambio del BCV');
+        return;
+      }
+
+      // Obtener la tasa almacenada previamente
+      const previousRate = await this.cacheService.getLatestRate();
+
+      // Solo guardar si hay un cambio significativo o si es la primera vez
+      const hasSignificantChange = !previousRate ||
+        Math.abs((previousRate.rate || 0) - currentData.rate) > 0.0001 ||
+        (currentData.rates && previousRate?.rates &&
+          JSON.stringify(currentData.rates) !== JSON.stringify(previousRate.rates));
+
+      if (hasSignificantChange) {
+        if (this.saveToDatabase) {
+          const newRate = await this.cacheService.saveRate({
+            rate: currentData.rate,
+            rates: currentData.rates || [],
+            date: currentData.date,
+            source: 'bcv'
+          });
+
+          log.info('Tasa actualizada', {
+            rate: newRate.rate,
+            date: newRate.date,
+            detailedRates: newRate.rates
+          });
+
+          // Notificar a los clientes WebSocket
+          const change = previousRate ? newRate.rate - previousRate.rate : 0;
+          this.webSocketService.broadcastRateUpdate({
+            timestamp: new Date().toISOString(),
+            rate: newRate.rate,
+            rates: newRate.rates,
+            change,
+            eventType: 'rate-update'
+          });
+        } else {
+          log.info('Modo consola: Tasa cambiada - NO se almacenó en DB', {
+            rate: currentData.rate,
+            date: currentData.date,
+            detailedRates: currentData.rates
+          });
+        }
+      } else {
+        log.debug('Tasa sin cambios, no se almacenó', { rate: currentData.rate });
+      }
+    } catch (error: any) {
+      log.error('Error en la tarea programada', {
+        error: error.message,
+        stack: error.stack
+      });
+    }
+  }
+}

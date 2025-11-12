@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError } from 'zod';
+import log from '@/utils/logger';
 
 /**
  * Middleware genérico de validación para Zod schemas
@@ -34,15 +35,16 @@ export const validate = <T extends z.ZodTypeAny>(
           code: err.code
         }));
 
-        return res.status(400).json({
+        res.status(400).json({
           error: 'Error de validación',
           details: formattedErrors
         });
+        return;
       }
 
       // Error inesperado
-      console.error('Error en validación:', error);
-      return res.status(500).json({
+      log.error('Error en validación', { error });
+      res.status(500).json({
         error: 'Error interno del servidor durante la validación'
       });
     }

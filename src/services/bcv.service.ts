@@ -1,7 +1,11 @@
+import { injectable, inject } from 'inversify';
 import axios, { type AxiosError } from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'node:https';
-import log from '../utils/logger';
+import log from '@/utils/logger';
+import { IBCVService } from '@/interfaces/IBCVService';
+import { TYPES } from '@/config/types';
+import { parseVenezuelanNumber } from '@/utils/number-parser';
 
 export interface CurrencyRate {
   currency: string;
@@ -16,15 +20,33 @@ export interface BCVRateData {
   rate: number;  // Tasa del dólar (para compatibilidad)
 }
 
-export class BCVService {
-  private bcvUrl: string;
-  private maxRetries: number;
-  private retryDelay: number;
+export interface BCVConfig {
+  bcvUrl: string;
+  maxRetries?: number;
+  retryDelay?: number;
+}
 
-  constructor(bcvUrl: string, maxRetries = 3, retryDelay = 2000) {
-    this.bcvUrl = bcvUrl;
-    this.maxRetries = maxRetries;
-    this.retryDelay = retryDelay;
+/**
+ * BCVService - Servicio para obtener tasas de cambio del BCV
+ *
+ * Implementa el principio de Single Responsibility (SRP):
+ * - Responsabilidad única: Obtener y parsear tasas del BCV
+ *
+ * Implementa el principio de Dependency Inversion (DIP):
+ * - Depende de abstracciones (IBCVService) no de concreciones
+ */
+@injectable()
+export class BCVService implements IBCVService {
+  private readonly bcvUrl: string;
+  private readonly maxRetries: number;
+  private readonly retryDelay: number;
+
+  constructor(
+    @inject(TYPES.Config) config: { bcvWebsiteUrl: string }
+  ) {
+    this.bcvUrl = config.bcvWebsiteUrl || 'https://www.bcv.org.ve/';
+    this.maxRetries = 3;
+    this.retryDelay = 2000;
   }
 
   async getCurrentRate(): Promise<BCVRateData | null> {
@@ -120,9 +142,11 @@ export class BCVService {
           const tasaElement = currencyDiv.find('.centrado strong');
           if (tasaElement.length > 0) {
             let rateText = tasaElement.text().trim();
-            // Limpiar el texto de la tasa (eliminar espacios, comas, etc.)
-            rateText = rateText.replace(/[\s\n\r]+/g, ' ').replace(/\s/g, '');
-            const rate = parseFloat(rateText.replace(/,/g, ''));
+            // Limpiar el texto de la tasa (eliminar espacios y saltos de línea)
+            rateText = rateText.replace(/[\s\n\r]+/g, '');
+
+            // Parsear usando formato venezolano (punto=miles, coma=decimal)
+            const rate = parseVenezuelanNumber(rateText);
 
             if (!isNaN(rate) && rate > 0) {
               rates.push({
@@ -160,7 +184,8 @@ export class BCVService {
       for (const pattern of possiblePatterns) {
         const matches = html.match(pattern);
         if (matches && matches[1]) {
-          const rate = parseFloat(matches[1].replace(/,/g, '.'));
+          // Parsear usando formato venezolano (punto=miles, coma=decimal)
+          const rate = parseVenezuelanNumber(matches[1]);
           if (!isNaN(rate) && rate > 0) {
             return {
               date: new Date().toISOString().split('T')[0],
