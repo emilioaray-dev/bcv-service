@@ -3,12 +3,8 @@ import { readSecret, readSecretList, isUsingSecrets } from './secrets';
 
 dotenv.config();
 
-// Mostrar modo de configuración
-if (isUsingSecrets()) {
-  console.log('🔐 Modo: Docker Secrets activado');
-} else {
-  console.log('⚙️  Modo: Variables de entorno estándar');
-}
+// Nota: No importamos logger aquí para evitar dependencias circulares
+// El logging del modo de configuración se hará en app.ts
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
@@ -18,6 +14,9 @@ export const config = {
   cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
   nodeEnv: process.env.NODE_ENV || 'development',
   saveToDatabase: process.env.SAVE_TO_DATABASE?.toLowerCase() !== 'false' && process.env.SAVE_TO_DATABASE !== '0',
+
+  // Nivel de logging: error | warn | info | http | debug
+  logLevel: process.env.LOG_LEVEL || 'info',
 
   // API Keys para autenticación
   // Soporta múltiples keys separadas por coma en API_KEYS, o archivo con una key por línea en API_KEYS_FILE

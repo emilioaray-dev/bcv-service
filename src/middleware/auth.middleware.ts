@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
+import log from '../utils/logger';
 
 /**
  * Middleware de autenticación con API Key
@@ -32,7 +33,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 
   // Verificar si no hay API keys configuradas (modo desarrollo sin autenticación)
   if (validApiKeys.length === 0) {
-    console.warn('⚠️  No hay API keys configuradas. Modo desarrollo: autenticación desactivada.');
+    log.warn('No hay API keys configuradas. Modo desarrollo: autenticación desactivada');
     next();
     return;
   }

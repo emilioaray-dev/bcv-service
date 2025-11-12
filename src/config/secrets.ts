@@ -28,6 +28,7 @@ export function readSecret(
       const resolvedPath = resolve(filePath);
       const secret = readFileSync(resolvedPath, 'utf-8').trim();
       if (secret) {
+        // Usamos console.log aquí porque el logger aún no está disponible durante la carga inicial
         console.log(`✓ Secreto cargado desde archivo: ${filePathVar}`);
         return secret;
       }
@@ -76,6 +77,7 @@ export function readSecretList(
         .filter(line => line.length > 0);
 
       if (secrets.length > 0) {
+        // Usamos console.log aquí porque el logger aún no está disponible durante la carga inicial
         console.log(`✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`);
         return secrets;
       }

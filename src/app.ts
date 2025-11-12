@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import rateLimit from 'express-rate-limit';
 import { config } from './config';
+import { isUsingSecrets } from './config/secrets';
 import { MongoService } from './services/mongo.service';
 import { WebSocketService } from './services/websocket.service';
 import { BCVService, BCVRateData } from './services/bcv.service';
@@ -9,10 +10,18 @@ import { RateController } from './controllers/rate.controller';
 import { createRoutes } from './utils/routes';
 import { Rate } from './models/rate';
 import { apiKeyAuth } from './middleware/auth.middleware';
+import log from './utils/logger';
 import cron from 'node-cron';
 
 const app: express.Application = express();
 const server = http.createServer(app);
+
+// Log de configuración inicial
+if (isUsingSecrets()) {
+  log.info('Modo: Docker Secrets activado');
+} else {
+  log.info('Modo: Variables de entorno estándar');
+}
 
 // Middleware
 app.use(express.json());
@@ -49,10 +58,10 @@ if (config.saveToDatabase) {
   cacheService = new MongoService(config.mongoUri);
   // Conectar a MongoDB solo si se va a usar
   cacheService.connect().catch(error => {
-    console.error('Error conectando a MongoDB:', error);
+    log.error('Error conectando a MongoDB', { error: error.message, stack: error.stack });
   });
 } else {
-  console.log('[MODO CONSOLA] No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)');
+  log.info('Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)');
   // Creamos un mock de cacheService para evitar errores cuando no se usa la base de datos
   cacheService = {
     connect: async () => {},
@@ -92,16 +101,16 @@ app.get('/', async (req, res) => {
 
 // Inicializar la tarea programada
 const scheduleTask = () => {
-  console.log(`Tarea programada para ejecutarse según: ${config.cronSchedule}`);
-  
+  log.info('Tarea programada configurada', { schedule: config.cronSchedule });
+
   cron.schedule(config.cronSchedule, async () => {
-    console.log('Ejecutando tarea programada para actualizar tasa de cambio...');
-    
+    log.info('Ejecutando tarea programada para actualizar tasa de cambio');
+
     try {
       const currentData = await bcvService.getCurrentRate();
-      
+
       if (!currentData) {
-        console.error('No se pudo obtener la tasa de cambio del BCV');
+        log.error('No se pudo obtener la tasa de cambio del BCV');
         return;
       }
 
@@ -125,13 +134,11 @@ const scheduleTask = () => {
             source: 'bcv'
           });
 
-          console.log(`Tasa actualizada: ${newRate.rate} (${newRate.date})`);
-          if (newRate.rates && newRate.rates.length > 0) {
-            console.log('  Tasas detalladas:');
-            for (const rate of newRate.rates) {
-              console.log(`    ${rate.currency} (${rate.name}): ${rate.rate}`);
-            }
-          }
+          log.info('Tasa actualizada', {
+            rate: newRate.rate,
+            date: newRate.date,
+            detailedRates: newRate.rates
+          });
 
           // Notificar a los clientes WebSocket con las tasas detalladas
           const change = previousRate ? newRate.rate - previousRate.rate : 0;
@@ -143,19 +150,20 @@ const scheduleTask = () => {
             eventType: 'rate-update'
           });
         } else {
-          console.log(`[MODO CONSOLA] Tasa cambiada: ${currentData.rate} (${currentData.date}) - NO se almacenó en DB`);
-          if (currentData.rates && currentData.rates.length > 0) {
-            console.log('  Tasas detalladas:');
-            for (const rate of currentData.rates) {
-              console.log(`    ${rate.currency} (${rate.name}): ${rate.rate}`);
-            }
-          }
+          log.info('Modo consola: Tasa cambiada - NO se almacenó en DB', {
+            rate: currentData.rate,
+            date: currentData.date,
+            detailedRates: currentData.rates
+          });
         }
       } else {
-        console.log(`Tasa sin cambios: ${currentData.rate}, no se almacenó`);
+        log.debug('Tasa sin cambios, no se almacenó', { rate: currentData.rate });
       }
     } catch (error) {
-      console.error('Error en la tarea programada:', error);
+      log.error('Error en la tarea programada', {
+        error: error.message,
+        stack: error.stack
+      });
     }
   });
 };
@@ -169,37 +177,46 @@ const port = config.port;
 // Manejar errores del servidor
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Error: El puerto ${port} ya está en uso.`);
-    console.error(`💡 Solución: Termina el proceso que está usando el puerto o cambia el puerto en la variable PORT.`);
-    console.error(`🔧 Puedes usar: lsof -i :${port} para ver qué proceso está usando el puerto`);
-    console.error(`🔧 Y luego: kill -9 <PID> para terminar ese proceso`);
+    log.error(`Error: El puerto ${port} ya está en uso`, {
+      port,
+      solution: 'Termina el proceso usando el puerto o cambia PORT',
+      commands: [`lsof -i :${port}`, 'kill -9 <PID>']
+    });
   } else {
-    console.error('Error del servidor:', err);
+    log.error('Error del servidor', {
+      error: err.message,
+      code: err.code,
+      stack: err.stack
+    });
   }
   process.exit(1);
 });
 
 server.listen(port, () => {
-  console.log(`Servidor BCV corriendo en puerto ${port}`);
-  console.log(`Tarea programada: ${config.cronSchedule}`);
-  
+  log.info('Servidor BCV iniciado', {
+    port,
+    schedule: config.cronSchedule,
+    environment: config.nodeEnv
+  });
+
   // Ejecutar una consulta inmediata al iniciar
   setTimeout(async () => {
     try {
       const currentData = await bcvService.getCurrentRate();
       if (currentData) {
-        console.log(`Tasa inicial obtenida: ${currentData.rate} (${currentData.date})`);
-        if (currentData.rates && currentData.rates.length > 0) {
-          console.log('  Tasas detalladas:');
-          for (const rate of currentData.rates) {
-            console.log(`    ${rate.currency} (${rate.name}): ${rate.rate}`);
-          }
-        }
+        log.info('Tasa inicial obtenida', {
+          rate: currentData.rate,
+          date: currentData.date,
+          detailedRates: currentData.rates
+        });
       } else {
-        console.log('No se pudo obtener la tasa inicial del BCV');
+        log.warn('No se pudo obtener la tasa inicial del BCV');
       }
     } catch (error) {
-      console.error('Error obteniendo tasa inicial:', error);
+      log.error('Error obteniendo tasa inicial', {
+        error: error.message,
+        stack: error.stack
+      });
     }
   }, 2000); // Esperar 2 segundos antes de la consulta inicial
 });
@@ -207,10 +224,10 @@ server.listen(port, () => {
 // Manejar cierre del servidor
 process.on('SIGINT', async () => {
   if (config.saveToDatabase) {
-    console.log('Cerrando conexión a MongoDB...');
+    log.info('Cerrando conexión a MongoDB...');
     await cacheService.disconnect();
   } else {
-    console.log('[MODO CONSOLA] Cerrando servidor (sin conexión a MongoDB)');
+    log.info('Modo consola: Cerrando servidor (sin conexión a MongoDB)');
   }
   process.exit(0);
 });
