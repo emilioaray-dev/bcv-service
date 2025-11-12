@@ -16,16 +16,19 @@ services:
       - SAVE_TO_DATABASE=true
 
       # Opción 1: Usar Docker Secrets (recomendado para producción)
-      # Descomenta la siguiente línea y comenta MONGODB_URI si usas secrets
+      # Descomenta las siguientes líneas y comenta las variables directas si usas secrets
       # - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+      # - API_KEYS_FILE=/run/secrets/api_keys
 
-      # Opción 2: Variable de entorno directa (desarrollo/testing)
-      # Comenta esta línea si usas Docker Secrets
+      # Opción 2: Variables de entorno directas (desarrollo/testing)
+      # Comenta estas líneas si usas Docker Secrets
       - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcvdb?authSource=bcvdb
+      # - API_KEYS=key1,key2,key3  # Múltiples keys separadas por coma
 
     # Descomenta la siguiente sección si usas Docker Secrets
     # secrets:
     #   - mongodb_uri
+    #   - api_keys
 
     restart: unless-stopped
     healthcheck:
@@ -53,3 +56,5 @@ volumes:
 # secrets:
 #   mongodb_uri:
 #     file: ./secrets/mongodb_uri.txt
+#   api_keys:
+#     file: ./secrets/api_keys.txt
