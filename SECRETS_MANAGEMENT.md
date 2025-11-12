@@ -14,7 +14,7 @@ Docker Secrets proporciona:
 
 ```
 bcv-service/
-├── docker-compose.secrets.yml   # Docker Compose con Secrets
+├── docker-compose.yml           # Docker Compose unificado (con/sin Secrets)
 ├── scripts/
 │   └── generate-secrets.sh      # Script de generación
 ├── secrets/
@@ -72,22 +72,47 @@ Creará: `secrets/mongodb_uri.txt` con formato:
 mongodb://bcv_user_new:PASSWORD@host:port/bcvdb?authSource=bcvdb
 ```
 
-## 🐳 Paso 3: Usar Docker Compose con Secrets
+## 🐳 Paso 3: Configurar Docker Compose
 
-### Producción:
+Edita `docker-compose.yml`:
 
-```bash
-# Iniciar con Secrets
-docker-compose -f docker-compose.secrets.yml up -d
+### Para usar Docker Secrets (Producción):
 
-# Ver logs
-docker-compose -f docker-compose.secrets.yml logs -f bcv-service
+1. **Descomenta** las líneas de secrets en `docker-compose.yml`:
+```yaml
+environment:
+  - MONGODB_URI_FILE=/run/secrets/mongodb_uri  # Descomenta esto
 
-# Detener
-docker-compose -f docker-compose.secrets.yml down
+# Descomenta esta sección
+secrets:
+  - mongodb_uri
+
+# Al final del archivo, descomenta:
+secrets:
+  mongodb_uri:
+    file: ./secrets/mongodb_uri.txt
 ```
 
-### Desarrollo Local (sin Docker Secrets):
+2. **Comenta** la variable `MONGODB_URI` directa
+
+### Para desarrollo sin secrets:
+
+Déjalo como está (usa `MONGODB_URI` directamente o `.env` con `pnpm dev`)
+
+## 🐳 Paso 4: Iniciar el Servicio
+
+```bash
+# Iniciar con Docker Compose
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f bcv-service
+
+# Detener
+docker-compose down
+```
+
+### Desarrollo Local (sin Docker):
 
 Sigue usando tu `.env` como siempre:
 ```bash
@@ -100,11 +125,15 @@ El código detecta automáticamente si estás usando Secrets o `.env`.
 
 ```bash
 # Ver logs del contenedor
-docker-compose -f docker-compose.secrets.yml logs bcv-service
+docker-compose logs bcv-service
 
-# Deberías ver:
+# Si usas secrets, deberías ver:
 # 🔐 Modo: Docker Secrets activado
 # ✓ Secreto cargado desde archivo: MONGODB_URI_FILE
+# Servidor BCV corriendo en puerto 3000
+
+# Si usas .env o MONGODB_URI directa, verás:
+# ⚙️  Modo: Variables de entorno estándar
 # Servidor BCV corriendo en puerto 3000
 ```
 
@@ -116,26 +145,33 @@ docker-compose -f docker-compose.secrets.yml logs bcv-service
 ./scripts/generate-secrets.sh
 
 # 3. Reiniciar servicio (Docker recargará el secreto)
-docker-compose -f docker-compose.secrets.yml restart bcv-service
+docker-compose restart bcv-service
 
 # 4. Verificar en logs
-docker-compose -f docker-compose.secrets.yml logs -f bcv-service
+docker-compose logs -f bcv-service
 ```
 
 ## 📁 Estructura de Secretos
 
-### docker-compose.secrets.yml
+### docker-compose.yml
 ```yaml
 services:
   bcv-service:
     environment:
-      - MONGODB_URI_FILE=/run/secrets/mongodb_uri
-    secrets:
-      - mongodb_uri
+      # Descomenta para usar secrets
+      # - MONGODB_URI_FILE=/run/secrets/mongodb_uri
 
-secrets:
-  mongodb_uri:
-    file: ./secrets/mongodb_uri.txt
+      # Comenta si usas secrets
+      - MONGODB_URI=mongodb://user:pass@host:port/db
+
+    # Descomenta si usas secrets
+    # secrets:
+    #   - mongodb_uri
+
+# Descomenta si usas secrets
+# secrets:
+#   mongodb_uri:
+#     file: ./secrets/mongodb_uri.txt
 ```
 
 ### Código (src/config/index.ts)
@@ -195,23 +231,32 @@ mongoUri: readSecret(
 
 ## 📊 Migración desde .env
 
-### Antes (.env):
-```env
-MONGODB_URI=mongodb://user:pass@host:port/db
+### Antes (Variable de entorno directa):
+```yaml
+# docker-compose.yml
+environment:
+  - MONGODB_URI=mongodb://user:pass@host:port/db
 ```
 
 ### Después (Docker Secrets):
 ```bash
-# Archivo: secrets/mongodb_uri.txt
-mongodb://user:pass@host:port/db
+# 1. Generar archivo de secreto: secrets/mongodb_uri.txt
+./scripts/generate-secrets.sh
 ```
 
 ```yaml
-# docker-compose.secrets.yml
+# 2. Actualizar docker-compose.yml
 environment:
-  - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+  # - MONGODB_URI=mongodb://user:pass@host:port/db  # Comenta esto
+  - MONGODB_URI_FILE=/run/secrets/mongodb_uri  # Descomenta esto
+
 secrets:
   - mongodb_uri
+
+# Al final del archivo
+secrets:
+  mongodb_uri:
+    file: ./secrets/mongodb_uri.txt
 ```
 
 ## 🔧 Troubleshooting
@@ -240,10 +285,13 @@ mongosh "$(cat secrets/mongodb_uri.txt)"
 ### El servicio usa .env en lugar de secrets
 ```bash
 # Verificar variable de entorno
-docker-compose -f docker-compose.secrets.yml exec bcv-service env | grep MONGODB
+docker-compose exec bcv-service env | grep MONGODB
 
-# Debe mostrar:
+# Si usas secrets, debe mostrar:
 # MONGODB_URI_FILE=/run/secrets/mongodb_uri
+
+# Si no usas secrets, mostrará:
+# MONGODB_URI=mongodb://...
 ```
 
 ## 📚 Referencias
