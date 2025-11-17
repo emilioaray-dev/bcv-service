@@ -245,31 +245,86 @@ async function getLatestRate(): Promise<Rate | null> {
 }
 ```
 
-### 9. Cache Invalidation
+### 9. Cache Invalidation (Solo cuando hay cambios)
+
+**IMPORTANTE:** Redis debe seguir la misma lógica de verificación de cambios que MongoDB, Discord y WebSocket.
 
 ```typescript
-// Invalidar cache cuando se actualiza la tasa
-async function updateRate(rate: Rate): Promise<void> {
-  // 1. Guardar en MongoDB
-  await mongoService.saveRate(rate);
+// En SchedulerService.updateRate()
+async function updateRate(): Promise<void> {
+  // 1. Obtener tasa actual del BCV
+  const currentData = await this.bcvService.getCurrentRate();
+  if (!currentData) {
+    return;
+  }
 
-  // 2. Invalidar cache de última tasa
-  await redisService.del(CacheKeys.LATEST_RATE);
+  // 2. Obtener tasa anterior de MongoDB
+  const previousRate = await this.cacheService.getLatestRate();
 
-  // 3. Actualizar cache con nueva tasa
-  await redisService.set(
-    CacheKeys.LATEST_RATE,
-    rate,
-    redisConfig.cacheTTL.latest
-  );
+  // 3. Verificar si hay cambio significativo (lógica existente)
+  const hasSignificantChange =
+    !previousRate ||
+    Math.abs((previousRate.rate || 0) - currentData.rate) > 0.0001 ||
+    (currentData.rates &&
+      previousRate?.rates &&
+      JSON.stringify(currentData.rates) !== JSON.stringify(previousRate.rates));
 
-  // 4. Invalidar cache de fecha específica si existe
-  const dateKey = CacheKeys.HISTORY_BY_DATE(rate.date);
-  await redisService.del(dateKey);
+  // 4. SOLO si hay cambio, actualizar todo
+  if (hasSignificantChange) {
+    // 4a. Guardar en MongoDB
+    const newRate = await this.cacheService.saveRate({
+      rate: currentData.rate,
+      rates: currentData.rates || [],
+      date: currentData.date,
+      source: 'bcv',
+    });
 
-  logger.info('Cache invalidated and updated with new rate');
+    // 4b. Invalidar cache de Redis
+    await this.redisService.del(CacheKeys.LATEST_RATE);
+
+    // 4c. Actualizar cache con nueva tasa
+    await this.redisService.set(
+      CacheKeys.LATEST_RATE,
+      newRate,
+      redisConfig.cacheTTL.latest
+    );
+
+    // 4d. Invalidar cache de fecha específica
+    const dateKey = CacheKeys.HISTORY_BY_DATE(newRate.date);
+    await this.redisService.del(dateKey);
+
+    // 4e. Notificar WebSocket
+    this.webSocketService.broadcastRateUpdate({
+      timestamp: new Date().toISOString(),
+      rate: newRate.rate,
+      rates: newRate.rates,
+      change: previousRate ? newRate.rate - previousRate.rate : 0,
+      eventType: 'rate-update',
+    });
+
+    // 4f. Webhook (si está implementado)
+    if (this.webhookService) {
+      await this.webhookService.sendRateUpdate(newRate);
+    }
+
+    logger.info('Tasa actualizada en MongoDB, Redis, WebSocket y Webhook', {
+      rate: newRate.rate,
+      change: previousRate ? newRate.rate - previousRate.rate : 0,
+    });
+  } else {
+    // No hay cambios - NO hacer nada
+    logger.debug('No hay cambios en la tasa - cache y notificaciones sin actualizar');
+  }
 }
 ```
+
+### Ventajas de esta Implementación
+
+1. **Eficiencia**: Solo escribe en MongoDB y Redis cuando hay cambios reales
+2. **Consistencia**: MongoDB, Redis, Discord, WebSocket y Webhooks siempre sincronizados
+3. **Reducción de carga**: Menos invalidaciones de cache innecesarias
+4. **Notificaciones útiles**: Solo notifica cuando hay cambios significativos (>0.1% o cambios en monedas)
+5. **Ahorro de recursos**: Menos operaciones de I/O en base de datos y cache
 
 ---
 

@@ -183,8 +183,44 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 **Commit:** `80bba32` - Discord notifications integration
 
+### Webhooks para Notificaciones (PRIORIDAD)
+**Nota:** Completar el sistema de notificaciones antes de implementar caching.
+Webhooks se integra con la misma lógica de verificación de cambios que Discord y WebSocket.
+
+- [ ] Diseñar estructura de Webhook API
+  - [ ] Definir formato de payload (JSON)
+  - [ ] Definir eventos a notificar (rate.updated, rate.changed, etc.)
+  - [ ] Headers de autenticación (signature/secret)
+- [ ] Implementar `src/services/webhook.service.ts`
+  - [ ] Interface `IWebhookService`
+  - [ ] Método `sendRateUpdate(rate: Rate)`
+  - [ ] Retry logic con exponential backoff
+  - [ ] Timeout configurables
+  - [ ] Queue de webhooks fallidos
+- [ ] Implementar seguridad
+  - [ ] HMAC signature para verificar autenticidad
+  - [ ] Secret key por webhook
+  - [ ] Validación de URLs permitidas
+- [ ] Integrar con verificación de cambios
+  - [ ] Llamar solo cuando `hasSignificantChange === true`
+  - [ ] Mismo flujo que Discord y WebSocket
+- [ ] Agregar variables de entorno:
+  - [ ] `WEBHOOK_ENABLED`, `WEBHOOK_URL`, `WEBHOOK_SECRET`
+  - [ ] `WEBHOOK_TIMEOUT`, `WEBHOOK_RETRY_ATTEMPTS`
+- [ ] Métricas de Prometheus
+  - [ ] Contador de webhooks enviados exitosos/fallidos
+  - [ ] Histograma de latencia de webhooks
+- [ ] Tests unitarios
+  - [ ] Mock de HTTP requests
+  - [ ] Test de retry logic
+  - [ ] Test de signature verification
+- [ ] Documentación
+  - [ ] Guía de configuración de webhooks
+  - [ ] Ejemplos de payload
+  - [ ] Guía de verificación de signatures
+
 ### Caching con Redis (Stateless Design)
-**Nota:** Redis se implementará mediante Docker Compose para mantener el microservicio stateless.
+**Nota:** Redis se implementará después de Webhooks, mediante Docker Compose para mantener el microservicio stateless.
 El servicio no tendrá estado interno, delegando el caché a Redis como servicio externo.
 
 - [ ] Crear `docker-compose.yml` con servicio Redis
@@ -197,14 +233,20 @@ El servicio no tendrá estado interno, delegando el caché a Redis como servicio
 - [ ] Implementar cache de última tasa
   - [ ] Key: `bcv:latest_rate`
   - [ ] TTL: 5 minutos
-  - [ ] Invalidación en actualización
+  - [ ] Invalidación solo cuando `hasSignificantChange === true`
 - [ ] Implementar cache de tasas históricas
   - [ ] Key pattern: `bcv:history:{date}`
   - [ ] TTL: 24 horas
+- [ ] Integrar con verificación de cambios
+  - [ ] Invalidar/actualizar cache solo cuando hay cambios
+  - [ ] Sincronizado con MongoDB, Discord, WebSocket y Webhooks
 - [ ] Agregar variables de entorno:
   - [ ] `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
   - [ ] `CACHE_TTL_LATEST`, `CACHE_TTL_HISTORY`
+  - [ ] `CACHE_ENABLED`
 - [ ] Actualizar health checks para incluir Redis
+- [ ] Métricas de Prometheus para cache hit/miss
+- [ ] Tests unitarios de Redis service
 - [ ] Documentar configuración de Redis en deployment guides
 
 ### Performance
@@ -225,25 +267,29 @@ El servicio no tendrá estado interno, delegando el caché a Redis como servicio
 
 ---
 
-## ⏳ Fase 6: Advanced Features (Opcional)
+## ⏳ Fase 6: Advanced Features (Opcional - Futuro)
 
 ### Multi-Source Support
-- [ ] Soporte para múltiples fuentes de tasas
-- [ ] Agregación de tasas
-- [ ] Fallback sources
+- [ ] Soporte para múltiples fuentes de tasas (DolarToday, Paralelo, etc.)
+- [ ] Agregación de tasas de múltiples fuentes
+- [ ] Fallback sources automático
+- [ ] Comparación de tasas entre fuentes
 
 ### API Enhancements
-- [ ] Webhooks para notificaciones
-- [ ] Bulk operations API
-- [ ] Historical data export
+- [ ] Bulk operations API (consultas masivas)
+- [ ] Historical data export (CSV, JSON)
+- [ ] GraphQL API (alternativa a REST)
+- [ ] Rate limiting por API key
 
-### Resilience
-- [ ] Circuit breaker pattern
-- [ ] Retry policies
+### Resilience Patterns
+- [ ] Circuit breaker pattern (usando opossum o similar)
+- [ ] Retry policies configurables
 - [ ] Graceful degradation
 - [ ] Chaos engineering tests
 
 **Meta:** Features empresariales avanzados
+
+**Nota:** Esta fase es opcional y se implementará según necesidades futuras del proyecto.
 
 ---
 
@@ -352,29 +398,118 @@ El servicio no tendrá estado interno, delegando el caché a Redis como servicio
 
 ## Próximos Pasos (Orden de Prioridad)
 
-### 1. Completar Fase 5: Performance & Optimization
-- **Redis con Docker Compose** (Alta prioridad)
-  - Implementar caching stateless con Redis
-  - Configurar docker-compose.yml
-  - Cache de tasas con TTL configurables
-  - Health checks de Redis
-- **Performance Testing**
-  - Benchmarking con autocannon
-  - Optimización de queries MongoDB
-  - Load testing
+### 1. Completar Sistema de Notificaciones (Fase 5)
+**Prioridad: ALTA** - Completar el sistema de notificaciones antes del caching
 
-### 2. Fase 6: Advanced Features (Opcional)
+#### Paso 1.1: Implementar Webhooks (SIGUIENTE)
+- [ ] Diseñar API de Webhooks (payload, eventos, autenticación)
+- [ ] Implementar `WebhookService` con retry logic
+- [ ] Integrar con verificación de cambios existente
+- [ ] Tests unitarios y documentación
+- **Estimado:** 2-3 días
+- **Resultado:** Sistema completo de notificaciones (Discord + WebSocket + Webhooks)
+
+#### Paso 1.2: Implementar Redis Caching
+- [ ] Setup Docker Compose con Redis
+- [ ] Implementar `RedisService` con ioredis
+- [ ] Integrar cache con verificación de cambios
+- [ ] Health checks y métricas de Prometheus
+- [ ] Tests unitarios y documentación
+- **Estimado:** 3-4 días
+- **Resultado:** Caching stateless con invalidación inteligente
+
+#### Paso 1.3: Performance Testing
+- [ ] Benchmarking con autocannon
+- [ ] Optimización de queries MongoDB (índices)
+- [ ] Connection pooling optimizado
+- [ ] Load testing con Artillery/k6
+- **Estimado:** 2 días
+- **Resultado:** Servicio optimizado y benchmarks documentados
+
+### 2. Fase 6: Advanced Features (Opcional - Futuro)
+**Prioridad: BAJA** - Solo si hay necesidad del negocio
+
 - Multi-source support para tasas
-- Circuit breaker pattern para resiliencia
-- Webhooks API para notificaciones
+- Circuit breaker pattern
+- GraphQL API
+- Rate limiting avanzado
 
 ### 3. Fase 8: CI/CD (FINAL - Alta Prioridad)
-**Nota:** CI/CD se deja para el final para automatizar todo el proceso después de tener todas las features implementadas.
+**Prioridad: ALTA** - Implementar al final para automatizar todo
 
-- GitHub Actions workflows (CI + Release)
-- Configuración estricta de Biome
-- Multi-stage Dockerfile optimizado
-- Automatización de testing y deployment
-- Branch protection y code quality gates
+**Razón:** CI/CD se implementa al final para asegurar que:
+- ✅ Todas las features estén completas y estables
+- ✅ Tests tengan buen coverage (actual: 80%)
+- ✅ Linting y formatting estén configurados (Biome)
+- ✅ Procesos de build y deployment estén validados
+- ✅ Se puedan automatizar con confianza
 
-**Razón:** Implementar CI/CD al final asegura que todos los tests, linting y procesos estén estables antes de automatizarlos.
+#### Paso 3.1: GitHub Actions CI Workflow
+- [ ] Workflow de CI (lint, test, build)
+- [ ] Coverage reporting (Codecov)
+- [ ] Configuración estricta de Biome
+- **Estimado:** 1-2 días
+
+#### Paso 3.2: GitHub Actions Release Workflow
+- [ ] Semantic versioning automático
+- [ ] CHANGELOG generation
+- [ ] Docker build y push a registry
+- [ ] GitHub Releases
+- **Estimado:** 1-2 días
+
+#### Paso 3.3: Docker Optimization
+- [ ] Multi-stage Dockerfile
+- [ ] Docker Compose para desarrollo y producción
+- [ ] Health checks en containers
+- **Estimado:** 1 día
+
+---
+
+## Roadmap Visual
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ESTADO ACTUAL: 68% Completado                                  │
+│  ✅ Security, Logging, Testing, Observability, Documentation    │
+│  ⏳ Performance & Optimization (70% - en progreso)              │
+└─────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│  PRÓXIMOS PASOS (Orden de ejecución):                        │
+└──────────────────────────────────────────────────────────────┘
+
+1. 🔔 Webhooks (2-3 días)
+   └─> Completar sistema de notificaciones
+       (Discord + WebSocket + Webhooks)
+
+2. 💾 Redis Caching (3-4 días)
+   └─> Stateless architecture con Docker Compose
+       Invalidación inteligente solo cuando hay cambios
+
+3. ⚡ Performance Testing (2 días)
+   └─> Benchmarking, optimización, load testing
+
+4. 🚀 CI/CD Automation (3-4 días)
+   └─> GitHub Actions, Docker optimization
+       Automatizar testing y deployment
+
+TOTAL ESTIMADO: ~12-15 días para completar 100%
+```
+
+---
+
+## Criterios de Éxito
+
+### Fase 5 Completa cuando:
+- ✅ Webhooks implementado y funcionando
+- ✅ Redis caching operativo con Docker Compose
+- ✅ Performance testing completado con resultados documentados
+- ✅ Todas las notificaciones sincronizadas (Discord, WebSocket, Webhooks)
+- ✅ Sistema completamente stateless
+
+### Fase 8 Completa cuando:
+- ✅ CI workflow automático (lint + test + build)
+- ✅ Release workflow automático (versioning + docker + changelog)
+- ✅ Branch protection configurado
+- ✅ Code quality gates activos
+- ✅ Dockerfile optimizado con multi-stage
