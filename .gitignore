@@ -35,8 +35,10 @@ coverage/
 .vitest/
 
 # Secrets
-secrets/
+secrets/*
 !secrets/.gitkeep
+!secrets/*.example
+!secrets/README.md
 *.key
 *.pem
 *.txt

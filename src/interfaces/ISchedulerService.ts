@@ -20,4 +20,13 @@ export interface ISchedulerService {
    * Ejecuta manualmente una actualización inmediata
    */
   executeImmediately(): Promise<void>;
+
+  /**
+   * Obtiene el estado actual del scheduler
+   * @returns Objeto con información sobre si está activo y la configuración del cron
+   */
+  getStatus(): {
+    isRunning: boolean;
+    cronSchedule: string;
+  };
 }

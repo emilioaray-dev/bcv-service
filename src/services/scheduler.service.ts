@@ -70,6 +70,17 @@ export class SchedulerService implements ISchedulerService {
   }
 
   /**
+   * Obtiene el estado actual del scheduler
+   * @returns Objeto con información sobre si está activo y la configuración del cron
+   */
+  getStatus(): { isRunning: boolean; cronSchedule: string } {
+    return {
+      isRunning: this.cronJob !== null,
+      cronSchedule: this.cronSchedule,
+    };
+  }
+
+  /**
    * Lógica interna de actualización de tasas
    * Encapsula toda la lógica de obtención, comparación y guardado
    */

@@ -324,15 +324,39 @@ Configure in GitHub repository settings (Settings → Secrets and variables → 
 
 ### Production Secrets (Docker)
 
-Create `./secrets/` directory for production:
+Create `./secrets/` directory for production. Example files are provided as templates:
 
 ```bash
-mkdir -p secrets
-echo "mongodb://user:pass@host:27017/db" > secrets/mongodb_uri.txt
-echo "your-redis-password" > secrets/redis_password.txt
+# Copy example files and edit with your actual values
+cd secrets
+cp mongodb_uri.txt.example mongodb_uri.txt
+cp redis_password.txt.example redis_password.txt
+cp api_key.txt.example api_key.txt
+cp discord_webhook.txt.example discord_webhook.txt
+
+# Edit files with your real credentials
+nano mongodb_uri.txt
+nano redis_password.txt
+nano api_key.txt
+nano discord_webhook.txt
+
+# Set restrictive permissions
+chmod 600 *.txt
 ```
 
-**Never commit secrets to git!** (Already in `.gitignore`)
+**Required secrets:**
+- `mongodb_uri.txt` - MongoDB connection URI
+- `redis_password.txt` - Redis password (if Redis is enabled)
+- `api_key.txt` - API key for authentication
+
+**Optional secrets:**
+- `discord_webhook.txt` - Discord webhook URL for notifications
+
+**Security Notes:**
+- ⚠️ **Never commit secrets to git!** (Already in `.gitignore`)
+- Only `*.example` files should be committed
+- Use restrictive file permissions (600)
+- See `secrets/README.md` for detailed configuration guide
 
 ## Monitoring and Observability
 

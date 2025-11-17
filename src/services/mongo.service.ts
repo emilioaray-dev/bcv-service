@@ -49,7 +49,7 @@ export class MongoService implements ICacheService {
       heartbeatFrequencyMS: config.mongodb.heartbeatFrequencyMS,
       retryWrites: config.mongodb.retryWrites,
       retryReads: config.mongodb.retryReads,
-      compressors: config.mongodb.compressors,
+      compressors: config.mongodb.compressors as ('none' | 'snappy' | 'zlib' | 'zstd')[],
     });
     this.db = this.client.db();
     this.collection = this.db.collection<Rate>('rates');

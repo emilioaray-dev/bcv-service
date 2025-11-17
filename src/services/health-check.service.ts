@@ -122,12 +122,26 @@ export class HealthCheckService implements IHealthCheckService {
    */
   async checkScheduler(): Promise<HealthCheck> {
     try {
-      // El scheduler no tiene un método para verificar su estado directamente
-      // Asumimos que está healthy si no lanza errores
-      // TODO: Agregar método getStatus() a ISchedulerService
+      const schedulerStatus = this.schedulerService.getStatus();
+
+      if (schedulerStatus.isRunning) {
+        return {
+          status: 'healthy',
+          message: 'Scheduler is running',
+          details: {
+            isRunning: schedulerStatus.isRunning,
+            cronSchedule: schedulerStatus.cronSchedule,
+          },
+        };
+      }
+
       return {
-        status: 'healthy',
-        message: 'Scheduler is running',
+        status: 'unhealthy',
+        message: 'Scheduler is not running',
+        details: {
+          isRunning: schedulerStatus.isRunning,
+          cronSchedule: schedulerStatus.cronSchedule,
+        },
       };
     } catch (error) {
       log.error('Scheduler health check failed', { error });
