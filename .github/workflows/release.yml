@@ -37,6 +37,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Optional: Install SOPS for secret decryption
+      - name: Install SOPS (optional)
+        if: env.SOPS_AGE_KEY != ''
+        run: |
+          wget -O /tmp/sops https://github.com/mozilla/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+          sudo mv /tmp/sops /usr/local/bin/sops
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Install age (optional)
+        if: env.SOPS_AGE_KEY != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y age
+          age --version
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Decrypt production secrets (optional)
+        if: env.SOPS_AGE_KEY != ''
+        run: |
+          mkdir -p secrets
+          echo "$SOPS_AGE_KEY" > secrets/.age-key.txt
+          chmod 600 secrets/.age-key.txt
+          export SOPS_AGE_KEY_FILE=secrets/.age-key.txt
+          # Decrypt production secrets for release
+          if [ -f secrets/production.env.enc ]; then
+            sops -d secrets/production.env.enc > .env
+            echo "✓ Production secrets decrypted successfully"
+          fi
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
       - name: Run tests
         run: pnpm test
 

@@ -1,0 +1,22 @@
+# SOPS Configuration File
+# https://github.com/mozilla/sops
+
+creation_rules:
+  # Encrypt all .env.enc files in secrets/ directory with age
+  - path_regex: secrets/.*\.env\.enc$
+    age: >-
+      age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+
+  # Encrypt YAML files in secrets/ directory
+  - path_regex: secrets/.*\.yaml$
+    age: >-
+      age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+
+  # Encrypt JSON files in secrets/ directory
+  - path_regex: secrets/.*\.json$
+    age: >-
+      age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+
+# Age key file location (used when SOPS_AGE_KEY_FILE env var is not set)
+# Default: looks for key in secrets/.age-key.txt
+# You can override with: export SOPS_AGE_KEY_FILE=/path/to/key.txt

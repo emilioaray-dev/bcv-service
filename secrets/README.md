@@ -1,8 +1,45 @@
 # Secrets Directory
 
-Este directorio contiene los secretos necesarios para ejecutar el servicio en producción usando Docker Secrets.
+Este directorio almacena los secretos necesarios para ejecutar el servicio.
+
+## 🔐 Gestión de Secretos con SOPS
+
+Este proyecto usa **SOPS (Secrets OPerationS)** + **age** para encriptar secretos que se almacenan de forma segura en Git.
+
+### Quick Start
+
+```bash
+# 1. Setup inicial (genera keys, crea archivos)
+./scripts/setup-sops.sh
+
+# 2. Edita los secretos con tus valores reales
+nano secrets/dev.env
+nano secrets/production.env
+
+# 3. Encripta los secretos
+./scripts/encrypt-secrets.sh all
+
+# 4. Commitea los archivos encriptados
+git add secrets/*.env.enc .sops.yaml
+git commit -m "feat: add encrypted secrets"
+```
+
+**Ver documentación completa**: [docs/guides/SECRETS_ENCRYPTION.md](../docs/guides/SECRETS_ENCRYPTION.md)
+
+---
 
 ## Archivos de Secretos
+
+### Para SOPS (Recomendado)
+
+Los archivos `.env` por ambiente:
+- `dev.env` - Desarrollo
+- `staging.env` - Staging
+- `production.env` - Producción
+
+Estos archivos se encriptan a `.env.enc` y solo los archivos encriptados se commitean.
+
+### Para Docker Secrets (Alternativa)
 
 ### Requeridos
 

@@ -34,11 +34,18 @@ Thumbs.db
 coverage/
 .vitest/
 
-# Secrets
+# Secrets - SOPS Configuration
+# Allow encrypted files and templates, but ignore plain secrets
 secrets/*
 !secrets/.gitkeep
 !secrets/*.example
+!secrets/*.template
 !secrets/README.md
+!secrets/*.enc           # Allow encrypted files (SOPS)
+!secrets/.age-public-key.txt    # Allow public key (shareable)
+
+# Ignore private keys and plain env files
+secrets/.age-key.txt     # NEVER commit private key!
+secrets/*.env            # NEVER commit plain env files!
 *.key
 *.pem
-*.txt

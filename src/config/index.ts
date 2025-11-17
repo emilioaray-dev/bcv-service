@@ -32,9 +32,12 @@ export const config = {
     ), // 10 seconds
     retryWrites: process.env.MONGODB_RETRY_WRITES?.toLowerCase() !== 'false',
     retryReads: process.env.MONGODB_RETRY_READS?.toLowerCase() !== 'false',
-    compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib').split(
-      ','
-    ) as ('none' | 'snappy' | 'zlib' | 'zstd')[],
+    compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib').split(',') as (
+      | 'none'
+      | 'snappy'
+      | 'zlib'
+      | 'zstd'
+    )[],
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
