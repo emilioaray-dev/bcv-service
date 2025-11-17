@@ -10,15 +10,19 @@ import { DiscordService } from '@/services/discord.service';
 import { HealthCheckService } from '@/services/health-check.service';
 import { MetricsService } from '@/services/metrics.service';
 import { MongoService } from '@/services/mongo.service';
+import { RedisService } from '@/services/redis.service';
 import { SchedulerService } from '@/services/scheduler.service';
+import { WebhookService } from '@/services/webhook.service';
 import { WebSocketService } from '@/services/websocket.service';
 
 // Interfaces
 import type { IBCVService } from '@/interfaces/IBCVService';
 import type { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookService } from '@/interfaces/IWebhookService';
 import type { ICacheService } from '@/services/cache.interface';
 import type { IDiscordService } from '@/services/discord.service';
 
@@ -62,6 +66,14 @@ export function createContainer(server: HttpServer): Container {
   container
     .bind<IDiscordService>(TYPES.DiscordService)
     .to(DiscordService)
+    .inSingletonScope();
+  container
+    .bind<IWebhookService>(TYPES.WebhookService)
+    .to(WebhookService)
+    .inSingletonScope();
+  container
+    .bind<IRedisService>(TYPES.RedisService)
+    .to(RedisService)
     .inSingletonScope();
 
   // CacheService: usar MongoService si saveToDatabase está activado

@@ -9,12 +9,14 @@ export const TYPES = {
   // Services
   BCVService: Symbol.for('BCVService'),
   CacheService: Symbol.for('CacheService'),
+  RedisService: Symbol.for('RedisService'),
   WebSocketService: Symbol.for('WebSocketService'),
   SchedulerService: Symbol.for('SchedulerService'),
   HealthCheckService: Symbol.for('HealthCheckService'),
   MetricsService: Symbol.for('MetricsService'),
   LoggerService: Symbol.for('LoggerService'),
   DiscordService: Symbol.for('DiscordService'),
+  WebhookService: Symbol.for('WebhookService'),
 
   // Controllers
   RateController: Symbol.for('RateController'),

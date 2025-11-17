@@ -34,4 +34,49 @@ export const config = {
     'DISCORD_WEBHOOK_URL_FILE',
     process.env.DISCORD_WEBHOOK_URL || ''
   ),
+
+  // Webhook configuration for HTTP notifications
+  webhookUrl: readSecret(
+    'WEBHOOK_URL',
+    'WEBHOOK_URL_FILE',
+    process.env.WEBHOOK_URL || ''
+  ),
+  webhookSecret: readSecret(
+    'WEBHOOK_SECRET',
+    'WEBHOOK_SECRET_FILE',
+    process.env.WEBHOOK_SECRET || ''
+  ),
+  webhookTimeout: Number.parseInt(process.env.WEBHOOK_TIMEOUT || '5000', 10),
+  webhookMaxRetries: Number.parseInt(
+    process.env.WEBHOOK_MAX_RETRIES || '3',
+    10
+  ),
+
+  // Redis Configuration
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: Number.parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: readSecret(
+      'REDIS_PASSWORD',
+      'REDIS_PASSWORD_FILE',
+      process.env.REDIS_PASSWORD || ''
+    ),
+    db: Number.parseInt(process.env.REDIS_DB || '0', 10),
+    maxRetriesPerRequest: Number.parseInt(
+      process.env.REDIS_MAX_RETRIES || '3',
+      10
+    ),
+    retryDelay: Number.parseInt(process.env.REDIS_RETRY_DELAY || '1000', 10),
+    connectTimeout: Number.parseInt(
+      process.env.REDIS_CONNECT_TIMEOUT || '10000',
+      10
+    ),
+    enabled: process.env.CACHE_ENABLED?.toLowerCase() !== 'false',
+  },
+
+  // Cache TTL Configuration (in seconds)
+  cacheTTL: {
+    latest: Number.parseInt(process.env.CACHE_TTL_LATEST || '300', 10), // 5 minutes
+    history: Number.parseInt(process.env.CACHE_TTL_HISTORY || '86400', 10), // 24 hours
+  },
 };

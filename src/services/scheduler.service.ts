@@ -144,8 +144,8 @@ export class SchedulerService implements ISchedulerService {
       }
     } catch (error: unknown) {
       log.error('Error en la tarea programada', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }

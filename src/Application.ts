@@ -19,6 +19,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import type { IBCVService } from '@/interfaces/IBCVService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
 // Interfaces
@@ -47,6 +48,7 @@ export class Application {
   private server: http.Server;
   private container: Container;
   private cacheService: ICacheService;
+  private redisService: IRedisService;
   private schedulerService: ISchedulerService;
   private webSocketService: IWebSocketService;
   private bcvService: IBCVService;
@@ -62,6 +64,7 @@ export class Application {
 
     // Resolver servicios del contenedor
     this.cacheService = this.container.get<ICacheService>(TYPES.CacheService);
+    this.redisService = this.container.get<IRedisService>(TYPES.RedisService);
     this.schedulerService = this.container.get<ISchedulerService>(
       TYPES.SchedulerService
     );
@@ -191,7 +194,7 @@ export class Application {
     log.info('Swagger UI disponible en /api-docs');
 
     // Rutas de API (con autenticación y rate limiting)
-    this.app.use(createRoutes(this.cacheService));
+    this.app.use(createRoutes(this.cacheService, this.redisService));
 
     // Ruta principal
     this.app.get('/', (_req, res) => {
@@ -217,14 +220,29 @@ export class Application {
         await this.cacheService.connect();
       } catch (error: unknown) {
         log.error('Error conectando a MongoDB', {
-          error: error.message,
-          stack: error.stack,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     } else {
       log.info(
         'Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)'
       );
+    }
+
+    // Conectar a Redis si el cache está habilitado
+    if (config.redis.enabled) {
+      try {
+        await this.redisService.connect();
+        log.info('Redis cache habilitado y conectado');
+      } catch (error: unknown) {
+        log.error('Error conectando a Redis', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+    } else {
+      log.info('Redis cache deshabilitado (CACHE_ENABLED=false)');
     }
 
     // Configurar manejo de errores del servidor
@@ -284,6 +302,12 @@ export class Application {
 
       // Detener el scheduler
       this.schedulerService.stop();
+
+      // Desconectar de Redis
+      if (config.redis.enabled) {
+        log.info('Cerrando conexión a Redis...');
+        await this.redisService.disconnect();
+      }
 
       // Desconectar de la base de datos
       if (config.saveToDatabase) {

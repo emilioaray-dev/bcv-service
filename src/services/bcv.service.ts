@@ -2,6 +2,7 @@ import https from 'node:https';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookService } from '@/interfaces/IWebhookService';
 import log from '@/utils/logger';
 import { parseVenezuelanNumber } from '@/utils/number-parser';
 import axios from 'axios';
@@ -48,6 +49,8 @@ export class BCVService implements IBCVService {
     @inject(TYPES.Config) config: { bcvWebsiteUrl: string },
     @inject(TYPES.DiscordService)
     private readonly discordService: IDiscordService,
+    @inject(TYPES.WebhookService)
+    private readonly webhookService: IWebhookService,
     @inject(TYPES.WebSocketService)
     private readonly webSocketService: IWebSocketService
   ) {
@@ -90,6 +93,27 @@ export class BCVService implements IBCVService {
             } catch (notificationError) {
               log.error('Error enviando notificación a Discord', {
                 error: (notificationError as Error).message,
+              });
+            }
+
+            // Enviar notificación a través de Webhook
+            try {
+              const webhookResult =
+                await this.webhookService.sendRateUpdateNotification(
+                  rateData,
+                  this.lastRate
+                );
+
+              if (webhookResult.success) {
+                log.info('Notificación de cambio de tasa enviada por Webhook', {
+                  statusCode: webhookResult.statusCode,
+                  attempt: webhookResult.attempt,
+                  duration: webhookResult.duration,
+                });
+              }
+            } catch (webhookError) {
+              log.error('Error enviando notificación por Webhook', {
+                error: (webhookError as Error).message,
               });
             }
 

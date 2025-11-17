@@ -1,5 +1,7 @@
 import { config } from '@/config';
 import { TYPES } from '@/config/types';
+import type { IRedisService } from '@/interfaces/IRedisService';
+import { CacheKeys } from '@/interfaces/IRedisService';
 import {
   validateDateParam,
   validateHistoryQuery,
@@ -22,9 +24,14 @@ import { inject, injectable } from 'inversify';
 export class RateController {
   public router: Router;
   private cacheService: ICacheService;
+  private redisService: IRedisService;
 
-  constructor(@inject(TYPES.CacheService) cacheService: ICacheService) {
+  constructor(
+    @inject(TYPES.CacheService) cacheService: ICacheService,
+    @inject(TYPES.RedisService) redisService: IRedisService
+  ) {
     this.cacheService = cacheService;
+    this.redisService = redisService;
     this.router = Router();
     this.initializeRoutes();
   }
@@ -54,6 +61,18 @@ export class RateController {
         return;
       }
 
+      // Cache-Aside Pattern: Intentar leer del cache Redis primero
+      if (config.redis.enabled) {
+        const cached = await this.redisService.get(CacheKeys.LATEST_RATE);
+        if (cached) {
+          log.debug('Cache hit: latest_rate');
+          res.json(cached);
+          return;
+        }
+        log.debug('Cache miss: latest_rate');
+      }
+
+      // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getLatestRate();
       if (!rate) {
         res
@@ -61,6 +80,16 @@ export class RateController {
           .json({ error: 'No se encontró ninguna tasa de cambio' });
         return;
       }
+
+      // Guardar en cache para próximas consultas
+      if (config.redis.enabled) {
+        await this.redisService.set(
+          CacheKeys.LATEST_RATE,
+          rate,
+          config.cacheTTL.latest
+        );
+      }
+
       res.json(rate);
     } catch (error) {
       log.error('Error obteniendo tasa más reciente', { error });
@@ -107,12 +136,31 @@ export class RateController {
       const { date } = req.params;
       // La validación de formato se hace en el middleware validateDateParam
 
+      // Cache-Aside Pattern: Intentar leer del cache Redis primero
+      if (config.redis.enabled) {
+        const cacheKey = CacheKeys.HISTORY_BY_DATE(date);
+        const cached = await this.redisService.get(cacheKey);
+        if (cached) {
+          log.debug('Cache hit: history by date', { date });
+          res.json(cached);
+          return;
+        }
+        log.debug('Cache miss: history by date', { date });
+      }
+
+      // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getRateByDate(date);
       if (!rate) {
         res
           .status(404)
           .json({ error: `No se encontró tasa para la fecha ${date}` });
         return;
+      }
+
+      // Guardar en cache para próximas consultas
+      if (config.redis.enabled) {
+        const cacheKey = CacheKeys.HISTORY_BY_DATE(date);
+        await this.redisService.set(cacheKey, rate, config.cacheTTL.history);
       }
 
       res.json(rate);

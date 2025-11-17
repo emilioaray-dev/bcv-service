@@ -29,6 +29,12 @@ export class MetricsService implements IMetricsService {
   private wsConnectedClients: promClient.Gauge<string>;
   private bcvUpdateTotal: promClient.Counter<string>;
   private bcvLatestRate: promClient.Gauge<string>;
+  private webhookDeliveryTotal: promClient.Counter<string>;
+  private webhookDeliveryDuration: promClient.Histogram<string>;
+  private cacheHits: promClient.Counter<string>;
+  private cacheMisses: promClient.Counter<string>;
+  private cacheOperationDuration: promClient.Histogram<string>;
+  private redisConnected: promClient.Gauge<string>;
 
   constructor() {
     // Crear registro de métricas
@@ -73,6 +79,55 @@ export class MetricsService implements IMetricsService {
     this.bcvLatestRate = new promClient.Gauge({
       name: 'bcv_latest_rate',
       help: 'Última tasa de cambio BCV obtenida (Bs/USD)',
+      registers: [this.register],
+    });
+
+    // Contador de entregas de webhook
+    this.webhookDeliveryTotal = new promClient.Counter({
+      name: 'bcv_webhook_delivery_total',
+      help: 'Total de entregas de webhook intentadas',
+      labelNames: ['status', 'event'], // status: 'success' o 'failure', event: 'rate.updated' o 'rate.changed'
+      registers: [this.register],
+    });
+
+    // Histograma de duración de entregas de webhook
+    this.webhookDeliveryDuration = new promClient.Histogram({
+      name: 'bcv_webhook_delivery_duration_seconds',
+      help: 'Duración de entregas de webhook en segundos',
+      labelNames: ['status', 'event'],
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30], // buckets en segundos
+      registers: [this.register],
+    });
+
+    // Contador de cache hits
+    this.cacheHits = new promClient.Counter({
+      name: 'bcv_cache_hits_total',
+      help: 'Total number of cache hits',
+      labelNames: ['key_pattern'], // e.g., 'latest_rate', 'history_by_date'
+      registers: [this.register],
+    });
+
+    // Contador de cache misses
+    this.cacheMisses = new promClient.Counter({
+      name: 'bcv_cache_misses_total',
+      help: 'Total number of cache misses',
+      labelNames: ['key_pattern'],
+      registers: [this.register],
+    });
+
+    // Histograma de duración de operaciones de cache
+    this.cacheOperationDuration = new promClient.Histogram({
+      name: 'bcv_cache_operation_duration_seconds',
+      help: 'Duration of cache operations',
+      labelNames: ['operation', 'status'], // operation: 'get', 'set', 'del'; status: 'success', 'failure'
+      buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1], // buckets en segundos
+      registers: [this.register],
+    });
+
+    // Gauge de estado de conexión Redis
+    this.redisConnected = new promClient.Gauge({
+      name: 'bcv_redis_connected',
+      help: 'Redis connection status (1 = connected, 0 = disconnected)',
       registers: [this.register],
     });
   }
@@ -155,5 +210,69 @@ export class MetricsService implements IMetricsService {
    */
   setConnectedClients(count: number): void {
     this.wsConnectedClients.set(count);
+  }
+
+  /**
+   * Registra una entrega de webhook exitosa
+   * @param event - Tipo de evento ('rate.updated' | 'rate.changed')
+   * @param duration - Duración de la entrega en milisegundos
+   */
+  recordWebhookSuccess(event: string, duration: number): void {
+    this.webhookDeliveryTotal.labels('success', event).inc();
+    this.webhookDeliveryDuration
+      .labels('success', event)
+      .observe(duration / 1000); // convertir a segundos
+  }
+
+  /**
+   * Registra una entrega de webhook fallida
+   * @param event - Tipo de evento ('rate.updated' | 'rate.changed')
+   * @param duration - Duración del intento en milisegundos
+   */
+  recordWebhookFailure(event: string, duration: number): void {
+    this.webhookDeliveryTotal.labels('failure', event).inc();
+    this.webhookDeliveryDuration
+      .labels('failure', event)
+      .observe(duration / 1000); // convertir a segundos
+  }
+
+  /**
+   * Registra un cache hit
+   * @param keyPattern - Patrón de la key cacheada (e.g., 'latest_rate', 'history_by_date')
+   */
+  recordCacheHit(keyPattern: string): void {
+    this.cacheHits.labels(keyPattern).inc();
+  }
+
+  /**
+   * Registra un cache miss
+   * @param keyPattern - Patrón de la key que no estaba en cache
+   */
+  recordCacheMiss(keyPattern: string): void {
+    this.cacheMisses.labels(keyPattern).inc();
+  }
+
+  /**
+   * Registra la duración de una operación de cache
+   * @param operation - Tipo de operación ('get', 'set', 'del')
+   * @param status - Estado de la operación ('success', 'failure')
+   * @param duration - Duración de la operación en milisegundos
+   */
+  recordCacheOperation(
+    operation: string,
+    status: 'success' | 'failure',
+    duration: number
+  ): void {
+    this.cacheOperationDuration
+      .labels(operation, status)
+      .observe(duration / 1000); // convertir a segundos
+  }
+
+  /**
+   * Actualiza el estado de conexión de Redis
+   * @param connected - True si está conectado, false si no
+   */
+  setRedisConnected(connected: boolean): void {
+    this.redisConnected.set(connected ? 1 : 0);
   }
 }

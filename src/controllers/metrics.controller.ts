@@ -43,7 +43,7 @@ export class MetricsController {
     } catch (error: unknown) {
       res.status(500).json({
         error: 'Error obteniendo métricas',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

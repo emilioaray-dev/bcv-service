@@ -2,12 +2,16 @@
 // para mantener la estructura más organizada
 
 import { RateController } from '@/controllers/rate.controller';
+import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ICacheService } from '@/services/cache.interface';
 import express from 'express';
 
-export const createRoutes = (cacheService: ICacheService): express.Router => {
+export const createRoutes = (
+  cacheService: ICacheService,
+  redisService: IRedisService
+): express.Router => {
   const router = express.Router();
-  const rateController = new RateController(cacheService);
+  const rateController = new RateController(cacheService, redisService);
 
   router.use('/api', rateController.router);
 

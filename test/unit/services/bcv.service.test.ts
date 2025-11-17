@@ -27,12 +27,16 @@ describe('BCVService', () => {
     const mockDiscordService = {
       sendRateUpdateNotification: vi.fn()
     };
+    const mockWebhookService = {
+      sendRateUpdateNotification: vi.fn(),
+      isEnabled: vi.fn().mockReturnValue(false)
+    };
     const mockWebSocketService = {
       broadcastRateUpdate: vi.fn(),
       getConnectedClientsCount: vi.fn().mockReturnValue(0)
     };
 
-    bcvService = new BCVService(mockConfig, mockDiscordService, mockWebSocketService);
+    bcvService = new BCVService(mockConfig, mockDiscordService, mockWebhookService, mockWebSocketService);
     vi.clearAllMocks();
   });
 

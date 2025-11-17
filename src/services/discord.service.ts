@@ -49,7 +49,7 @@ export class DiscordService implements IDiscordService {
             description:
               'Se ha detectado un cambio en las tasas de cambio del BCV',
             color: 0x00ff00, // Verde
-            fields: rateData.rates.map((r: CurrencyRate) => ({
+            fields: rateData.map((r: CurrencyRate) => ({
               name: `${r.name || r.currency} (${r.currency})`,
               value: r.rate?.toLocaleString('es-VE', {
                 minimumFractionDigits: 2,
@@ -79,7 +79,7 @@ export class DiscordService implements IDiscordService {
       });
     } catch (error: unknown) {
       logger.error('Error enviando notificación a Discord', {
-        error: error?.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         webhookUrl: this.webhookUrl ? '***HIDDEN***' : 'No configurado',
       });
       throw error;

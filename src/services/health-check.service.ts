@@ -1,3 +1,4 @@
+import { config } from '@/config';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
 import type {
@@ -5,6 +6,7 @@ import type {
   HealthCheckResult,
   IHealthCheckService,
 } from '@/interfaces/IHealthCheckService';
+import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
 import type { ICacheService } from '@/services/cache.interface';
@@ -26,6 +28,7 @@ export class HealthCheckService implements IHealthCheckService {
 
   constructor(
     @inject(TYPES.CacheService) private cacheService: ICacheService,
+    @inject(TYPES.RedisService) private redisService: IRedisService,
     @inject(TYPES.SchedulerService) private schedulerService: ISchedulerService,
     @inject(TYPES.BCVService) private bcvService: IBCVService,
     @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService
@@ -41,9 +44,10 @@ export class HealthCheckService implements IHealthCheckService {
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
     // Ejecutar todos los checks en paralelo
-    const [mongoCheck, schedulerCheck, bcvCheck, websocketCheck] =
+    const [mongoCheck, redisCheck, schedulerCheck, bcvCheck, websocketCheck] =
       await Promise.all([
         this.checkMongoDB(),
+        this.checkRedis(),
         this.checkScheduler(),
         this.checkBCV(),
         this.checkWebSocket(),
@@ -52,6 +56,7 @@ export class HealthCheckService implements IHealthCheckService {
     // Determinar el estado general
     const checks = {
       mongodb: mongoCheck,
+      redis: redisCheck,
       scheduler: schedulerCheck,
       bcv: bcvCheck,
       websocket: websocketCheck,
@@ -68,12 +73,15 @@ export class HealthCheckService implements IHealthCheckService {
     else if (schedulerCheck.status === 'unhealthy') {
       overallStatus = 'unhealthy';
     }
-    // BCV o WebSocket degradados = servicio degradado
+    // BCV, WebSocket o Redis degradados/unhealthy = servicio degradado
+    // (Redis no es crítico ya que el servicio puede funcionar sin cache)
     else if (
       bcvCheck.status === 'degraded' ||
       websocketCheck.status === 'degraded' ||
+      redisCheck.status === 'degraded' ||
       bcvCheck.status === 'unhealthy' ||
-      websocketCheck.status === 'unhealthy'
+      websocketCheck.status === 'unhealthy' ||
+      redisCheck.status === 'unhealthy'
     ) {
       overallStatus = 'degraded';
     }
@@ -190,6 +198,77 @@ export class HealthCheckService implements IHealthCheckService {
         status: 'unhealthy',
         message: 'WebSocket service check failed',
         details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Verifica el estado del servicio Redis
+   */
+  async checkRedis(): Promise<HealthCheck> {
+    // Si Redis está deshabilitado, no es un error
+    if (!config.redis.enabled) {
+      return {
+        status: 'healthy',
+        message: 'Redis cache is disabled',
+        details: {
+          enabled: false,
+        },
+      };
+    }
+
+    try {
+      // 1. Verificar conexión con ping
+      const isConnected = await this.redisService.ping();
+
+      if (!isConnected) {
+        return {
+          status: 'unhealthy',
+          message: 'Redis connection failed',
+          details: {
+            enabled: true,
+            connected: false,
+          },
+        };
+      }
+
+      // 2. Test de escritura/lectura
+      const testKey = 'health:check';
+      const testValue = 'ok';
+      await this.redisService.set(testKey, testValue, 10);
+      const readValue = await this.redisService.get(testKey);
+      await this.redisService.del(testKey);
+
+      if (readValue !== testValue) {
+        return {
+          status: 'degraded',
+          message: 'Redis read/write test failed',
+          details: {
+            enabled: true,
+            connected: true,
+            readWrite: false,
+          },
+        };
+      }
+
+      return {
+        status: 'healthy',
+        message: 'Redis is operational',
+        details: {
+          enabled: true,
+          connected: true,
+          readWrite: true,
+        },
+      };
+    } catch (error) {
+      log.error('Redis health check failed', { error });
+      return {
+        status: 'unhealthy',
+        message: 'Redis error',
+        details: {
+          enabled: true,
           error: error instanceof Error ? error.message : String(error),
         },
       };

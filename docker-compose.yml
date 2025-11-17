@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # BCV Service - Stateless microservice
   bcv-service:
     build: .
     container_name: bcv-service
@@ -12,45 +13,130 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - BCV_WEBSITE_URL=https://www.bcv.org.ve/
-      - CRON_SCHEDULE=0 2,10,18 * * *  # Cada 8 horas: 2am, 10am, 6pm
+      - CRON_SCHEDULE=0 * * * *  # Cada hora
       - SAVE_TO_DATABASE=true
+      - LOG_LEVEL=info
+
+      # Redis Cache Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
+      - REDIS_MAX_RETRIES=3
+      - REDIS_RETRY_DELAY=1000
+      - REDIS_CONNECT_TIMEOUT=10000
+      - CACHE_ENABLED=true
+      - CACHE_TTL_LATEST=300      # 5 minutes
+      - CACHE_TTL_HISTORY=86400   # 24 hours
 
       # Opción 1: Usar Docker Secrets (recomendado para producción)
       # Descomenta las siguientes líneas y comenta las variables directas si usas secrets
       # - MONGODB_URI_FILE=/run/secrets/mongodb_uri
       # - API_KEYS_FILE=/run/secrets/api_keys
+      # - REDIS_PASSWORD_FILE=/run/secrets/redis_password
 
       # Opción 2: Variables de entorno directas (desarrollo/testing)
       # Comenta estas líneas si usas Docker Secrets
-      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcvdb?authSource=bcvdb
+      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@mongo:27017/bcvdb?authSource=bcvdb
       # - API_KEYS=key1,key2,key3  # Múltiples keys separadas por coma
 
     # Descomenta la siguiente sección si usas Docker Secrets
     # secrets:
     #   - mongodb_uri
     #   - api_keys
+    #   - redis_password
 
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - bcv-network
 
-  # Opcional: Redis para cache adicional
+  # Redis - Shared cache for stateless architecture
   redis:
     image: redis:7-alpine
     container_name: bcv-redis
+    command: >
+      sh -c '
+      if [ -n "$REDIS_PASSWORD" ]; then
+        redis-server --requirepass "$REDIS_PASSWORD" --appendonly yes
+      else
+        redis-server --appendonly yes
+      fi
+      '
     ports:
       - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    healthcheck:
+      test: >
+        sh -c '
+        if [ -n "$REDIS_PASSWORD" ]; then
+          redis-cli -a "$REDIS_PASSWORD" ping
+        else
+          redis-cli ping
+        fi
+        '
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - bcv-network
+
+  # MongoDB - Database for exchange rate history
+  mongo:
+    image: mongo:7
+    container_name: bcv-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=bcvdb
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    restart: unless-stopped
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "
+        try {
+          db.adminCommand('ping');
+          print('MongoDB is ready');
+        } catch (err) {
+          print('MongoDB is not ready');
+          quit(1);
+        }
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bcv-network
 
 volumes:
   redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+
+networks:
+  bcv-network:
+    driver: bridge
 
 # Descomenta esta sección si usas Docker Secrets
 # secrets:
@@ -58,3 +144,5 @@ volumes:
 #     file: ./secrets/mongodb_uri.txt
 #   api_keys:
 #     file: ./secrets/api_keys.txt
+#   redis_password:
+#     file: ./secrets/redis_password.txt
