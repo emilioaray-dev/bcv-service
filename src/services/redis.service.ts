@@ -159,8 +159,7 @@ export class RedisService implements IRedisService {
     }
 
     try {
-      const serialized =
-        typeof value === 'string' ? value : JSON.stringify(value);
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
 
       if (ttl && ttl > 0) {
         await this.client.setex(key, ttl, serialized);

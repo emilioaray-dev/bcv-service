@@ -45,9 +45,8 @@ const devFormat = winston.format.combine(
       const filteredMeta = Object.fromEntries(
         Object.entries(metadata).filter(
           ([key]) =>
-            !['level', 'timestamp', 'message', Symbol.for('level')].includes(
-              key
-            ) && typeof key !== 'symbol'
+            !['level', 'timestamp', 'message', Symbol.for('level')].includes(key) &&
+            typeof key !== 'symbol'
         )
       );
 

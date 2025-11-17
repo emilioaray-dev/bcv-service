@@ -1,0 +1,194 @@
+version: '3.8'
+
+services:
+  # BCV Service - Stateless microservice (Production)
+  bcv-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: bcv-service:latest
+    container_name: bcv-service-prod
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BCV_WEBSITE_URL=${BCV_WEBSITE_URL:-https://www.bcv.org.ve/}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
+      - SAVE_TO_DATABASE=true
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Redis Cache Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_MAX_RETRIES=3
+      - REDIS_RETRY_DELAY=1000
+      - REDIS_CONNECT_TIMEOUT=10000
+      - CACHE_ENABLED=true
+      - CACHE_TTL_LATEST=300
+      - CACHE_TTL_HISTORY=86400
+
+      # MongoDB Configuration
+      - MONGODB_MAX_POOL_SIZE=${MONGODB_MAX_POOL_SIZE:-10}
+      - MONGODB_MIN_POOL_SIZE=${MONGODB_MIN_POOL_SIZE:-2}
+      - MONGODB_MAX_IDLE_TIME_MS=${MONGODB_MAX_IDLE_TIME_MS:-60000}
+      - MONGODB_CONNECT_TIMEOUT_MS=${MONGODB_CONNECT_TIMEOUT_MS:-10000}
+      - MONGODB_SOCKET_TIMEOUT_MS=${MONGODB_SOCKET_TIMEOUT_MS:-45000}
+      - MONGODB_SERVER_SELECTION_TIMEOUT_MS=${MONGODB_SERVER_SELECTION_TIMEOUT_MS:-10000}
+      - MONGODB_HEARTBEAT_FREQUENCY_MS=${MONGODB_HEARTBEAT_FREQUENCY_MS:-10000}
+      - MONGODB_RETRY_WRITES=true
+      - MONGODB_RETRY_READS=true
+      - MONGODB_COMPRESSORS=zstd,snappy,zlib
+
+      # Docker Secrets (Production)
+      - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      # API_KEYS_FILE is optional
+      # - API_KEYS_FILE=/run/secrets/api_keys
+
+      # Discord Webhook (optional)
+      # - DISCORD_WEBHOOK_URL_FILE=/run/secrets/discord_webhook_url
+
+      # External Webhook (optional)
+      # - WEBHOOK_URL_FILE=/run/secrets/webhook_url
+      # - WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
+
+    secrets:
+      - mongodb_uri
+      - redis_password
+      # - api_keys
+      # - discord_webhook_url
+      # - webhook_url
+      # - webhook_secret
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/healthz', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - bcv-network
+
+    # Resource limits (adjust based on your server)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Redis - Shared cache for stateless architecture
+  redis:
+    image: redis:7-alpine
+    container_name: bcv-redis-prod
+    command: redis-server --requirepass "${REDIS_PASSWORD}" --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - bcv-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # MongoDB - Database for exchange rate history
+  mongo:
+    image: mongo:7
+    container_name: bcv-mongo-prod
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=bcvdb
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    restart: unless-stopped
+    healthcheck:
+      test: |
+        mongosh --quiet --eval "
+        try {
+          db.adminCommand('ping');
+          print('MongoDB is ready');
+        } catch (err) {
+          print('MongoDB is not ready');
+          quit(1);
+        }
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bcv-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+
+networks:
+  bcv-network:
+    driver: bridge
+
+# Docker Secrets (Production)
+# Create these files in ./secrets/ directory:
+# - mongodb_uri.txt
+# - redis_password.txt
+# - api_keys.txt (optional)
+# - discord_webhook_url.txt (optional)
+# - webhook_url.txt (optional)
+# - webhook_secret.txt (optional)
+secrets:
+  mongodb_uri:
+    file: ./secrets/mongodb_uri.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  # api_keys:
+  #   file: ./secrets/api_keys.txt
+  # discord_webhook_url:
+  #   file: ./secrets/discord_webhook_url.txt
+  # webhook_url:
+  #   file: ./secrets/webhook_url.txt
+  # webhook_secret:
+  #   file: ./secrets/webhook_secret.txt

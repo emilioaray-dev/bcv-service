@@ -59,29 +59,14 @@ export function createContainer(server: HttpServer): Container {
   container.bind<HttpServer>(TYPES.HttpServer).toConstantValue(server);
 
   // Bind Services
-  container
-    .bind<IBCVService>(TYPES.BCVService)
-    .to(BCVService)
-    .inSingletonScope();
-  container
-    .bind<IDiscordService>(TYPES.DiscordService)
-    .to(DiscordService)
-    .inSingletonScope();
-  container
-    .bind<IWebhookService>(TYPES.WebhookService)
-    .to(WebhookService)
-    .inSingletonScope();
-  container
-    .bind<IRedisService>(TYPES.RedisService)
-    .to(RedisService)
-    .inSingletonScope();
+  container.bind<IBCVService>(TYPES.BCVService).to(BCVService).inSingletonScope();
+  container.bind<IDiscordService>(TYPES.DiscordService).to(DiscordService).inSingletonScope();
+  container.bind<IWebhookService>(TYPES.WebhookService).to(WebhookService).inSingletonScope();
+  container.bind<IRedisService>(TYPES.RedisService).to(RedisService).inSingletonScope();
 
   // CacheService: usar MongoService si saveToDatabase está activado
   if (config.saveToDatabase) {
-    container
-      .bind<ICacheService>(TYPES.CacheService)
-      .to(MongoService)
-      .inSingletonScope();
+    container.bind<ICacheService>(TYPES.CacheService).to(MongoService).inSingletonScope();
   } else {
     // Mock implementation para modo consola
     container.bind<ICacheService>(TYPES.CacheService).toConstantValue({
@@ -102,32 +87,17 @@ export function createContainer(server: HttpServer): Container {
     });
   }
 
-  container
-    .bind<IWebSocketService>(TYPES.WebSocketService)
-    .to(WebSocketService)
-    .inSingletonScope();
-  container
-    .bind<ISchedulerService>(TYPES.SchedulerService)
-    .to(SchedulerService)
-    .inSingletonScope();
+  container.bind<IWebSocketService>(TYPES.WebSocketService).to(WebSocketService).inSingletonScope();
+  container.bind<ISchedulerService>(TYPES.SchedulerService).to(SchedulerService).inSingletonScope();
   container
     .bind<IHealthCheckService>(TYPES.HealthCheckService)
     .to(HealthCheckService)
     .inSingletonScope();
-  container
-    .bind<IMetricsService>(TYPES.MetricsService)
-    .to(MetricsService)
-    .inSingletonScope();
+  container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService).inSingletonScope();
 
   // Bind Controllers
-  container
-    .bind<RateController>(TYPES.RateController)
-    .to(RateController)
-    .inSingletonScope();
-  container
-    .bind<HealthController>(TYPES.HealthController)
-    .to(HealthController)
-    .inSingletonScope();
+  container.bind<RateController>(TYPES.RateController).to(RateController).inSingletonScope();
+  container.bind<HealthController>(TYPES.HealthController).to(HealthController).inSingletonScope();
   container
     .bind<MetricsController>(TYPES.MetricsController)
     .to(MetricsController)

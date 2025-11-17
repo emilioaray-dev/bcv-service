@@ -18,22 +18,16 @@ export class DiscordService implements IDiscordService {
     this.webhookUrl = config.discordWebhookUrl || '';
     this.enabled = !!this.webhookUrl;
 
-    if (!this.enabled) {
-      logger.warn(
-        'Discord webhook no configurado - Notificaciones por Discord deshabilitadas'
-      );
+    if (this.enabled) {
+      logger.info('Discord webhook configurado - Notificaciones por Discord habilitadas');
     } else {
-      logger.info(
-        'Discord webhook configurado - Notificaciones por Discord habilitadas'
-      );
+      logger.warn('Discord webhook no configurado - Notificaciones por Discord deshabilitadas');
     }
   }
 
   async sendRateUpdateNotification(rate: BCVRateData): Promise<void> {
     if (!this.enabled) {
-      logger.debug(
-        'Notificación por Discord ignorada - webhook no configurado'
-      );
+      logger.debug('Notificación por Discord ignorada - webhook no configurado');
       return;
     }
 
@@ -46,8 +40,7 @@ export class DiscordService implements IDiscordService {
         embeds: [
           {
             title: '🔄 Actualización de Tasas de Cambio',
-            description:
-              'Se ha detectado un cambio en las tasas de cambio del BCV',
+            description: 'Se ha detectado un cambio en las tasas de cambio del BCV',
             color: 0x00ff00, // Verde
             fields: rateData.map((r: CurrencyRate) => ({
               name: `${r.name || r.currency} (${r.currency})`,

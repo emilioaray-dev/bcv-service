@@ -65,16 +65,10 @@ export class Application {
     // Resolver servicios del contenedor
     this.cacheService = this.container.get<ICacheService>(TYPES.CacheService);
     this.redisService = this.container.get<IRedisService>(TYPES.RedisService);
-    this.schedulerService = this.container.get<ISchedulerService>(
-      TYPES.SchedulerService
-    );
-    this.webSocketService = this.container.get<IWebSocketService>(
-      TYPES.WebSocketService
-    );
+    this.schedulerService = this.container.get<ISchedulerService>(TYPES.SchedulerService);
+    this.webSocketService = this.container.get<IWebSocketService>(TYPES.WebSocketService);
     this.bcvService = this.container.get<IBCVService>(TYPES.BCVService);
-    this.metricsService = this.container.get<IMetricsService>(
-      TYPES.MetricsService
-    );
+    this.metricsService = this.container.get<IMetricsService>(TYPES.MetricsService);
 
     // Configurar la aplicación
     this.configure();
@@ -155,8 +149,7 @@ export class Application {
       windowMs: 15 * 60 * 1000, // 15 minutos
       max: 100, // máximo 100 requests por ventana
       message: {
-        error:
-          'Demasiadas solicitudes desde esta IP, por favor intente más tarde.',
+        error: 'Demasiadas solicitudes desde esta IP, por favor intente más tarde.',
         retryAfter: '15 minutos',
       },
       standardHeaders: true,
@@ -170,15 +163,11 @@ export class Application {
     this.app.use('/api/', apiKeyAuth);
 
     // Metrics endpoint (sin autenticación ni rate limiting, para Prometheus)
-    const metricsController = this.container.get<MetricsController>(
-      TYPES.MetricsController
-    );
+    const metricsController = this.container.get<MetricsController>(TYPES.MetricsController);
     this.app.use(metricsController.router);
 
     // Health check routes (sin autenticación ni rate limiting)
-    const healthController = this.container.get<HealthController>(
-      TYPES.HealthController
-    );
+    const healthController = this.container.get<HealthController>(TYPES.HealthController);
     this.app.use(healthController.router);
 
     // Swagger API Documentation (sin autenticación ni rate limiting)
@@ -225,9 +214,7 @@ export class Application {
         });
       }
     } else {
-      log.info(
-        'Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)'
-      );
+      log.info('Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)');
     }
 
     // Conectar a Redis si el cache está habilitado

@@ -145,21 +145,13 @@ export class MongoService implements ICacheService {
     };
 
     // Usar upsert para evitar duplicados
-    await this.collection.updateOne(
-      { id },
-      { $set: rateToInsert },
-      { upsert: true }
-    );
+    await this.collection.updateOne({ id }, { $set: rateToInsert }, { upsert: true });
 
     return rateToInsert;
   }
 
   async getLatestRate(): Promise<Rate | null> {
-    const result = await this.collection
-      .find()
-      .sort({ createdAt: -1 })
-      .limit(1)
-      .toArray();
+    const result = await this.collection.find().sort({ createdAt: -1 }).limit(1).toArray();
 
     return result.length > 0 ? result[0] : null;
   }
@@ -179,20 +171,13 @@ export class MongoService implements ICacheService {
   }
 
   async getRateHistory(limit = 30): Promise<Rate[]> {
-    const result = await this.collection
-      .find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .toArray();
+    const result = await this.collection.find().sort({ createdAt: -1 }).limit(limit).toArray();
 
     return result;
   }
 
   async getAllRates(): Promise<Rate[]> {
-    const result = await this.collection
-      .find()
-      .sort({ createdAt: -1 })
-      .toArray();
+    const result = await this.collection.find().sort({ createdAt: -1 }).toArray();
 
     return result;
   }

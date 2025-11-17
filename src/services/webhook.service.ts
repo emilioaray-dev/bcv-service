@@ -42,16 +42,14 @@ export class WebhookService implements IWebhookService {
       maxRetries: config.webhookMaxRetries || 3,
     };
 
-    if (!this.webhookConfig.enabled) {
-      logger.warn(
-        'Webhook URL not configured - Webhook notifications disabled'
-      );
-    } else {
+    if (this.webhookConfig.enabled) {
       logger.info('Webhook service configured and enabled', {
         url: this.maskUrl(this.webhookConfig.url),
         timeout: this.webhookConfig.timeout,
         maxRetries: this.webhookConfig.maxRetries,
       });
+    } else {
+      logger.warn('Webhook URL not configured - Webhook notifications disabled');
     }
 
     if (this.webhookConfig.enabled && !this.webhookConfig.secret) {
@@ -87,10 +85,7 @@ export class WebhookService implements IWebhookService {
   /**
    * Build webhook payload from rate data
    */
-  private buildPayload(
-    rate: BCVRateData,
-    previousRate?: BCVRateData | null
-  ): WebhookPayload {
+  private buildPayload(rate: BCVRateData, previousRate?: BCVRateData | null): WebhookPayload {
     const payload: WebhookPayload = {
       event: previousRate ? 'rate.changed' : 'rate.updated',
       timestamp: new Date().toISOString(),
@@ -106,8 +101,7 @@ export class WebhookService implements IWebhookService {
 
     // Add change information if previous rate exists
     if (previousRate?.rate) {
-      const percentageChange =
-        ((rate.rate - previousRate.rate) / previousRate.rate) * 100;
+      const percentageChange = ((rate.rate - previousRate.rate) / previousRate.rate) * 100;
 
       payload.data.change = {
         previousRate: previousRate.rate,
@@ -122,9 +116,7 @@ export class WebhookService implements IWebhookService {
   /**
    * Send webhook with exponential backoff retry strategy
    */
-  private async sendWithRetry(
-    payload: WebhookPayload
-  ): Promise<WebhookDeliveryResult> {
+  private async sendWithRetry(payload: WebhookPayload): Promise<WebhookDeliveryResult> {
     let lastError: Error | null = null;
     const startTime = Date.now();
 
@@ -282,10 +274,7 @@ export class WebhookService implements IWebhookService {
 
     try {
       // Constant-time comparison to prevent timing attacks
-      return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-      );
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
     } catch {
       // If comparison fails for any reason, return false
       return false;

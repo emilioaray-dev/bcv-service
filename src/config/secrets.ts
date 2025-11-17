@@ -17,11 +17,7 @@ import { resolve } from 'node:path';
  * @param defaultValue - Valor por defecto si no se encuentra el secreto
  * @returns El valor del secreto
  */
-export function readSecret(
-  envVar: string,
-  filePathVar: string,
-  defaultValue = ''
-): string {
+export function readSecret(envVar: string, filePathVar: string, defaultValue = ''): string {
   // Primero intentar leer desde variable de entorno directa
   const envValue = process.env[envVar];
   if (envValue) {
@@ -41,10 +37,7 @@ export function readSecret(
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(
-        `⚠️  Error leyendo secreto desde archivo ${filePath}:`,
-        error
-      );
+      console.error(`⚠️  Error leyendo secreto desde archivo ${filePath}:`, error);
     }
   }
 
@@ -93,17 +86,12 @@ export function readSecretList(
 
       if (secrets.length > 0) {
         // biome-ignore lint/suspicious/noConsoleLog: Log informativo para desarrolladores
-        console.log(
-          `✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`
-        );
+        console.log(`✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`);
         return secrets;
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(
-        `⚠️  Error leyendo secretos desde archivo ${filePath}:`,
-        error
-      );
+      console.error(`⚠️  Error leyendo secretos desde archivo ${filePath}:`, error);
     }
   }
 

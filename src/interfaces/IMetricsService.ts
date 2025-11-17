@@ -20,11 +20,7 @@ export interface IMetricsService {
   /**
    * Middleware para trackear requests HTTP
    */
-  requestMiddleware(): (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => void;
+  requestMiddleware(): (req: Request, res: Response, next: NextFunction) => void;
 
   /**
    * Incrementa contador de actualizaciones exitosas del BCV
@@ -78,11 +74,7 @@ export interface IMetricsService {
    * @param status - Estado de la operación ('success', 'failure')
    * @param duration - Duración de la operación en milisegundos
    */
-  recordCacheOperation(
-    operation: string,
-    status: 'success' | 'failure',
-    duration: number
-  ): void;
+  recordCacheOperation(operation: string, status: 'success' | 'failure', duration: number): void;
 
   /**
    * Actualiza el estado de conexión de Redis

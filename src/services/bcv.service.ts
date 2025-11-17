@@ -98,11 +98,10 @@ export class BCVService implements IBCVService {
 
             // Enviar notificación a través de Webhook
             try {
-              const webhookResult =
-                await this.webhookService.sendRateUpdateNotification(
-                  rateData,
-                  this.lastRate
-                );
+              const webhookResult = await this.webhookService.sendRateUpdateNotification(
+                rateData,
+                this.lastRate
+              );
 
               if (webhookResult.success) {
                 log.info('Notificación de cambio de tasa enviada por Webhook', {
@@ -172,8 +171,7 @@ export class BCVService implements IBCVService {
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
           'Accept-Encoding': 'gzip, deflate, br',
           Connection: 'keep-alive',
@@ -295,10 +293,7 @@ export class BCVService implements IBCVService {
     return String(error);
   }
 
-  private hasRateChanged(
-    previous: BCVRateData | null,
-    current: BCVRateData
-  ): boolean {
+  private hasRateChanged(previous: BCVRateData | null, current: BCVRateData): boolean {
     // Si no hay tasa anterior, consideramos que hay un cambio
     if (!previous) {
       return true;
@@ -306,9 +301,7 @@ export class BCVService implements IBCVService {
 
     // Comparar porcentaje de cambio para la tasa principal (dólar)
     const rateChange =
-      Math.abs(
-        ((current.rate || 0) - (previous.rate || 0)) / (previous.rate || 1)
-      ) * 100;
+      Math.abs(((current.rate || 0) - (previous.rate || 0)) / (previous.rate || 1)) * 100;
 
     // Consideramos cambio si la diferencia es mayor al 0.1% o si las tasas son diferentes
     if (rateChange > 0.1) {
@@ -319,9 +312,7 @@ export class BCVService implements IBCVService {
     if (Array.isArray(current.rates) && Array.isArray(previous.rates)) {
       // Comparar cada moneda individualmente
       for (const currentRate of current.rates) {
-        const previousRate = previous.rates.find(
-          (r) => r.currency === currentRate.currency
-        );
+        const previousRate = previous.rates.find((r) => r.currency === currentRate.currency);
         if (!previousRate) {
           // Nueva moneda añadida
           return true;
@@ -329,8 +320,7 @@ export class BCVService implements IBCVService {
 
         const currencyChange =
           Math.abs(
-            ((currentRate.rate || 0) - (previousRate.rate || 0)) /
-              (previousRate.rate || 1)
+            ((currentRate.rate || 0) - (previousRate.rate || 0)) / (previousRate.rate || 1)
           ) * 100;
         if (currencyChange > 0.1) {
           return true;
@@ -341,10 +331,7 @@ export class BCVService implements IBCVService {
     return false;
   }
 
-  private calculateChange(
-    previous: BCVRateData | null,
-    current: BCVRateData
-  ): number {
+  private calculateChange(previous: BCVRateData | null, current: BCVRateData): number {
     if (!previous) {
       return 0;
     }

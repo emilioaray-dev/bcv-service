@@ -16,9 +16,7 @@ import { inject, injectable } from 'inversify';
 export class MetricsController {
   public router: Router;
 
-  constructor(
-    @inject(TYPES.MetricsService) private metricsService: IMetricsService
-  ) {
+  constructor(@inject(TYPES.MetricsService) private metricsService: IMetricsService) {
     this.router = Router();
     this.initializeRoutes();
   }

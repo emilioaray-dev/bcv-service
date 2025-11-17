@@ -98,10 +98,7 @@ export function parseVenezuelanNumber(value: string): number {
  * parseVenezuelanNumberSafe("invalid", 100)    // 100
  * parseVenezuelanNumberSafe("", 0)             // 0
  */
-export function parseVenezuelanNumberSafe(
-  value: string,
-  defaultValue = 0
-): number {
+export function parseVenezuelanNumberSafe(value: string, defaultValue = 0): number {
   const parsed = parseVenezuelanNumber(value);
   return Number.isNaN(parsed) ? defaultValue : parsed;
 }
@@ -128,13 +125,8 @@ export function formatToVenezuelanNumber(value: number, decimals = 2): string {
   const [integerPart, decimalPart] = fixed.split('.');
 
   // Agregar separadores de miles
-  const withThousandsSeparator = integerPart.replace(
-    /\B(?=(\d{3})+(?!\d))/g,
-    '.'
-  );
+  const withThousandsSeparator = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
   // Combinar con separador decimal
-  return decimalPart
-    ? `${withThousandsSeparator},${decimalPart}`
-    : withThousandsSeparator;
+  return decimalPart ? `${withThousandsSeparator},${decimalPart}` : withThousandsSeparator;
 }

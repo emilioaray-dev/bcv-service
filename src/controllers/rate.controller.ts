@@ -2,10 +2,7 @@ import { config } from '@/config';
 import { TYPES } from '@/config/types';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import { CacheKeys } from '@/interfaces/IRedisService';
-import {
-  validateDateParam,
-  validateHistoryQuery,
-} from '@/middleware/validation.middleware';
+import { validateDateParam, validateHistoryQuery } from '@/middleware/validation.middleware';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
 import { type Request, type Response, Router } from 'express';
@@ -38,16 +35,8 @@ export class RateController {
 
   private initializeRoutes(): void {
     this.router.get('/rate/latest', this.getLatestRate.bind(this));
-    this.router.get(
-      '/rate/history',
-      validateHistoryQuery,
-      this.getRateHistory.bind(this)
-    );
-    this.router.get(
-      '/rate/:date',
-      validateDateParam,
-      this.getRateByDate.bind(this)
-    );
+    this.router.get('/rate/history', validateHistoryQuery, this.getRateHistory.bind(this));
+    this.router.get('/rate/:date', validateDateParam, this.getRateByDate.bind(this));
   }
 
   private async getLatestRate(_req: Request, res: Response): Promise<void> {
@@ -75,19 +64,13 @@ export class RateController {
       // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getLatestRate();
       if (!rate) {
-        res
-          .status(404)
-          .json({ error: 'No se encontró ninguna tasa de cambio' });
+        res.status(404).json({ error: 'No se encontró ninguna tasa de cambio' });
         return;
       }
 
       // Guardar en cache para próximas consultas
       if (config.redis.enabled) {
-        await this.redisService.set(
-          CacheKeys.LATEST_RATE,
-          rate,
-          config.cacheTTL.latest
-        );
+        await this.redisService.set(CacheKeys.LATEST_RATE, rate, config.cacheTTL.latest);
       }
 
       res.json(rate);
@@ -151,9 +134,7 @@ export class RateController {
       // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getRateByDate(date);
       if (!rate) {
-        res
-          .status(404)
-          .json({ error: `No se encontró tasa para la fecha ${date}` });
+        res.status(404).json({ error: `No se encontró tasa para la fecha ${date}` });
         return;
       }
 

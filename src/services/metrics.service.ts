@@ -158,9 +158,7 @@ export class MetricsService implements IMetricsService {
         this.httpRequestsTotal.labels(method, route, statusCode).inc();
 
         // Observar duración del request
-        this.httpRequestDuration
-          .labels(method, route, statusCode)
-          .observe(duration);
+        this.httpRequestDuration.labels(method, route, statusCode).observe(duration);
       });
 
       next();
@@ -219,9 +217,7 @@ export class MetricsService implements IMetricsService {
    */
   recordWebhookSuccess(event: string, duration: number): void {
     this.webhookDeliveryTotal.labels('success', event).inc();
-    this.webhookDeliveryDuration
-      .labels('success', event)
-      .observe(duration / 1000); // convertir a segundos
+    this.webhookDeliveryDuration.labels('success', event).observe(duration / 1000); // convertir a segundos
   }
 
   /**
@@ -231,9 +227,7 @@ export class MetricsService implements IMetricsService {
    */
   recordWebhookFailure(event: string, duration: number): void {
     this.webhookDeliveryTotal.labels('failure', event).inc();
-    this.webhookDeliveryDuration
-      .labels('failure', event)
-      .observe(duration / 1000); // convertir a segundos
+    this.webhookDeliveryDuration.labels('failure', event).observe(duration / 1000); // convertir a segundos
   }
 
   /**
@@ -258,14 +252,8 @@ export class MetricsService implements IMetricsService {
    * @param status - Estado de la operación ('success', 'failure')
    * @param duration - Duración de la operación en milisegundos
    */
-  recordCacheOperation(
-    operation: string,
-    status: 'success' | 'failure',
-    duration: number
-  ): void {
-    this.cacheOperationDuration
-      .labels(operation, status)
-      .observe(duration / 1000); // convertir a segundos
+  recordCacheOperation(operation: string, status: 'success' | 'failure', duration: number): void {
+    this.cacheOperationDuration.labels(operation, status).observe(duration / 1000); // convertir a segundos
   }
 
   /**

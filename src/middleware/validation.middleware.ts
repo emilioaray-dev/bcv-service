@@ -11,12 +11,7 @@ export const validate = <T extends z.ZodTypeAny>(
 ) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data =
-        source === 'body'
-          ? req.body
-          : source === 'params'
-            ? req.params
-            : req.query;
+      const data = source === 'body' ? req.body : source === 'params' ? req.params : req.query;
 
       const validated = await schema.parseAsync(data);
 

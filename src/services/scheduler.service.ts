@@ -97,8 +97,7 @@ export class SchedulerService implements ISchedulerService {
         Math.abs((previousRate.rate || 0) - currentData.rate) > 0.0001 ||
         (currentData.rates &&
           previousRate?.rates &&
-          JSON.stringify(currentData.rates) !==
-            JSON.stringify(previousRate.rates));
+          JSON.stringify(currentData.rates) !== JSON.stringify(previousRate.rates));
 
       if (hasSignificantChange) {
         if (this.saveToDatabase) {

@@ -47,12 +47,8 @@ export const CurrencyRateSchema = z.object({
  * Schema para validar los datos completos de tasa del BCV
  */
 export const BCVRateDataSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'El formato de fecha debe ser YYYY-MM-DD'),
-  rates: z
-    .array(CurrencyRateSchema)
-    .min(1, 'Debe haber al menos una tasa de cambio'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'El formato de fecha debe ser YYYY-MM-DD'),
+  rates: z.array(CurrencyRateSchema).min(1, 'Debe haber al menos una tasa de cambio'),
   rate: z
     .number()
     .positive('La tasa del dólar debe ser un número positivo')

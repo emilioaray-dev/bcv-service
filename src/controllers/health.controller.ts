@@ -18,9 +18,7 @@ export class HealthController {
   public router: Router;
   private healthCheckService: IHealthCheckService;
 
-  constructor(
-    @inject(TYPES.HealthCheckService) healthCheckService: IHealthCheckService
-  ) {
+  constructor(@inject(TYPES.HealthCheckService) healthCheckService: IHealthCheckService) {
     this.healthCheckService = healthCheckService;
     this.router = Router();
     this.initializeRoutes();
@@ -90,10 +88,7 @@ export class HealthController {
   /**
    * GET /health/scheduler - Health check del scheduler
    */
-  private async getSchedulerHealth(
-    _req: Request,
-    res: Response
-  ): Promise<void> {
+  private async getSchedulerHealth(_req: Request, res: Response): Promise<void> {
     try {
       const schedulerCheck = await this.healthCheckService.checkScheduler();
       const statusCode = schedulerCheck.status === 'healthy' ? 200 : 503;
@@ -115,11 +110,7 @@ export class HealthController {
     try {
       const bcvCheck = await this.healthCheckService.checkBCV();
       const statusCode =
-        bcvCheck.status === 'healthy'
-          ? 200
-          : bcvCheck.status === 'degraded'
-            ? 200
-            : 503;
+        bcvCheck.status === 'healthy' ? 200 : bcvCheck.status === 'degraded' ? 200 : 503;
       res.status(statusCode).json(bcvCheck);
     } catch (error) {
       log.error('BCV health check endpoint failed', { error });
@@ -134,10 +125,7 @@ export class HealthController {
   /**
    * GET /health/websocket - Health check del servicio WebSocket
    */
-  private async getWebSocketHealth(
-    _req: Request,
-    res: Response
-  ): Promise<void> {
+  private async getWebSocketHealth(_req: Request, res: Response): Promise<void> {
     try {
       const websocketCheck = await this.healthCheckService.checkWebSocket();
       const statusCode = websocketCheck.status === 'healthy' ? 200 : 503;

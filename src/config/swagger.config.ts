@@ -322,8 +322,7 @@ export const swaggerOptions: OAS3Options = {
         get: {
           tags: ['Rates'],
           summary: 'Obtener la tasa de cambio más reciente',
-          description:
-            'Retorna la tasa de cambio más reciente almacenada en la base de datos',
+          description: 'Retorna la tasa de cambio más reciente almacenada en la base de datos',
           security: [{ ApiKeyAuth: [] }],
           responses: {
             '200': {
@@ -465,8 +464,7 @@ export const swaggerOptions: OAS3Options = {
         get: {
           tags: ['Health'],
           summary: 'Health check completo',
-          description:
-            'Retorna el estado de salud de todos los componentes del servicio',
+          description: 'Retorna el estado de salud de todos los componentes del servicio',
           responses: {
             '200': {
               description: 'Servicio saludable',
@@ -495,8 +493,7 @@ export const swaggerOptions: OAS3Options = {
         get: {
           tags: ['Health'],
           summary: 'Kubernetes liveness probe',
-          description:
-            'Health check simplificado para Kubernetes liveness probe',
+          description: 'Health check simplificado para Kubernetes liveness probe',
           responses: {
             '200': {
               description: 'Servicio vivo',
@@ -674,8 +671,7 @@ export const swaggerOptions: OAS3Options = {
         get: {
           tags: ['Metrics'],
           summary: 'Métricas de Prometheus',
-          description:
-            'Expone métricas en formato Prometheus para scraping y monitoreo',
+          description: 'Expone métricas en formato Prometheus para scraping y monitoreo',
           responses: {
             '200': {
               description: 'Métricas expuestas exitosamente',

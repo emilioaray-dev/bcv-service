@@ -19,18 +19,9 @@ export const config = {
   mongodb: {
     maxPoolSize: Number.parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10', 10),
     minPoolSize: Number.parseInt(process.env.MONGODB_MIN_POOL_SIZE || '2', 10),
-    maxIdleTimeMS: Number.parseInt(
-      process.env.MONGODB_MAX_IDLE_TIME_MS || '60000',
-      10
-    ), // 1 minute
-    connectTimeoutMS: Number.parseInt(
-      process.env.MONGODB_CONNECT_TIMEOUT_MS || '10000',
-      10
-    ), // 10 seconds
-    socketTimeoutMS: Number.parseInt(
-      process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000',
-      10
-    ), // 45 seconds
+    maxIdleTimeMS: Number.parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10), // 1 minute
+    connectTimeoutMS: Number.parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '10000', 10), // 10 seconds
+    socketTimeoutMS: Number.parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10), // 45 seconds
     serverSelectionTimeoutMS: Number.parseInt(
       process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '10000',
       10
@@ -41,16 +32,13 @@ export const config = {
     ), // 10 seconds
     retryWrites: process.env.MONGODB_RETRY_WRITES?.toLowerCase() !== 'false',
     retryReads: process.env.MONGODB_RETRY_READS?.toLowerCase() !== 'false',
-    compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib').split(
-      ','
-    ),
+    compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib').split(','),
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
   nodeEnv: process.env.NODE_ENV || 'development',
   saveToDatabase:
-    process.env.SAVE_TO_DATABASE?.toLowerCase() !== 'false' &&
-    process.env.SAVE_TO_DATABASE !== '0',
+    process.env.SAVE_TO_DATABASE?.toLowerCase() !== 'false' && process.env.SAVE_TO_DATABASE !== '0',
 
   // Nivel de logging: error | warn | info | http | debug
   logLevel: process.env.LOG_LEVEL || 'info',
@@ -67,41 +55,24 @@ export const config = {
   ),
 
   // Webhook configuration for HTTP notifications
-  webhookUrl: readSecret(
-    'WEBHOOK_URL',
-    'WEBHOOK_URL_FILE',
-    process.env.WEBHOOK_URL || ''
-  ),
+  webhookUrl: readSecret('WEBHOOK_URL', 'WEBHOOK_URL_FILE', process.env.WEBHOOK_URL || ''),
   webhookSecret: readSecret(
     'WEBHOOK_SECRET',
     'WEBHOOK_SECRET_FILE',
     process.env.WEBHOOK_SECRET || ''
   ),
   webhookTimeout: Number.parseInt(process.env.WEBHOOK_TIMEOUT || '5000', 10),
-  webhookMaxRetries: Number.parseInt(
-    process.env.WEBHOOK_MAX_RETRIES || '3',
-    10
-  ),
+  webhookMaxRetries: Number.parseInt(process.env.WEBHOOK_MAX_RETRIES || '3', 10),
 
   // Redis Configuration
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: Number.parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: readSecret(
-      'REDIS_PASSWORD',
-      'REDIS_PASSWORD_FILE',
-      process.env.REDIS_PASSWORD || ''
-    ),
+    password: readSecret('REDIS_PASSWORD', 'REDIS_PASSWORD_FILE', process.env.REDIS_PASSWORD || ''),
     db: Number.parseInt(process.env.REDIS_DB || '0', 10),
-    maxRetriesPerRequest: Number.parseInt(
-      process.env.REDIS_MAX_RETRIES || '3',
-      10
-    ),
+    maxRetriesPerRequest: Number.parseInt(process.env.REDIS_MAX_RETRIES || '3', 10),
     retryDelay: Number.parseInt(process.env.REDIS_RETRY_DELAY || '1000', 10),
-    connectTimeout: Number.parseInt(
-      process.env.REDIS_CONNECT_TIMEOUT || '10000',
-      10
-    ),
+    connectTimeout: Number.parseInt(process.env.REDIS_CONNECT_TIMEOUT || '10000', 10),
     enabled: process.env.CACHE_ENABLED?.toLowerCase() !== 'false',
   },
 

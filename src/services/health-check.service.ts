@@ -44,14 +44,13 @@ export class HealthCheckService implements IHealthCheckService {
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
     // Ejecutar todos los checks en paralelo
-    const [mongoCheck, redisCheck, schedulerCheck, bcvCheck, websocketCheck] =
-      await Promise.all([
-        this.checkMongoDB(),
-        this.checkRedis(),
-        this.checkScheduler(),
-        this.checkBCV(),
-        this.checkWebSocket(),
-      ]);
+    const [mongoCheck, redisCheck, schedulerCheck, bcvCheck, websocketCheck] = await Promise.all([
+      this.checkMongoDB(),
+      this.checkRedis(),
+      this.checkScheduler(),
+      this.checkBCV(),
+      this.checkWebSocket(),
+    ]);
 
     // Determinar el estado general
     const checks = {
