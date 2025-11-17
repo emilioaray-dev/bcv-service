@@ -23,6 +23,8 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - ✅ Testing con Vitest (66% coverage, 55 tests)
 - ✅ Gestión segura de secretos con Docker Secrets
 - ✅ Formateo y calidad de código con Biome
+- ✅ **Seguridad web** con Helmet.js (CSP, HSTS, XSS protection)
+- ✅ **Compresión** de respuestas para mejor rendimiento
 
 ### Observability
 - ✅ **Health Checks** para Kubernetes (liveness/readiness probes)
@@ -435,6 +437,10 @@ src/
     └── logger.ts             # Logger con Winston
 ```
 
+**Configuración de seguridad y rendimiento:**
+- **Security Headers**: Configurados en `src/Application.ts` con Helmet.js
+- **Compresión de respuestas**: Configurada en `src/Application.ts` con compression middleware
+
 ### Flujo de Datos
 
 ```
@@ -692,7 +698,7 @@ Ver [Setup Local](docs/guides/SETUP_LOCAL.md) para más troubleshooting detallad
 - [x] **Fase 4:** Observability (Health Checks + Prometheus)
 - [ ] **Fase 5:** CI/CD Pipeline
 - [ ] **Fase 6:** Documentation (En progreso)
-- [ ] **Fase 7:** Performance Optimization (Redis caching)
+- [x] **Fase 7:** Performance & Optimization (Security Headers + Compression)
 - [ ] **Fase 8:** Advanced Features (Multi-source support, GraphQL)
 
 Ver [Tasks Roadmap](docs/development/TASKS.md) para más detalles.

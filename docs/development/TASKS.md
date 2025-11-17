@@ -238,6 +238,21 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ## ⏳ Fase 7: Performance & Optimization (Opcional)
 
+### Security & Performance Headers
+- [x] Implementar Helmet security headers
+- [x] Configurar Content Security Policy (CSP)
+- [x] Configurar Strict Transport Security (HSTS)
+- [x] Configurar X-Frame-Options
+- [x] Configurar Referrer Policy
+- [x] Eliminar header X-Powered-By
+
+### Performance
+- [x] Implementar compression middleware
+- [ ] Benchmarking con autocannon (diferido)
+- [ ] Optimización de queries MongoDB
+- [ ] Connection pooling
+- [ ] Load testing
+
 ### Caching
 - [ ] Implementar Redis para caché
 - [ ] Cache de última tasa
@@ -245,20 +260,13 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 - [ ] TTL configurables
 - [ ] Invalidación de caché
 
-### Performance
-- [ ] Benchmarking con autocannon
-- [ ] Optimización de queries MongoDB
-- [ ] Connection pooling
-- [ ] Compression middleware
-- [ ] Load testing
-
 ### Scalability
 - [ ] Horizontal scaling considerations
 - [ ] Stateless design
 - [ ] Shared state management
 - [ ] Load balancing
 
-**Meta:** Servicio optimizado para alto tráfico
+**Meta:** Servicio optimizado y seguro para alto tráfico
 
 ---
 
@@ -293,8 +301,8 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 ## Estado Actual
 
 **Completado:** 5/8 fases (Security, Logging, Testing, Observability, Documentation)
-**En progreso:** Ninguna
-**Progreso total:** ~62.5%
+**En progreso:** Fase 7 - Performance & Optimization (Security Headers, Compression)
+**Progreso total:** ~65.6%
 
 ## Próximos Pasos
 

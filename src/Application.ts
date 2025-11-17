@@ -5,6 +5,8 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import helmet from 'helmet';
+import compression from 'compression';
 import { Container } from 'inversify';
 import { createContainer } from '@/config/inversify.config';
 import { config } from '@/config';
@@ -79,6 +81,52 @@ export class Application {
     } else {
       log.info('Modo: Variables de entorno estándar');
     }
+
+    // Security headers with Helmet
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'https:'],
+          frameSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          upgradeInsecureRequests: [],
+        },
+      },
+      hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+      referrerPolicy: {
+        policy: 'no-referrer',
+      },
+      xFrameOptions: {
+        action: 'sameorigin',
+      },
+      xPoweredBy: false, // Remove X-Powered-By header
+    }));
+
+    // Compression middleware for performance
+    this.app.use(compression({
+      level: 6, // Compression level (0-9, where 6 is default)
+      threshold: 1024, // Only compress responses larger than 1KB
+      filter: (req, res) => {
+        // Only compress if the response is likely to benefit from compression
+        if (req.headers['x-no-compression']) {
+          // Don't compress responses with this request header
+          return false;
+        }
+
+        // Use the default filter function
+        return compression.filter(req, res);
+      }
+    }));
 
     // Middleware básico
     this.app.use(express.json());
