@@ -15,6 +15,10 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest watch --coverage",
+    "benchmark": "tsx benchmarks/benchmark-endpoints.ts",
+    "load-test:light": "artillery run load-tests/load-test-light.yml",
+    "load-test:medium": "artillery run load-tests/load-test-medium.yml",
+    "load-test:stress": "artillery run load-tests/load-test-stress.yml",
     "docker:build": "docker build -t bcv-service .",
     "docker:run": "docker run -p 3000:3000 bcv-service"
   },
@@ -29,6 +33,7 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
+    "@types/autocannon": "^7.12.7",
     "@types/cheerio": "^1.0.0",
     "@types/express": "^5.0.5",
     "@types/ioredis": "^5.0.0",
@@ -40,6 +45,8 @@
     "@types/ws": "^8.18.0",
     "@vitest/coverage-v8": "^4.0.8",
     "@vitest/ui": "^4.0.8",
+    "artillery": "^2.0.26",
+    "autocannon": "^8.0.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",
     "vitest": "^4.0.8"

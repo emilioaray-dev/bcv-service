@@ -21,8 +21,36 @@ export class MongoService implements ICacheService {
   private db: Db;
   private collection: Collection<Rate>;
 
-  constructor(@inject(TYPES.Config) config: { mongoUri: string }) {
-    this.client = new MongoClient(config.mongoUri);
+  constructor(
+    @inject(TYPES.Config) config: {
+      mongoUri: string;
+      mongodb: {
+        maxPoolSize: number;
+        minPoolSize: number;
+        maxIdleTimeMS: number;
+        connectTimeoutMS: number;
+        socketTimeoutMS: number;
+        serverSelectionTimeoutMS: number;
+        heartbeatFrequencyMS: number;
+        retryWrites: boolean;
+        retryReads: boolean;
+        compressors: string[];
+      };
+    }
+  ) {
+    // Create MongoDB client with optimized connection pool settings
+    this.client = new MongoClient(config.mongoUri, {
+      maxPoolSize: config.mongodb.maxPoolSize,
+      minPoolSize: config.mongodb.minPoolSize,
+      maxIdleTimeMS: config.mongodb.maxIdleTimeMS,
+      connectTimeoutMS: config.mongodb.connectTimeoutMS,
+      socketTimeoutMS: config.mongodb.socketTimeoutMS,
+      serverSelectionTimeoutMS: config.mongodb.serverSelectionTimeoutMS,
+      heartbeatFrequencyMS: config.mongodb.heartbeatFrequencyMS,
+      retryWrites: config.mongodb.retryWrites,
+      retryReads: config.mongodb.retryReads,
+      compressors: config.mongodb.compressors,
+    });
     this.db = this.client.db();
     this.collection = this.db.collection<Rate>('rates');
   }
@@ -32,15 +60,70 @@ export class MongoService implements ICacheService {
     log.info('Conectado a MongoDB', {
       database: this.db.databaseName,
       collection: this.collection.collectionName,
+      poolSize: {
+        max: this.client.options.maxPoolSize,
+        min: this.client.options.minPoolSize,
+      },
     });
 
-    // Crear índices
-    await this.collection.createIndex({ date: 1 });
-    await this.collection.createIndex({ createdAt: -1 });
-    await this.collection.createIndex({ date: 1, source: 1 }, { unique: true });
+    // Create optimized indexes for common queries
+    // Indexes are created idempotently (MongoDB skips if already exists)
+    await Promise.all([
+      // 1. Index for getLatestRate() - sorted by createdAt descending
+      this.collection.createIndex(
+        { createdAt: -1 },
+        {
+          name: 'idx_createdAt_desc',
+          background: true,
+        }
+      ),
 
-    log.debug('Índices de MongoDB creados', {
-      indexes: ['date', 'createdAt', 'date+source (unique)'],
+      // 2. Index for getRateByDate() - regex search on date field
+      this.collection.createIndex(
+        { date: 1 },
+        {
+          name: 'idx_date_asc',
+          background: true,
+        }
+      ),
+
+      // 3. Compound index for unique rate identification
+      this.collection.createIndex(
+        { date: 1, source: 1 },
+        {
+          unique: true,
+          name: 'idx_date_source_unique',
+          background: true,
+        }
+      ),
+
+      // 4. Index for history queries - optimized for sorting
+      this.collection.createIndex(
+        { date: -1, createdAt: -1 },
+        {
+          name: 'idx_date_createdAt_desc',
+          background: true,
+        }
+      ),
+
+      // 5. Index on id field for quick upserts
+      this.collection.createIndex(
+        { id: 1 },
+        {
+          name: 'idx_id_asc',
+          background: true,
+        }
+      ),
+    ]);
+
+    log.info('MongoDB indexes created/verified', {
+      indexes: [
+        'idx_createdAt_desc',
+        'idx_date_asc',
+        'idx_date_source_unique',
+        'idx_date_createdAt_desc',
+        'idx_id_asc',
+      ],
     });
   }
 

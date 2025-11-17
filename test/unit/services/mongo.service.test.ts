@@ -11,6 +11,23 @@ vi.mock('@/utils/logger', () => ({
   }
 }));
 
+// Test MongoDB configuration
+const testMongoConfig = {
+  mongoUri: 'mongodb://localhost:27017/test',
+  mongodb: {
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    maxIdleTimeMS: 60000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 10000,
+    heartbeatFrequencyMS: 10000,
+    retryWrites: true,
+    retryReads: true,
+    compressors: ['zstd', 'snappy', 'zlib'],
+  }
+};
+
 describe('MongoService', () => {
   describe('basic structure', () => {
     it('should be importable', async () => {
@@ -21,49 +38,49 @@ describe('MongoService', () => {
 
     it('should be constructable', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(mongoService).toBeDefined();
     });
 
     it('should have connect method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.connect).toBe('function');
     });
 
     it('should have disconnect method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.disconnect).toBe('function');
     });
 
     it('should have saveRate method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.saveRate).toBe('function');
     });
 
     it('should have getLatestRate method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.getLatestRate).toBe('function');
     });
 
     it('should have getRateByDate method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.getRateByDate).toBe('function');
     });
 
     it('should have getRateHistory method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.getRateHistory).toBe('function');
     });
 
     it('should have getAllRates method', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(typeof mongoService.getAllRates).toBe('function');
     });
   });
@@ -71,7 +88,7 @@ describe('MongoService', () => {
   describe('interface implementation', () => {
     it('should implement ICacheService interface', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
 
       // Check required interface methods
       expect(mongoService.connect).toBeDefined();
@@ -84,7 +101,7 @@ describe('MongoService', () => {
   describe('method signatures', () => {
     it('saveRate should accept rate data without id and createdAt', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
 
       const rateData = {
         rate: 36.50,
@@ -99,13 +116,13 @@ describe('MongoService', () => {
 
     it('getRateByDate should accept date string', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       expect(mongoService.getRateByDate.length).toBe(1);
     });
 
     it('getRateHistory should accept optional limit parameter', async () => {
       const { MongoService } = await import('@/services/mongo.service');
-      const mongoService = new MongoService({ mongoUri: 'mongodb://localhost:27017/test' });
+      const mongoService = new MongoService(testMongoConfig);
       // Method exists and is callable
       expect(typeof mongoService.getRateHistory).toBe('function');
     });
@@ -158,11 +175,11 @@ describe('MongoService', () => {
       const { MongoService } = await import('@/services/mongo.service');
 
       const uri1 = 'mongodb://localhost:27017/test';
-      const service1 = new MongoService({ mongoUri: uri1 });
+      const service1 = new MongoService({ ...testMongoConfig, mongoUri: uri1 });
       expect(service1).toBeDefined();
 
       const uri2 = 'mongodb://user:pass@localhost:27017/prod';
-      const service2 = new MongoService({ mongoUri: uri2 });
+      const service2 = new MongoService({ ...testMongoConfig, mongoUri: uri2 });
       expect(service2).toBeDefined();
     });
 
@@ -177,7 +194,7 @@ describe('MongoService', () => {
       ];
 
       for (const uri of uris) {
-        const service = new MongoService({ mongoUri: uri });
+        const service = new MongoService({ ...testMongoConfig, mongoUri: uri });
         expect(service).toBeDefined();
       }
     });

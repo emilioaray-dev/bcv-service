@@ -1,0 +1,103 @@
+# Artillery Load Test - Medium Load
+# Simulates moderate to high traffic (50-200 users)
+# Use this for staging environment testing
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up"
+
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 100
+      name: "Ramp-up"
+
+    # Sustained load phase
+    - duration: 300
+      arrivalRate: 100
+      name: "Sustained load"
+
+    # Peak load phase
+    - duration: 120
+      arrivalRate: 200
+      name: "Peak load"
+
+    # Spike test
+    - duration: 30
+      arrivalRate: 300
+      name: "Spike test"
+
+    # Cool-down phase
+    - duration: 60
+      arrivalRate: 20
+      name: "Cool-down"
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 2  # Max 2% error rate
+    p95: 300         # 95th percentile response time < 300ms
+    p99: 1000        # 99th percentile response time < 1s
+
+  # HTTP settings
+  http:
+    timeout: 15
+
+  # Metrics plugins
+  plugins:
+    expect: {}
+
+  # Output settings
+  processor: "./load-test-processor.js"
+
+scenarios:
+  # Scenario 1: Health check monitoring (15% of traffic)
+  - name: "Health Check"
+    weight: 15
+    flow:
+      - get:
+          url: "/healthz"
+          expect:
+            - statusCode: 200
+
+  # Scenario 2: Metrics endpoint (5% of traffic)
+  - name: "Metrics Collection"
+    weight: 5
+    flow:
+      - get:
+          url: "/metrics"
+          expect:
+            - statusCode: 200
+
+  # Scenario 3: Latest rate query (60% of traffic)
+  - name: "Get Latest Rate"
+    weight: 60
+    flow:
+      - get:
+          url: "/api/rate/latest"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "rate"
+
+  # Scenario 4: Historical rate query (15% of traffic)
+  - name: "Get Rate by Date"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/rate/2024-01-15"
+          expect:
+            - statusCode: 200
+
+  # Scenario 5: Rate history (5% of traffic)
+  - name: "Get Rate History"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/rate/history"
+          expect:
+            - statusCode: 200
+            - contentType: json

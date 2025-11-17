@@ -14,6 +14,37 @@ export const config = {
     'MONGODB_URI_FILE',
     process.env.MONGODB_URI || 'mongodb://localhost:27017/bcv_service'
   ),
+
+  // MongoDB Connection Pool Configuration
+  mongodb: {
+    maxPoolSize: Number.parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10', 10),
+    minPoolSize: Number.parseInt(process.env.MONGODB_MIN_POOL_SIZE || '2', 10),
+    maxIdleTimeMS: Number.parseInt(
+      process.env.MONGODB_MAX_IDLE_TIME_MS || '60000',
+      10
+    ), // 1 minute
+    connectTimeoutMS: Number.parseInt(
+      process.env.MONGODB_CONNECT_TIMEOUT_MS || '10000',
+      10
+    ), // 10 seconds
+    socketTimeoutMS: Number.parseInt(
+      process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000',
+      10
+    ), // 45 seconds
+    serverSelectionTimeoutMS: Number.parseInt(
+      process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '10000',
+      10
+    ), // 10 seconds
+    heartbeatFrequencyMS: Number.parseInt(
+      process.env.MONGODB_HEARTBEAT_FREQUENCY_MS || '10000',
+      10
+    ), // 10 seconds
+    retryWrites: process.env.MONGODB_RETRY_WRITES?.toLowerCase() !== 'false',
+    retryReads: process.env.MONGODB_RETRY_READS?.toLowerCase() !== 'false',
+    compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib').split(
+      ','
+    ),
+  },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
   nodeEnv: process.env.NODE_ENV || 'development',
