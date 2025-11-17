@@ -1,10 +1,13 @@
-import { injectable, inject } from 'inversify';
-import { Router, Request, Response } from 'express';
-import { ICacheService } from '@/services/cache.interface';
 import { config } from '@/config';
-import { validateDateParam, validateHistoryQuery } from '@/middleware/validation.middleware';
 import { TYPES } from '@/config/types';
+import {
+  validateDateParam,
+  validateHistoryQuery,
+} from '@/middleware/validation.middleware';
+import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
+import { type Request, type Response, Router } from 'express';
+import { inject, injectable } from 'inversify';
 
 /**
  * RateController - Controlador REST para endpoints de tasas
@@ -20,9 +23,7 @@ export class RateController {
   public router: Router;
   private cacheService: ICacheService;
 
-  constructor(
-    @inject(TYPES.CacheService) cacheService: ICacheService
-  ) {
+  constructor(@inject(TYPES.CacheService) cacheService: ICacheService) {
     this.cacheService = cacheService;
     this.router = Router();
     this.initializeRoutes();
@@ -30,24 +31,34 @@ export class RateController {
 
   private initializeRoutes(): void {
     this.router.get('/rate/latest', this.getLatestRate.bind(this));
-    this.router.get('/rate/history', validateHistoryQuery, this.getRateHistory.bind(this));
-    this.router.get('/rate/:date', validateDateParam, this.getRateByDate.bind(this));
+    this.router.get(
+      '/rate/history',
+      validateHistoryQuery,
+      this.getRateHistory.bind(this)
+    );
+    this.router.get(
+      '/rate/:date',
+      validateDateParam,
+      this.getRateByDate.bind(this)
+    );
   }
 
-  private async getLatestRate(req: Request, res: Response): Promise<void> {
+  private async getLatestRate(_req: Request, res: Response): Promise<void> {
     try {
       if (!config.saveToDatabase) {
         // En modo consola, indicar que no hay acceso a base de datos
-        res.status(405).json({ 
+        res.status(405).json({
           error: 'Modo consola activado: No hay acceso a la base de datos',
-          message: 'SAVE_TO_DATABASE está configurado como false'
+          message: 'SAVE_TO_DATABASE está configurado como false',
         });
         return;
       }
-      
+
       const rate = await this.cacheService.getLatestRate();
       if (!rate) {
-        res.status(404).json({ error: 'No se encontró ninguna tasa de cambio' });
+        res
+          .status(404)
+          .json({ error: 'No se encontró ninguna tasa de cambio' });
         return;
       }
       res.json(rate);
@@ -61,15 +72,15 @@ export class RateController {
     try {
       if (!config.saveToDatabase) {
         // En modo consola, indicar que no hay acceso a base de datos
-        res.status(405).json({ 
+        res.status(405).json({
           error: 'Modo consola activado: No hay acceso a la base de datos',
-          message: 'SAVE_TO_DATABASE está configurado como false'
+          message: 'SAVE_TO_DATABASE está configurado como false',
         });
         return;
       }
-      
+
       // Obtener el límite de registros desde los parámetros de consulta
-      const limit = parseInt(req.query.limit as string) || 30;
+      const limit = Number.parseInt(req.query.limit as string) || 30;
       const maxLimit = 100; // Límite máximo para prevenir sobrecarga
 
       const safeLimit = Math.min(limit, maxLimit);
@@ -88,7 +99,7 @@ export class RateController {
         // En modo consola, indicar que no hay acceso a base de datos
         res.status(405).json({
           error: 'Modo consola activado: No hay acceso a la base de datos',
-          message: 'SAVE_TO_DATABASE está configurado como false'
+          message: 'SAVE_TO_DATABASE está configurado como false',
         });
         return;
       }
@@ -98,7 +109,9 @@ export class RateController {
 
       const rate = await this.cacheService.getRateByDate(date);
       if (!rate) {
-        res.status(404).json({ error: `No se encontró tasa para la fecha ${date}` });
+        res
+          .status(404)
+          .json({ error: `No se encontró tasa para la fecha ${date}` });
         return;
       }
 

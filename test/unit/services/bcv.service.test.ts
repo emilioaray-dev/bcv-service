@@ -22,7 +22,17 @@ describe('BCVService', () => {
   const mockBcvUrl = 'https://www.bcv.org.ve';
 
   beforeEach(() => {
-    bcvService = new BCVService({ bcvWebsiteUrl: mockBcvUrl });
+    // Crear mocks para las dependencias
+    const mockConfig = { bcvWebsiteUrl: mockBcvUrl };
+    const mockDiscordService = {
+      sendRateUpdateNotification: vi.fn()
+    };
+    const mockWebSocketService = {
+      broadcastRateUpdate: vi.fn(),
+      getConnectedClientsCount: vi.fn().mockReturnValue(0)
+    };
+
+    bcvService = new BCVService(mockConfig, mockDiscordService, mockWebSocketService);
     vi.clearAllMocks();
   });
 

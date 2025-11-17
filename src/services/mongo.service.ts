@@ -1,9 +1,9 @@
-import { injectable, inject } from 'inversify';
-import { MongoClient, Db, Collection } from 'mongodb';
-import { Rate } from '@/models/rate';
-import { ICacheService } from '@/services/cache.interface';
-import log from '@/utils/logger';
 import { TYPES } from '@/config/types';
+import type { Rate } from '@/models/rate';
+import type { ICacheService } from '@/services/cache.interface';
+import log from '@/utils/logger';
+import { inject, injectable } from 'inversify';
+import { type Collection, type Db, MongoClient } from 'mongodb';
 
 /**
  * MongoService - Servicio de persistencia con MongoDB
@@ -21,9 +21,7 @@ export class MongoService implements ICacheService {
   private db: Db;
   private collection: Collection<Rate>;
 
-  constructor(
-    @inject(TYPES.Config) config: { mongoUri: string }
-  ) {
+  constructor(@inject(TYPES.Config) config: { mongoUri: string }) {
     this.client = new MongoClient(config.mongoUri);
     this.db = this.client.db();
     this.collection = this.db.collection<Rate>('rates');
@@ -33,7 +31,7 @@ export class MongoService implements ICacheService {
     await this.client.connect();
     log.info('Conectado a MongoDB', {
       database: this.db.databaseName,
-      collection: this.collection.collectionName
+      collection: this.collection.collectionName,
     });
 
     // Crear índices
@@ -42,7 +40,7 @@ export class MongoService implements ICacheService {
     await this.collection.createIndex({ date: 1, source: 1 }, { unique: true });
 
     log.debug('Índices de MongoDB creados', {
-      indexes: ['date', 'createdAt', 'date+source (unique)']
+      indexes: ['date', 'createdAt', 'date+source (unique)'],
     });
   }
 
@@ -53,14 +51,14 @@ export class MongoService implements ICacheService {
   async saveRate(rate: Omit<Rate, 'id' | 'createdAt'>): Promise<Rate> {
     const id = `${rate.date}-${rate.source}`;
     const createdAt = new Date().toISOString();
-    
+
     const rateToInsert: Rate = {
       id,
       rate: rate.rate,
-      rates: rate.rates || [],  // Incluir todas las tasas
+      rates: rate.rates || [], // Incluir todas las tasas
       date: rate.date,
       source: rate.source,
-      createdAt
+      createdAt,
     };
 
     // Usar upsert para evitar duplicados
@@ -79,29 +77,31 @@ export class MongoService implements ICacheService {
       .sort({ createdAt: -1 })
       .limit(1)
       .toArray();
-      
+
     return result.length > 0 ? result[0] : null;
   }
 
   async getRateByDate(date: string): Promise<Rate | null> {
     // Buscar por fecha (puede coincidir con el comienzo de la fecha)
-    const result = await this.collection
-      .findOne({ 
-        date: { $regex: `^${date}`, $options: 'i' } 
-      }, { 
-        sort: { createdAt: -1 } 
-      });
-      
+    const result = await this.collection.findOne(
+      {
+        date: { $regex: `^${date}`, $options: 'i' },
+      },
+      {
+        sort: { createdAt: -1 },
+      }
+    );
+
     return result || null;
   }
 
-  async getRateHistory(limit: number = 30): Promise<Rate[]> {
+  async getRateHistory(limit = 30): Promise<Rate[]> {
     const result = await this.collection
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
       .toArray();
-      
+
     return result;
   }
 
@@ -110,7 +110,7 @@ export class MongoService implements ICacheService {
       .find()
       .sort({ createdAt: -1 })
       .toArray();
-      
+
     return result;
   }
 }

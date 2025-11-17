@@ -1,7 +1,7 @@
-import { Router, Request, Response } from 'express';
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/config/types';
-import { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IMetricsService } from '@/interfaces/IMetricsService';
+import { type Request, type Response, Router } from 'express';
+import { inject, injectable } from 'inversify';
 
 /**
  * Metrics Controller - Expone endpoint de métricas
@@ -34,13 +34,13 @@ export class MetricsController {
    * GET /metrics
    * Retorna métricas en formato Prometheus
    */
-  private async getMetrics(req: Request, res: Response): Promise<void> {
+  private async getMetrics(_req: Request, res: Response): Promise<void> {
     try {
       const metrics = await this.metricsService.getMetrics();
 
       res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
       res.send(metrics);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({
         error: 'Error obteniendo métricas',
         message: error.message,

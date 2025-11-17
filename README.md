@@ -14,6 +14,7 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - ✅ Scraping directo del sitio oficial del BCV (www.bcv.org.ve)
 - ✅ Almacenamiento en MongoDB con modo consola opcional
 - ✅ Notificaciones en tiempo real mediante WebSockets
+- ✅ **Notificaciones a Discord** cuando se detectan cambios en tasas
 - ✅ API REST con autenticación por API Key
 - ✅ Rate limiting para protección contra abuso
 
@@ -25,12 +26,14 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - ✅ Formateo y calidad de código con Biome
 - ✅ **Seguridad web** con Helmet.js (CSP, HSTS, XSS protection)
 - ✅ **Compresión** de respuestas para mejor rendimiento
+- ✅ **Integración con Discord** para notificaciones de cambios en tasas
 
 ### Observability
 - ✅ **Health Checks** para Kubernetes (liveness/readiness probes)
 - ✅ **Métricas de Prometheus** para monitoreo
 - ✅ Tracking automático de requests HTTP
 - ✅ Métricas de negocio (tasas BCV, clientes WebSocket)
+- ✅ **Notificaciones a Discord** cuando hay cambios en las tasas
 
 ## 📋 Tabla de Contenidos
 
@@ -305,6 +308,42 @@ socket.on('disconnect', () => {
   console.log('Desconectado');
 });
 ```
+
+## 🤖 Discord Integration
+
+El servicio puede enviar notificaciones automáticamente a un canal de Discord cuando se detectan cambios significativos en las tasas de cambio (>0.1%).
+
+### Configuración
+
+Para habilitar la integración con Discord, configura las siguientes variables de entorno:
+
+```bash
+# URL del webhook de Discord
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+
+# Opcionalmente, puedes usar Docker Secrets:
+DISCORD_WEBHOOK_URL_FILE=/run/secrets/discord_webhook_url
+```
+
+### Notificaciones
+
+Cuando se detecta un cambio en las tasas (diferencia mayor al 0.1%), el servicio enviará una notificación al canal de Discord con:
+
+- Embed con título "🔄 Actualización de Tasas de Cambio"
+- Descripción indicando que se ha detectado un cambio
+- Campos para cada moneda con su nombre y tasa
+- Timestamp de la actualización
+- Footer con texto "Servicio BCV - Notificaciones"
+
+### Prueba de Funcionamiento
+
+Puedes probar la integración con Discord usando el script de prueba:
+
+```bash
+npx tsx scripts/test-discord-notification.ts
+```
+
+Este script enviará un mensaje de prueba al canal de Discord para verificar que la integración está funcionando correctamente. Ver más detalles en [DISCORD_TESTING.md](docs/guides/DISCORD_TESTING.md).
 
 ## ⚙️ Variables de Entorno
 

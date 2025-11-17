@@ -1,12 +1,12 @@
-import { injectable, inject } from 'inversify';
-import cron from 'node-cron';
-import { ISchedulerService } from '@/interfaces/ISchedulerService';
-import { IBCVService } from '@/interfaces/IBCVService';
-import { ICacheService } from '@/services/cache.interface';
-import { IWebSocketService } from '@/interfaces/IWebSocketService';
-import { IMetricsService } from '@/interfaces/IMetricsService';
 import { TYPES } from '@/config/types';
+import type { IBCVService } from '@/interfaces/IBCVService';
+import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { ISchedulerService } from '@/interfaces/ISchedulerService';
+import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
+import { inject, injectable } from 'inversify';
+import cron from 'node-cron';
 
 /**
  * SchedulerService - Servicio de programación de tareas
@@ -32,7 +32,10 @@ export class SchedulerService implements ISchedulerService {
     @inject(TYPES.CacheService) private cacheService: ICacheService,
     @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
     @inject(TYPES.MetricsService) private metricsService: IMetricsService,
-    @inject(TYPES.Config) config: { cronSchedule: string; saveToDatabase: boolean }
+    @inject(TYPES.Config) config: {
+      cronSchedule: string;
+      saveToDatabase: boolean;
+    }
   ) {
     this.cronSchedule = config.cronSchedule;
     this.saveToDatabase = config.saveToDatabase;
@@ -89,10 +92,13 @@ export class SchedulerService implements ISchedulerService {
       const previousRate = await this.cacheService.getLatestRate();
 
       // Solo guardar si hay un cambio significativo o si es la primera vez
-      const hasSignificantChange = !previousRate ||
+      const hasSignificantChange =
+        !previousRate ||
         Math.abs((previousRate.rate || 0) - currentData.rate) > 0.0001 ||
-        (currentData.rates && previousRate?.rates &&
-          JSON.stringify(currentData.rates) !== JSON.stringify(previousRate.rates));
+        (currentData.rates &&
+          previousRate?.rates &&
+          JSON.stringify(currentData.rates) !==
+            JSON.stringify(previousRate.rates));
 
       if (hasSignificantChange) {
         if (this.saveToDatabase) {
@@ -100,13 +106,13 @@ export class SchedulerService implements ISchedulerService {
             rate: currentData.rate,
             rates: currentData.rates || [],
             date: currentData.date,
-            source: 'bcv'
+            source: 'bcv',
           });
 
           log.info('Tasa actualizada', {
             rate: newRate.rate,
             date: newRate.date,
-            detailedRates: newRate.rates
+            detailedRates: newRate.rates,
           });
 
           // Notificar a los clientes WebSocket
@@ -116,7 +122,7 @@ export class SchedulerService implements ISchedulerService {
             rate: newRate.rate,
             rates: newRate.rates,
             change,
-            eventType: 'rate-update'
+            eventType: 'rate-update',
           });
 
           // Métrica de actualización exitosa
@@ -125,19 +131,21 @@ export class SchedulerService implements ISchedulerService {
           log.info('Modo consola: Tasa cambiada - NO se almacenó en DB', {
             rate: currentData.rate,
             date: currentData.date,
-            detailedRates: currentData.rates
+            detailedRates: currentData.rates,
           });
 
           // Métrica de actualización exitosa (incluso en modo consola)
           this.metricsService.incrementBCVUpdateSuccess();
         }
       } else {
-        log.debug('Tasa sin cambios, no se almacenó', { rate: currentData.rate });
+        log.debug('Tasa sin cambios, no se almacenó', {
+          rate: currentData.rate,
+        });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('Error en la tarea programada', {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
   }

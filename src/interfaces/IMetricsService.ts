@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Metrics Service Interface
@@ -20,7 +20,11 @@ export interface IMetricsService {
   /**
    * Middleware para trackear requests HTTP
    */
-  requestMiddleware(): (req: Request, res: Response, next: NextFunction) => void;
+  requestMiddleware(): (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => void;
 
   /**
    * Incrementa contador de actualizaciones exitosas del BCV

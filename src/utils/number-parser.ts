@@ -24,7 +24,7 @@
  */
 export function parseVenezuelanNumber(value: string): number {
   if (typeof value !== 'string') {
-    return NaN;
+    return Number.NaN;
   }
 
   // Limpiar espacios en blanco
@@ -32,7 +32,7 @@ export function parseVenezuelanNumber(value: string): number {
 
   // Si está vacío, retornar NaN
   if (cleaned.length === 0) {
-    return NaN;
+    return Number.NaN;
   }
 
   // Eliminar caracteres no numéricos excepto punto, coma y signo negativo
@@ -47,13 +47,15 @@ export function parseVenezuelanNumber(value: string): number {
     // 1. Eliminar puntos (separadores de miles)
     // 2. Reemplazar coma por punto (separador decimal)
     const result = cleaned.replace(/\./g, '').replace(',', '.');
-    return parseFloat(result);
-  } else if (hasComma) {
+    return Number.parseFloat(result);
+  }
+  if (hasComma) {
     // Solo coma: "36,50"
     // Reemplazar coma por punto
     const result = cleaned.replace(',', '.');
-    return parseFloat(result);
-  } else if (hasDot) {
+    return Number.parseFloat(result);
+  }
+  if (hasDot) {
     // Solo punto - puede ser separador decimal (formato US) o de miles
     // Heurística: si tiene solo un punto y 2-3 dígitos después, probablemente es decimal
     // si tiene múltiples puntos o más de 3 dígitos antes del último punto, son miles
@@ -69,19 +71,19 @@ export function parseVenezuelanNumber(value: string): number {
       if (afterDot === 3 && parts[0].length <= 3) {
         // Caso ambiguo: "123.456" podría ser 123.456 o 123456
         // En contexto BCV, números grandes son más comunes, asumimos miles
-        return parseFloat(cleaned.replace(/\./g, ''));
-      } else if (afterDot <= 2) {
+        return Number.parseFloat(cleaned.replace(/\./g, ''));
+      }
+      if (afterDot <= 2) {
         // Probablemente formato US decimal: "36.50"
-        return parseFloat(cleaned);
+        return Number.parseFloat(cleaned);
       }
     }
 
     // Múltiples puntos o caso por defecto: son separadores de miles
-    return parseFloat(cleaned.replace(/\./g, ''));
-  } else {
-    // Solo dígitos: "1234"
-    return parseFloat(cleaned);
+    return Number.parseFloat(cleaned.replace(/\./g, ''));
   }
+  // Solo dígitos: "1234"
+  return Number.parseFloat(cleaned);
 }
 
 /**
@@ -96,9 +98,12 @@ export function parseVenezuelanNumber(value: string): number {
  * parseVenezuelanNumberSafe("invalid", 100)    // 100
  * parseVenezuelanNumberSafe("", 0)             // 0
  */
-export function parseVenezuelanNumberSafe(value: string, defaultValue: number = 0): number {
+export function parseVenezuelanNumberSafe(
+  value: string,
+  defaultValue = 0
+): number {
   const parsed = parseVenezuelanNumber(value);
-  return isNaN(parsed) ? defaultValue : parsed;
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
@@ -113,8 +118,8 @@ export function parseVenezuelanNumberSafe(value: string, defaultValue: number = 
  * formatToVenezuelanNumber(36.5)         // "36,50"
  * formatToVenezuelanNumber(1234567.89)   // "1.234.567,89"
  */
-export function formatToVenezuelanNumber(value: number, decimals: number = 2): string {
-  if (isNaN(value)) {
+export function formatToVenezuelanNumber(value: number, decimals = 2): string {
+  if (Number.isNaN(value)) {
     return '0,00';
   }
 
@@ -123,8 +128,13 @@ export function formatToVenezuelanNumber(value: number, decimals: number = 2): s
   const [integerPart, decimalPart] = fixed.split('.');
 
   // Agregar separadores de miles
-  const withThousandsSeparator = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const withThousandsSeparator = integerPart.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    '.'
+  );
 
   // Combinar con separador decimal
-  return decimalPart ? `${withThousandsSeparator},${decimalPart}` : withThousandsSeparator;
+  return decimalPart
+    ? `${withThousandsSeparator},${decimalPart}`
+    : withThousandsSeparator;
 }

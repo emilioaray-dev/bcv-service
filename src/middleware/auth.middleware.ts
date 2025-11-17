@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
 import { config } from '@/config';
 import log from '@/utils/logger';
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Middleware de autenticación con API Key
@@ -14,7 +14,11 @@ import log from '@/utils/logger';
  * Headers requeridos:
  *   X-API-Key: tu-api-key-aqui
  */
-export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
+export function apiKeyAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   // Extraer API key del header
   const apiKey = req.header('X-API-Key');
 
@@ -22,8 +26,9 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   if (!apiKey) {
     res.status(401).json({
       error: 'Unauthorized',
-      message: 'API key es requerida. Incluye el header X-API-Key en tu petición.',
-      code: 'MISSING_API_KEY'
+      message:
+        'API key es requerida. Incluye el header X-API-Key en tu petición.',
+      code: 'MISSING_API_KEY',
     });
     return;
   }
@@ -33,7 +38,9 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 
   // Verificar si no hay API keys configuradas (modo desarrollo sin autenticación)
   if (validApiKeys.length === 0) {
-    log.warn('No hay API keys configuradas. Modo desarrollo: autenticación desactivada');
+    log.warn(
+      'No hay API keys configuradas. Modo desarrollo: autenticación desactivada'
+    );
     next();
     return;
   }
@@ -45,7 +52,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
     res.status(403).json({
       error: 'Forbidden',
       message: 'API key inválida.',
-      code: 'INVALID_API_KEY'
+      code: 'INVALID_API_KEY',
     });
     return;
   }
@@ -60,7 +67,11 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
  * Si se proporciona una API key, la valida.
  * Si no se proporciona, permite el acceso (útil para endpoints públicos opcionales).
  */
-export function optionalApiKeyAuth(req: Request, res: Response, next: NextFunction): void {
+export function optionalApiKeyAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   const apiKey = req.header('X-API-Key');
 
   // Si no hay API key, permitir acceso
@@ -81,6 +92,6 @@ export function optionalApiKeyAuth(req: Request, res: Response, next: NextFuncti
   res.status(403).json({
     error: 'Forbidden',
     message: 'API key inválida.',
-    code: 'INVALID_API_KEY'
+    code: 'INVALID_API_KEY',
   });
 }

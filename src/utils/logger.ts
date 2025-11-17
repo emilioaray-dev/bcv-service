@@ -1,6 +1,6 @@
+import { config } from '@/config';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { config } from '@/config';
 
 /**
  * Niveles de logging personalizados
@@ -43,9 +43,11 @@ const devFormat = winston.format.combine(
     if (Object.keys(metadata).length > 0) {
       // Filtrar propiedades de Winston que no son metadata del usuario
       const filteredMeta = Object.fromEntries(
-        Object.entries(metadata).filter(([key]) =>
-          !['level', 'timestamp', 'message', Symbol.for('level')].includes(key) &&
-          typeof key !== 'symbol'
+        Object.entries(metadata).filter(
+          ([key]) =>
+            !['level', 'timestamp', 'message', Symbol.for('level')].includes(
+              key
+            ) && typeof key !== 'symbol'
         )
       );
 
@@ -83,8 +85,8 @@ const errorFileTransport: DailyRotateFile = new DailyRotateFile({
   filename: 'logs/error-%DATE%.log',
   datePattern: 'YYYY-MM-DD',
   level: 'error',
-  maxSize: '20m',       // Tamaño máximo por archivo
-  maxFiles: '14d',      // Mantener logs por 14 días
+  maxSize: '20m', // Tamaño máximo por archivo
+  maxFiles: '14d', // Mantener logs por 14 días
   format: prodFormat,
 });
 
@@ -96,7 +98,7 @@ const combinedFileTransport: DailyRotateFile = new DailyRotateFile({
   filename: 'logs/combined-%DATE%.log',
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
-  maxFiles: '7d',       // Mantener logs por 7 días
+  maxFiles: '7d', // Mantener logs por 7 días
   format: prodFormat,
 });
 
@@ -173,35 +175,35 @@ export const log = {
   /**
    * Log de error - Situaciones que requieren atención inmediata
    */
-  error: (message: string, meta?: Record<string, any>) => {
+  error: (message: string, meta?: Record<string, unknown>) => {
     logger.error(message, meta);
   },
 
   /**
    * Log de warning - Situaciones que deberían revisarse pero no rompen la app
    */
-  warn: (message: string, meta?: Record<string, any>) => {
+  warn: (message: string, meta?: Record<string, unknown>) => {
     logger.warn(message, meta);
   },
 
   /**
    * Log de info - Información general sobre el funcionamiento de la app
    */
-  info: (message: string, meta?: Record<string, any>) => {
+  info: (message: string, meta?: Record<string, unknown>) => {
     logger.info(message, meta);
   },
 
   /**
    * Log HTTP - Peticiones HTTP y respuestas
    */
-  http: (message: string, meta?: Record<string, any>) => {
+  http: (message: string, meta?: Record<string, unknown>) => {
     logger.http(message, meta);
   },
 
   /**
    * Log de debug - Información detallada para debugging
    */
-  debug: (message: string, meta?: Record<string, any>) => {
+  debug: (message: string, meta?: Record<string, unknown>) => {
     logger.debug(message, meta);
   },
 };

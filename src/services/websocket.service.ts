@@ -1,11 +1,11 @@
-import { injectable, inject } from 'inversify';
-import { Server as WebSocketServer, WebSocket } from 'ws';
-import { RateUpdateEvent } from '@/models/rate';
-import log from '@/utils/logger';
-import { IWebSocketService } from '@/interfaces/IWebSocketService';
-import { IMetricsService } from '@/interfaces/IMetricsService';
+import type { Server as HttpServer } from 'node:http';
 import { TYPES } from '@/config/types';
-import type { Server as HttpServer } from 'http';
+import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { RateUpdateEvent } from '@/models/rate';
+import log from '@/utils/logger';
+import { inject, injectable } from 'inversify';
+import { type WebSocket, Server as WebSocketServer } from 'ws';
 
 /**
  * WebSocketService - Servicio de comunicación en tiempo real
@@ -30,7 +30,7 @@ export class WebSocketService implements IWebSocketService {
     this.wss.on('connection', (ws: WebSocket) => {
       this.clients.add(ws);
       log.info('Cliente WebSocket conectado', {
-        totalClients: this.clients.size
+        totalClients: this.clients.size,
       });
 
       // Actualizar métrica de clientes conectados
@@ -39,7 +39,7 @@ export class WebSocketService implements IWebSocketService {
       ws.on('close', () => {
         this.clients.delete(ws);
         log.info('Cliente WebSocket desconectado', {
-          totalClients: this.clients.size
+          totalClients: this.clients.size,
         });
 
         // Actualizar métrica de clientes conectados
@@ -63,7 +63,7 @@ export class WebSocketService implements IWebSocketService {
       eventType: rateUpdate.eventType,
       rate: rateUpdate.rate,
       clientsSent: sentCount,
-      totalClients: this.clients.size
+      totalClients: this.clients.size,
     });
   }
 

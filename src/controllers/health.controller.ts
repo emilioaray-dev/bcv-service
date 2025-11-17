@@ -1,8 +1,8 @@
-import { injectable, inject } from 'inversify';
-import { Router, Request, Response } from 'express';
-import { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import { TYPES } from '@/config/types';
+import type { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import log from '@/utils/logger';
+import { type Request, type Response, Router } from 'express';
+import { inject, injectable } from 'inversify';
 
 /**
  * HealthController - Controlador para endpoints de health checks
@@ -45,14 +45,18 @@ export class HealthController {
    * GET /health - Health check completo
    * También disponible en /healthz y /readyz para Kubernetes
    */
-  private async getHealth(req: Request, res: Response): Promise<void> {
+  private async getHealth(_req: Request, res: Response): Promise<void> {
     try {
       const healthResult = await this.healthCheckService.checkHealth();
 
       // HTTP status code basado en el estado
-      const statusCode = healthResult.status === 'healthy' ? 200 :
-                        healthResult.status === 'degraded' ? 200 : // 200 pero con estado degraded
-                        503; // Service Unavailable
+      const statusCode =
+        healthResult.status === 'healthy'
+          ? 200
+          : healthResult.status === 'degraded'
+            ? 200
+            : // 200 pero con estado degraded
+              503; // Service Unavailable
 
       res.status(statusCode).json(healthResult);
     } catch (error) {
@@ -68,7 +72,7 @@ export class HealthController {
   /**
    * GET /health/mongodb - Health check de MongoDB
    */
-  private async getMongoHealth(req: Request, res: Response): Promise<void> {
+  private async getMongoHealth(_req: Request, res: Response): Promise<void> {
     try {
       const mongoCheck = await this.healthCheckService.checkMongoDB();
       const statusCode = mongoCheck.status === 'healthy' ? 200 : 503;
@@ -86,7 +90,10 @@ export class HealthController {
   /**
    * GET /health/scheduler - Health check del scheduler
    */
-  private async getSchedulerHealth(req: Request, res: Response): Promise<void> {
+  private async getSchedulerHealth(
+    _req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const schedulerCheck = await this.healthCheckService.checkScheduler();
       const statusCode = schedulerCheck.status === 'healthy' ? 200 : 503;
@@ -104,12 +111,15 @@ export class HealthController {
   /**
    * GET /health/bcv - Health check del servicio BCV
    */
-  private async getBCVHealth(req: Request, res: Response): Promise<void> {
+  private async getBCVHealth(_req: Request, res: Response): Promise<void> {
     try {
       const bcvCheck = await this.healthCheckService.checkBCV();
-      const statusCode = bcvCheck.status === 'healthy' ? 200 :
-                        bcvCheck.status === 'degraded' ? 200 :
-                        503;
+      const statusCode =
+        bcvCheck.status === 'healthy'
+          ? 200
+          : bcvCheck.status === 'degraded'
+            ? 200
+            : 503;
       res.status(statusCode).json(bcvCheck);
     } catch (error) {
       log.error('BCV health check endpoint failed', { error });
@@ -124,7 +134,10 @@ export class HealthController {
   /**
    * GET /health/websocket - Health check del servicio WebSocket
    */
-  private async getWebSocketHealth(req: Request, res: Response): Promise<void> {
+  private async getWebSocketHealth(
+    _req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const websocketCheck = await this.healthCheckService.checkWebSocket();
       const statusCode = websocketCheck.status === 'healthy' ? 200 : 503;

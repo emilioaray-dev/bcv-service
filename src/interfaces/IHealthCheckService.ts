@@ -9,7 +9,7 @@
 export interface HealthCheck {
   status: 'healthy' | 'unhealthy' | 'degraded';
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface HealthCheckResult {

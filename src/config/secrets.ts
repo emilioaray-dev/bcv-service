@@ -35,13 +35,16 @@ export function readSecret(
       const resolvedPath = resolve(filePath);
       const secret = readFileSync(resolvedPath, 'utf-8').trim();
       if (secret) {
-        // eslint-disable-next-line no-console
+        // biome-ignore lint/suspicious/noConsoleLog: Log informativo para desarrolladores
         console.log(`✓ Secreto cargado desde archivo: ${filePathVar}`);
         return secret;
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(`⚠️  Error leyendo secreto desde archivo ${filePath}:`, error);
+      console.error(
+        `⚠️  Error leyendo secreto desde archivo ${filePath}:`,
+        error
+      );
     }
   }
 
@@ -71,7 +74,10 @@ export function readSecretList(
   // Primero intentar leer desde variable de entorno (separada por comas)
   const envValue = process.env[envVar];
   if (envValue) {
-    return envValue.split(',').map(v => v.trim()).filter(v => v.length > 0);
+    return envValue
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
   }
 
   // Luego intentar leer desde archivo (Docker Secrets)
@@ -82,17 +88,22 @@ export function readSecretList(
       const content = readFileSync(resolvedPath, 'utf-8');
       const secrets = content
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
       if (secrets.length > 0) {
-        // eslint-disable-next-line no-console
-        console.log(`✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`);
+        // biome-ignore lint/suspicious/noConsoleLog: Log informativo para desarrolladores
+        console.log(
+          `✓ Secretos cargados desde archivo: ${filePathVar} (${secrets.length} items)`
+        );
         return secrets;
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(`⚠️  Error leyendo secretos desde archivo ${filePath}:`, error);
+      console.error(
+        `⚠️  Error leyendo secretos desde archivo ${filePath}:`,
+        error
+      );
     }
   }
 

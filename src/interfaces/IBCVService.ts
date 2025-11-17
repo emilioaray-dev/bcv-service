@@ -1,4 +1,4 @@
-import { BCVRateData } from '@/services/bcv.service';
+import type { BCVRateData } from '@/services/bcv.service';
 
 /**
  * Interface for BCV scraping service
@@ -10,7 +10,8 @@ import { BCVRateData } from '@/services/bcv.service';
 export interface IBCVService {
   /**
    * Obtiene la tasa de cambio actual del BCV
+   * @param sendNotifications - Indica si se deben enviar notificaciones cuando hay cambios (por defecto true)
    * @returns Promise con los datos de la tasa o null si falla
    */
-  getCurrentRate(): Promise<BCVRateData | null>;
+  getCurrentRate(sendNotifications?: boolean): Promise<BCVRateData | null>;
 }

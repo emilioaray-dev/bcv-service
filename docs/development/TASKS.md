@@ -139,55 +139,85 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ### Monitoring (Opcional - No implementado)
 - [ ] Configurar Grafana dashboards (opcional)
-- [ ] Configurar alertas en Prometheus (opcional)
+- [ ] Configurar Alertmanager con Prometheus y alertas clave
 
-### Tracing (Opcional - No implementado)
-- [ ] OpenTelemetry integration (opcional avanzado)
-- [ ] Distributed tracing (opcional avanzado)
-- [ ] Request correlation IDs (opcional avanzado)
+### Tracing & Logs (Opcional - No implementado)
+- [ ] Implementar OpenTelemetry (OTEL) para tracing distribuido
+- [ ] Integración de logs con Loki/Promtail y visualización en Grafana
+- [ ] Configuración de Sentry Self-Hosted para error tracking
 
 **Resultado:** Sistema completo de observabilidad con health checks y Prometheus metrics
 **Meta:** Observabilidad completa para debugging en producción ✅
 
 ---
 
-## ⏳ Fase 5: CI/CD
+## ⏳ Fase 5: Performance & Optimization (Opcional)
 
-### GitHub Actions
-- [ ] Workflow de CI (`.github/workflows/ci.yml`)
-  - [ ] Checkout code
-  - [ ] Setup Node.js
-  - [ ] Install dependencies (pnpm)
-  - [ ] Run Biome check (lint + format)
-  - [ ] Run tests con coverage
-  - [ ] Build TypeScript
-  - [ ] Upload coverage a Codecov (opcional)
-- [ ] Workflow de Release (`.github/workflows/release.yml`)
-  - [ ] Semantic versioning automático
-  - [ ] Generar CHANGELOG
-  - [ ] Crear GitHub Release
-  - [ ] Build Docker image
-  - [ ] Push a Docker Hub/GHCR
+### Security & Performance Headers
+- [x] Implementar Helmet security headers
+- [x] Configurar Content Security Policy (CSP)
+- [x] Configurar Strict Transport Security (HSTS)
+- [x] Configurar X-Frame-Options
+- [x] Configurar Referrer Policy
+- [x] Eliminar header X-Powered-By
 
-### Code Quality
-- [ ] Configurar Biome rules estrictas
-- [ ] Configurar Biome formatter
-- [ ] Conventional commits enforcement
-- [ ] Branch protection rules
-- [ ] Automatizar Biome check en CI
+### Performance
+- [x] Implementar compression middleware
+- [ ] Benchmarking con autocannon (diferido)
+- [ ] Optimización de queries MongoDB
+- [ ] Connection pooling
+- [ ] Load testing
 
-### Docker
-- [ ] Multi-stage Dockerfile optimizado
-- [ ] Docker Compose para desarrollo
-- [ ] Docker Compose para producción con secrets
-- [ ] Health checks en containers
-- [ ] .dockerignore optimizado
+### Caching
+- [ ] Implementar Redis para caché
+- [ ] Cache de última tasa
+- [ ] Cache de tasas históricas
+- [ ] TTL configurables
+- [ ] Invalidación de caché
 
-**Meta:** Pipeline automático de CI/CD
+### Scalability
+- [ ] Horizontal scaling considerations
+- [ ] Stateless design
+- [ ] Shared state management
+- [ ] Load balancing
+
+### Discord Integration
+- [x] Crear canal de Discord bcv-service
+- [x] Implementar WebSocket para enviar notificaciones a Discord
+- [x] Modificar servicio BCV para detectar cambios de tasa
+- [x] Crear integración con Discord Webhook API
+- [x] Agregar configuración de Discord a las variables de entorno
+- [x] Implementar lógica de verificación de cambios en tasas
+- [x] Enviar notificaciones cuando se detecten cambios significativos (>0.1%)
+- [x] Actualizar documentación
+
+**Meta:** Servicio optimizado y seguro para alto tráfico
 
 ---
 
-## ⏳ Fase 6: Documentation
+## ⏳ Fase 6: Advanced Features (Opcional)
+
+### Multi-Source Support
+- [ ] Soporte para múltiples fuentes de tasas
+- [ ] Agregación de tasas
+- [ ] Fallback sources
+
+### API Enhancements
+- [ ] Webhooks para notificaciones
+- [ ] Bulk operations API
+- [ ] Historical data export
+
+### Resilience
+- [ ] Circuit breaker pattern
+- [ ] Retry policies
+- [ ] Graceful degradation
+- [ ] Chaos engineering tests
+
+**Meta:** Features empresariales avanzados
+
+---
+
+## ✅ Fase 7: Documentation (COMPLETADO)
 
 ### README
 - [x] Descripción del proyecto
@@ -236,76 +266,50 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ---
 
-## ⏳ Fase 7: Performance & Optimization (Opcional)
+## ⏳ Fase 8: CI/CD (FINAL)
 
-### Security & Performance Headers
-- [x] Implementar Helmet security headers
-- [x] Configurar Content Security Policy (CSP)
-- [x] Configurar Strict Transport Security (HSTS)
-- [x] Configurar X-Frame-Options
-- [x] Configurar Referrer Policy
-- [x] Eliminar header X-Powered-By
+### GitHub Actions
+- [ ] Workflow de CI (`.github/workflows/ci.yml`)
+  - [ ] Checkout code
+  - [ ] Setup Node.js
+  - [ ] Install dependencies (pnpm)
+  - [ ] Run Biome check (lint + format)
+  - [ ] Run tests con coverage
+  - [ ] Build TypeScript
+  - [ ] Upload coverage a Codecov (opcional)
+- [ ] Workflow de Release (`.github/workflows/release.yml`)
+  - [ ] Semantic versioning automático
+  - [ ] Generar CHANGELOG
+  - [ ] Crear GitHub Release
+  - [ ] Build Docker image
+  - [ ] Push a Docker Hub/GHCR
 
-### Performance
-- [x] Implementar compression middleware
-- [ ] Benchmarking con autocannon (diferido)
-- [ ] Optimización de queries MongoDB
-- [ ] Connection pooling
-- [ ] Load testing
+### Code Quality
+- [ ] Configurar Biome rules estrictas
+- [ ] Configurar Biome formatter
+- [ ] Conventional commits enforcement
+- [ ] Branch protection rules
+- [ ] Automatizar Biome check en CI
 
-### Caching
-- [ ] Implementar Redis para caché
-- [ ] Cache de última tasa
-- [ ] Cache de tasas históricas
-- [ ] TTL configurables
-- [ ] Invalidación de caché
+### Docker
+- [ ] Multi-stage Dockerfile optimizado
+- [ ] Docker Compose para desarrollo
+- [ ] Docker Compose para producción con secrets
+- [ ] Health checks en containers
+- [ ] .dockerignore optimizado
 
-### Scalability
-- [ ] Horizontal scaling considerations
-- [ ] Stateless design
-- [ ] Shared state management
-- [ ] Load balancing
-
-**Meta:** Servicio optimizado y seguro para alto tráfico
-
----
-
-## ⏳ Fase 8: Advanced Features (Opcional)
-
-### Advanced Monitoring
-- [ ] Sentry para error tracking
-- [ ] Datadog/New Relic integration
-- [ ] Custom dashboards
-
-### Multi-Source Support
-- [ ] Soporte para múltiples fuentes de tasas
-- [ ] Agregación de tasas
-- [ ] Fallback sources
-
-### API Enhancements
-- [ ] GraphQL endpoint
-- [ ] Webhooks para notificaciones
-- [ ] Bulk operations API
-- [ ] Historical data export
-
-### Resilience
-- [ ] Circuit breaker pattern
-- [ ] Retry policies
-- [ ] Graceful degradation
-- [ ] Chaos engineering tests
-
-**Meta:** Features empresariales avanzados
+**Meta:** Pipeline automático de CI/CD
 
 ---
 
 ## Estado Actual
 
 **Completado:** 5/8 fases (Security, Logging, Testing, Observability, Documentation)
-**En progreso:** Fase 7 - Performance & Optimization (Security Headers, Compression)
-**Progreso total:** ~65.6%
+**En progreso:** Fase 5 - Performance & Optimization (Redis caching, Benchmarking, Discord Integration)
+**Progreso total:** ~63%
 
 ## Próximos Pasos
 
-1. → Fase 5: CI/CD (GitHub Actions con Biome, Code Quality) - DEJADO PARA EL FINAL
-2. → Fase 7: Performance & Optimization (Redis caching, Benchmarking)
-3. → Fase 8: Advanced Features (Multi-source support, GraphQL)
+1. → Fase 5: Performance & Optimization (Redis caching, Compression, Discord Integration)
+2. → Fase 6: Advanced Features (Multi-source support)
+3. → Fase 8: CI/CD (GitHub Actions con Biome, Code Quality) - DEJADO PARA EL FINAL

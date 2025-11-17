@@ -1,4 +1,4 @@
-import { Rate } from '@/models/rate';
+import type { Rate } from '@/models/rate';
 
 export interface ICacheService {
   connect(): Promise<void>;

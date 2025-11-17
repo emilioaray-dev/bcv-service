@@ -1,15 +1,15 @@
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/config/types';
-import { ICacheService } from '@/services/cache.interface';
-import { ISchedulerService } from '@/interfaces/ISchedulerService';
-import { IBCVService } from '@/interfaces/IBCVService';
-import { IWebSocketService } from '@/interfaces/IWebSocketService';
-import {
-  IHealthCheckService,
+import type { IBCVService } from '@/interfaces/IBCVService';
+import type {
   HealthCheck,
   HealthCheckResult,
+  IHealthCheckService,
 } from '@/interfaces/IHealthCheckService';
+import type { ISchedulerService } from '@/interfaces/ISchedulerService';
+import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
+import { inject, injectable } from 'inversify';
 
 /**
  * HealthCheckService - Servicio de verificación de salud
@@ -41,12 +41,13 @@ export class HealthCheckService implements IHealthCheckService {
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
     // Ejecutar todos los checks en paralelo
-    const [mongoCheck, schedulerCheck, bcvCheck, websocketCheck] = await Promise.all([
-      this.checkMongoDB(),
-      this.checkScheduler(),
-      this.checkBCV(),
-      this.checkWebSocket(),
-    ]);
+    const [mongoCheck, schedulerCheck, bcvCheck, websocketCheck] =
+      await Promise.all([
+        this.checkMongoDB(),
+        this.checkScheduler(),
+        this.checkBCV(),
+        this.checkWebSocket(),
+      ]);
 
     // Determinar el estado general
     const checks = {
@@ -152,12 +153,11 @@ export class HealthCheckService implements IHealthCheckService {
             currencies: rate.rates?.length || 0,
           },
         };
-      } else {
-        return {
-          status: 'degraded',
-          message: 'BCV service returned no data',
-        };
       }
+      return {
+        status: 'degraded',
+        message: 'BCV service returned no data',
+      };
     } catch (error) {
       log.error('BCV service health check failed', { error });
       return {

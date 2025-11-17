@@ -1,4 +1,4 @@
-import { RateUpdateEvent } from '@/models/rate';
+import type { RateUpdateEvent } from '@/models/rate';
 
 /**
  * Interface for WebSocket service

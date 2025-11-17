@@ -14,6 +14,7 @@ export const TYPES = {
   HealthCheckService: Symbol.for('HealthCheckService'),
   MetricsService: Symbol.for('MetricsService'),
   LoggerService: Symbol.for('LoggerService'),
+  DiscordService: Symbol.for('DiscordService'),
 
   // Controllers
   RateController: Symbol.for('RateController'),

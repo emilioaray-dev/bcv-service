@@ -1,32 +1,32 @@
 import 'reflect-metadata';
-import express from 'express';
-import http from 'http';
-import path from 'path';
-import rateLimit from 'express-rate-limit';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
-import helmet from 'helmet';
-import compression from 'compression';
-import { Container } from 'inversify';
-import { createContainer } from '@/config/inversify.config';
+import http from 'node:http';
+import path from 'node:path';
 import { config } from '@/config';
+import { createContainer } from '@/config/inversify.config';
 import { isUsingSecrets } from '@/config/secrets';
-import { apiKeyAuth } from '@/middleware/auth.middleware';
-import { createRoutes } from '@/utils/routes';
-import { TYPES } from '@/config/types';
-import log from '@/utils/logger';
 import { swaggerOptions } from '@/config/swagger.config';
+import { TYPES } from '@/config/types';
+import { apiKeyAuth } from '@/middleware/auth.middleware';
+import log from '@/utils/logger';
+import { createRoutes } from '@/utils/routes';
+import compression from 'compression';
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import type { Container } from 'inversify';
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
 
+import type { IBCVService } from '@/interfaces/IBCVService';
+import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { ISchedulerService } from '@/interfaces/ISchedulerService';
+import type { IWebSocketService } from '@/interfaces/IWebSocketService';
 // Interfaces
-import { ICacheService } from '@/services/cache.interface';
-import { ISchedulerService } from '@/interfaces/ISchedulerService';
-import { IWebSocketService } from '@/interfaces/IWebSocketService';
-import { IBCVService } from '@/interfaces/IBCVService';
-import { IMetricsService } from '@/interfaces/IMetricsService';
+import type { ICacheService } from '@/services/cache.interface';
 
 // Controllers
-import { HealthController } from '@/controllers/health.controller';
-import { MetricsController } from '@/controllers/metrics.controller';
+import type { HealthController } from '@/controllers/health.controller';
+import type { MetricsController } from '@/controllers/metrics.controller';
 
 /**
  * Application Class - Bootstrap de la aplicación
@@ -62,10 +62,16 @@ export class Application {
 
     // Resolver servicios del contenedor
     this.cacheService = this.container.get<ICacheService>(TYPES.CacheService);
-    this.schedulerService = this.container.get<ISchedulerService>(TYPES.SchedulerService);
-    this.webSocketService = this.container.get<IWebSocketService>(TYPES.WebSocketService);
+    this.schedulerService = this.container.get<ISchedulerService>(
+      TYPES.SchedulerService
+    );
+    this.webSocketService = this.container.get<IWebSocketService>(
+      TYPES.WebSocketService
+    );
     this.bcvService = this.container.get<IBCVService>(TYPES.BCVService);
-    this.metricsService = this.container.get<IMetricsService>(TYPES.MetricsService);
+    this.metricsService = this.container.get<IMetricsService>(
+      TYPES.MetricsService
+    );
 
     // Configurar la aplicación
     this.configure();
@@ -83,50 +89,54 @@ export class Application {
     }
 
     // Security headers with Helmet
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          baseUri: ["'self'"],
-          fontSrc: ["'self'", 'https:', 'data:'],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
-          imgSrc: ["'self'", 'data:', 'https:'],
-          connectSrc: ["'self'", 'https:'],
-          frameSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            baseUri: ["'self'"],
+            fontSrc: ["'self'", 'https:', 'data:'],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'https:'],
+            frameSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
         },
-      },
-      hsts: {
-        maxAge: 31536000, // 1 year
-        includeSubDomains: true,
-        preload: true,
-      },
-      referrerPolicy: {
-        policy: 'no-referrer',
-      },
-      xFrameOptions: {
-        action: 'sameorigin',
-      },
-      xPoweredBy: false, // Remove X-Powered-By header
-    }));
+        hsts: {
+          maxAge: 31536000, // 1 year
+          includeSubDomains: true,
+          preload: true,
+        },
+        referrerPolicy: {
+          policy: 'no-referrer',
+        },
+        xFrameOptions: {
+          action: 'sameorigin',
+        },
+        xPoweredBy: false, // Remove X-Powered-By header
+      })
+    );
 
     // Compression middleware for performance
-    this.app.use(compression({
-      level: 6, // Compression level (0-9, where 6 is default)
-      threshold: 1024, // Only compress responses larger than 1KB
-      filter: (req, res) => {
-        // Only compress if the response is likely to benefit from compression
-        if (req.headers['x-no-compression']) {
-          // Don't compress responses with this request header
-          return false;
-        }
+    this.app.use(
+      compression({
+        level: 6, // Compression level (0-9, where 6 is default)
+        threshold: 1024, // Only compress responses larger than 1KB
+        filter: (req, res) => {
+          // Only compress if the response is likely to benefit from compression
+          if (req.headers['x-no-compression']) {
+            // Don't compress responses with this request header
+            return false;
+          }
 
-        // Use the default filter function
-        return compression.filter(req, res);
-      }
-    }));
+          // Use the default filter function
+          return compression.filter(req, res);
+        },
+      })
+    );
 
     // Middleware básico
     this.app.use(express.json());
@@ -142,12 +152,13 @@ export class Application {
       windowMs: 15 * 60 * 1000, // 15 minutos
       max: 100, // máximo 100 requests por ventana
       message: {
-        error: 'Demasiadas solicitudes desde esta IP, por favor intente más tarde.',
-        retryAfter: '15 minutos'
+        error:
+          'Demasiadas solicitudes desde esta IP, por favor intente más tarde.',
+        retryAfter: '15 minutos',
       },
       standardHeaders: true,
       legacyHeaders: false,
-      skip: (req) => !req.path.startsWith('/api')
+      skip: (req) => !req.path.startsWith('/api'),
     });
 
     this.app.use('/api/', apiLimiter);
@@ -156,32 +167,40 @@ export class Application {
     this.app.use('/api/', apiKeyAuth);
 
     // Metrics endpoint (sin autenticación ni rate limiting, para Prometheus)
-    const metricsController = this.container.get<MetricsController>(TYPES.MetricsController);
+    const metricsController = this.container.get<MetricsController>(
+      TYPES.MetricsController
+    );
     this.app.use(metricsController.router);
 
     // Health check routes (sin autenticación ni rate limiting)
-    const healthController = this.container.get<HealthController>(TYPES.HealthController);
+    const healthController = this.container.get<HealthController>(
+      TYPES.HealthController
+    );
     this.app.use(healthController.router);
 
     // Swagger API Documentation (sin autenticación ni rate limiting)
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
-    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-      customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: 'BCV Service API Docs'
-    }));
+    this.app.use(
+      '/api-docs',
+      swaggerUi.serve,
+      swaggerUi.setup(swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'BCV Service API Docs',
+      })
+    );
     log.info('Swagger UI disponible en /api-docs');
 
     // Rutas de API (con autenticación y rate limiting)
     this.app.use(createRoutes(this.cacheService));
 
     // Ruta principal
-    this.app.get('/', (req, res) => {
+    this.app.get('/', (_req, res) => {
       res.json({
         message: 'Microservicio BCV Tasa de Cambio',
         status: 'running',
         connectedClients: this.webSocketService.getConnectedClientsCount(),
         architecture: 'SOLID with Inversify DI',
-        documentation: '/api-docs'
+        documentation: '/api-docs',
       });
     });
   }
@@ -196,14 +215,16 @@ export class Application {
     if (config.saveToDatabase) {
       try {
         await this.cacheService.connect();
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Error conectando a MongoDB', {
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
       }
     } else {
-      log.info('Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)');
+      log.info(
+        'Modo consola: No se inicializa conexión a MongoDB (SAVE_TO_DATABASE=false)'
+      );
     }
 
     // Configurar manejo de errores del servidor
@@ -216,7 +237,7 @@ export class Application {
           port,
           schedule: config.cronSchedule,
           environment: config.nodeEnv,
-          architecture: 'SOLID with Inversify'
+          architecture: 'SOLID with Inversify',
         });
         resolve();
       });
@@ -242,13 +263,13 @@ export class Application {
       log.error(`Error: El puerto ${config.port} ya está en uso`, {
         port: config.port,
         solution: 'Termina el proceso usando el puerto o cambia PORT',
-        commands: [`lsof -i :${config.port}`, 'kill -9 <PID>']
+        commands: [`lsof -i :${config.port}`, 'kill -9 <PID>'],
       });
     } else {
       log.error('Error del servidor', {
         error: err.message,
         code: err.code,
-        stack: err.stack
+        stack: err.stack,
       });
     }
     process.exit(1);

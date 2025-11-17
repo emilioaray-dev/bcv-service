@@ -1,7 +1,7 @@
+import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { NextFunction, Request, Response } from 'express';
 import { injectable } from 'inversify';
-import { Request, Response, NextFunction } from 'express';
 import * as promClient from 'prom-client';
-import { IMetricsService } from '@/interfaces/IMetricsService';
 
 /**
  * Metrics Service - Gestión de métricas con Prometheus
@@ -103,7 +103,9 @@ export class MetricsService implements IMetricsService {
         this.httpRequestsTotal.labels(method, route, statusCode).inc();
 
         // Observar duración del request
-        this.httpRequestDuration.labels(method, route, statusCode).observe(duration);
+        this.httpRequestDuration
+          .labels(method, route, statusCode)
+          .observe(duration);
       });
 
       next();
@@ -143,7 +145,7 @@ export class MetricsService implements IMetricsService {
    * Actualiza el gauge de la última tasa obtenida
    */
   setLatestRate(rate: number): void {
-    if (rate > 0 && !isNaN(rate)) {
+    if (rate > 0 && !Number.isNaN(rate)) {
       this.bcvLatestRate.set(rate);
     }
   }
