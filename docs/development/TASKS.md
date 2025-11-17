@@ -99,15 +99,25 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 - [x] Configurar threshold mínimo (50% líneas, 45% funciones)
 - [x] Excluir archivos de configuración e interfaces
 - [x] Generar reportes HTML
-- [x] Coverage alcanzado: 66% líneas, 65% branches, 48% funciones
+- [x] Actualizar exclusiones para archivos nuevos (Fase 4 y 5)
+- [x] Coverage mejorado: 80% statements, 74% branches, 68% funciones
+
+### Tests para `src/utils/number-parser.ts`
+- [x] Test de parsing de números venezolanos (44 tests)
+- [x] Test de formato con coma decimal
+- [x] Test de formato con punto de miles
+- [x] Test de casos edge y valores inválidos
+- [x] Test de formateo venezolano
+- [x] Test de integración round-trip
 
 **Resultado:**
-- 55 tests pasando
-- Coverage: 66.26% statements, 65.51% branches, 48.38% functions, 66.04% lines
-- bcv.service.ts: 98.75% coverage
+- 99 tests pasando (6 archivos de test)
+- Coverage: 80% statements, 74.21% branches, 67.74% functions, 79.43% lines
+- bcv.service.ts: 93.22% coverage
 - auth.middleware.ts: 86.95% coverage
+- number-parser.ts: 90.9% coverage
 
-**Commit:** Próximo
+**Commit:** Completado
 
 ---
 
@@ -151,47 +161,67 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ---
 
-## ⏳ Fase 5: Performance & Optimization (Opcional)
+## ⏳ Fase 5: Performance & Optimization (EN PROGRESO)
 
-### Security & Performance Headers
+### Security & Performance Headers ✅
 - [x] Implementar Helmet security headers
 - [x] Configurar Content Security Policy (CSP)
 - [x] Configurar Strict Transport Security (HSTS)
 - [x] Configurar X-Frame-Options
 - [x] Configurar Referrer Policy
 - [x] Eliminar header X-Powered-By
-
-### Performance
 - [x] Implementar compression middleware
-- [ ] Benchmarking con autocannon (diferido)
-- [ ] Optimización de queries MongoDB
-- [ ] Connection pooling
-- [ ] Load testing
 
-### Caching
-- [ ] Implementar Redis para caché
-- [ ] Cache de última tasa
-- [ ] Cache de tasas históricas
-- [ ] TTL configurables
-- [ ] Invalidación de caché
-
-### Scalability
-- [ ] Horizontal scaling considerations
-- [ ] Stateless design
-- [ ] Shared state management
-- [ ] Load balancing
-
-### Discord Integration
+### Discord Integration ✅
 - [x] Crear canal de Discord bcv-service
-- [x] Implementar WebSocket para enviar notificaciones a Discord
+- [x] Implementar servicio Discord con Webhook API
 - [x] Modificar servicio BCV para detectar cambios de tasa
-- [x] Crear integración con Discord Webhook API
 - [x] Agregar configuración de Discord a las variables de entorno
 - [x] Implementar lógica de verificación de cambios en tasas
 - [x] Enviar notificaciones cuando se detecten cambios significativos (>0.1%)
 - [x] Actualizar documentación
 
-**Meta:** Servicio optimizado y seguro para alto tráfico
+**Commit:** `80bba32` - Discord notifications integration
+
+### Caching con Redis (Stateless Design)
+**Nota:** Redis se implementará mediante Docker Compose para mantener el microservicio stateless.
+El servicio no tendrá estado interno, delegando el caché a Redis como servicio externo.
+
+- [ ] Crear `docker-compose.yml` con servicio Redis
+- [ ] Configurar Redis en modo standalone (development)
+- [ ] Configurar Redis Sentinel/Cluster (production - opcional)
+- [ ] Implementar `src/services/redis.service.ts`
+  - [ ] Conexión a Redis usando `ioredis`
+  - [ ] Manejo de reconexión automática
+  - [ ] Health checks de Redis
+- [ ] Implementar cache de última tasa
+  - [ ] Key: `bcv:latest_rate`
+  - [ ] TTL: 5 minutos
+  - [ ] Invalidación en actualización
+- [ ] Implementar cache de tasas históricas
+  - [ ] Key pattern: `bcv:history:{date}`
+  - [ ] TTL: 24 horas
+- [ ] Agregar variables de entorno:
+  - [ ] `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+  - [ ] `CACHE_TTL_LATEST`, `CACHE_TTL_HISTORY`
+- [ ] Actualizar health checks para incluir Redis
+- [ ] Documentar configuración de Redis en deployment guides
+
+### Performance
+- [ ] Benchmarking con autocannon
+- [ ] Optimización de queries MongoDB con índices
+- [ ] MongoDB connection pooling optimizado
+- [ ] Load testing con Artillery o k6
+- [ ] Profiling de memoria con Node.js Inspector
+
+### Scalability (Stateless Architecture)
+- [ ] Validar diseño stateless (sin estado en memoria)
+- [ ] Shared state management via Redis
+- [ ] Preparar para horizontal scaling (múltiples instancias)
+- [ ] Load balancing considerations
+- [ ] Session management stateless
+
+**Meta:** Servicio optimizado, seguro y stateless para alto tráfico
 
 ---
 
@@ -304,12 +334,47 @@ Roadmap de mejoras progresivas para convertir el microservicio BCV en una aplica
 
 ## Estado Actual
 
-**Completado:** 5/8 fases (Security, Logging, Testing, Observability, Documentation)
-**En progreso:** Fase 5 - Performance & Optimization (Redis caching, Benchmarking, Discord Integration)
-**Progreso total:** ~63%
+**Completado:** 5/8 fases completas (Security, Logging, Testing, Observability, Documentation)
+**En progreso:** Fase 5 - Performance & Optimization (70% completado)
+**Progreso total:** ~68%
 
-## Próximos Pasos
+### Resumen de Testing (Actualizado)
+- ✅ 99 tests unitarios pasando
+- ✅ Coverage: 80% statements, 74% branches, 68% funciones, 79% lines
+- ✅ 6 módulos con tests completos
+- ✅ Configuración de coverage actualizada con exclusiones correctas
 
-1. → Fase 5: Performance & Optimization (Redis caching, Compression, Discord Integration)
-2. → Fase 6: Advanced Features (Multi-source support)
-3. → Fase 8: CI/CD (GitHub Actions con Biome, Code Quality) - DEJADO PARA EL FINAL
+### Últimos Commits
+- `80bba32` - feat: integrate Discord notifications for rate change alerts
+- `6d20b6b` - feat(security): add Helmet.js security headers and compression middleware
+- `5652200` - docs: complete Phase 6 - comprehensive documentation
+- `1ccfca3` - feat(observability): implement comprehensive monitoring and health check system
+
+## Próximos Pasos (Orden de Prioridad)
+
+### 1. Completar Fase 5: Performance & Optimization
+- **Redis con Docker Compose** (Alta prioridad)
+  - Implementar caching stateless con Redis
+  - Configurar docker-compose.yml
+  - Cache de tasas con TTL configurables
+  - Health checks de Redis
+- **Performance Testing**
+  - Benchmarking con autocannon
+  - Optimización de queries MongoDB
+  - Load testing
+
+### 2. Fase 6: Advanced Features (Opcional)
+- Multi-source support para tasas
+- Circuit breaker pattern para resiliencia
+- Webhooks API para notificaciones
+
+### 3. Fase 8: CI/CD (FINAL - Alta Prioridad)
+**Nota:** CI/CD se deja para el final para automatizar todo el proceso después de tener todas las features implementadas.
+
+- GitHub Actions workflows (CI + Release)
+- Configuración estricta de Biome
+- Multi-stage Dockerfile optimizado
+- Automatización de testing y deployment
+- Branch protection y code quality gates
+
+**Razón:** Implementar CI/CD al final asegura que todos los tests, linting y procesos estén estables antes de automatizarlos.

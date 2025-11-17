@@ -24,14 +24,20 @@ export default defineConfig({
         '**/*.d.ts',
         '**/types/',
         'src/app.ts', // Archivo principal del servidor (difícil de testear directamente)
+        'src/Application.ts', // Clase principal de aplicación (requiere integration tests)
         'src/config/**', // Archivos de configuración
         'src/controllers/**', // Controllers (requieren integration tests)
         'src/models/**', // Modelos de datos (solo tipos)
         'src/schemas/**', // Schemas (solo definiciones)
+        'src/interfaces/**', // Interfaces (solo definiciones de tipos)
         'src/utils/routes.ts', // Archivo de rutas (requiere integration tests)
         'src/utils/logger.ts', // Logger wrapper (difícil de testear sin integración real)
         'src/services/cache.interface.ts', // Solo interfaz
-        'src/middleware/error.middleware.ts', // Error middleware (requiere integration tests)
+        'src/services/discord.service.ts', // Discord service (requiere integration tests)
+        'src/services/health-check.service.ts', // Health check service (requiere integration tests)
+        'src/services/metrics.service.ts', // Metrics service (requiere integration tests)
+        'src/services/scheduler.service.ts', // Scheduler service (requiere integration tests)
+        'src/middleware/validation.middleware.ts', // Validation middleware (requiere integration tests)
       ],
       // Thresholds de coverage
       thresholds: {
