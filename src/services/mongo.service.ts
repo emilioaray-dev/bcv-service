@@ -34,7 +34,7 @@ export class MongoService implements ICacheService {
         heartbeatFrequencyMS: number;
         retryWrites: boolean;
         retryReads: boolean;
-        compressors: string[];
+        compressors: ("none" | "snappy" | "zlib" | "zstd")[];
       };
     }
   ) {

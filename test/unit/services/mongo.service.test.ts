@@ -24,7 +24,7 @@ const testMongoConfig = {
     heartbeatFrequencyMS: 10000,
     retryWrites: true,
     retryReads: true,
-    compressors: ['zstd', 'snappy', 'zlib'],
+    compressors: ['zstd', 'snappy', 'zlib'] as ('none' | 'snappy' | 'zlib' | 'zstd')[],
   }
 };
 
