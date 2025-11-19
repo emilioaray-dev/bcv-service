@@ -1,0 +1,49 @@
+# Nombre del workflow que aparecerá en la pestaña "Actions" de GitHub
+name: Publish Docker Image to GHCR
+
+# Define cuándo se debe ejecutar este workflow
+on:
+  # Se activa en cada "push" a la rama "main"
+  push:
+    branches:
+      - main
+
+# Define los trabajos (jobs) que se van a ejecutar
+jobs:
+  build-and-push-image:
+    # ¡Importante! Le dice a GitHub que use tu runner autoalojado
+    runs-on: self-hosted
+
+    # Los pasos que ejecutará el runner
+    steps:
+      # 1. Clona tu repositorio en el runner para tener acceso al código y al Dockerfile
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      # 2. Inicia sesión en el GitHub Container Registry (ghcr.io)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          # El usuario es tu nombre de usuario de GitHub
+          username: ${{ github.actor }}
+          # La contraseña es el token que guardamos como secreto
+          password: ${{ secrets.GH_PAT }}
+
+      # 3. Extrae metadatos (como las etiquetas) para la imagen de Docker
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Define el nombre de la imagen usando tu usuario/organización y nombre de repositorio
+          images: ghcr.io/${{ github.repository }}
+
+      # 4. Construye la imagen de Docker y la sube al registro
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Usa las etiquetas generadas en el paso anterior (ej: latest, y una por commit)
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
