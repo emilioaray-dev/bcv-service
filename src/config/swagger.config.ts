@@ -8,11 +8,6 @@ export const swaggerOptions: OAS3Options = {
       version: '1.0.0',
       description:
         'API REST para consultar tasas de cambio del Banco Central de Venezuela (BCV) con actualizaciones en tiempo real mediante WebSockets',
-      contact: {
-        name: 'Celsius Aray',
-        email: 'emilioaray@gmail.com',
-        url: 'https://github.com/emilioaray-dev/bcv-service',
-      },
       license: {
         name: 'MIT',
         url: 'https://opensource.org/licenses/MIT',

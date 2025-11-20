@@ -13,6 +13,7 @@ import type {
   WebhookPayload,
 } from '@/interfaces/IWebhookService';
 import type { BCVRateData } from '@/services/bcv.service';
+import { getCurrencyRate } from '@/services/bcv.service';
 
 /**
  * WebhookService - Service for sending HTTP webhook notifications
@@ -105,13 +106,16 @@ export class WebhookService implements IWebhookService {
     };
 
     // Add change information if previous rate exists
-    if (previousRate?.rate) {
+    const currentUsdRate = getCurrencyRate(rate, 'USD');
+    const previousUsdRate = getCurrencyRate(previousRate || null, 'USD');
+
+    if (previousRate && previousUsdRate > 0) {
       const percentageChange =
-        ((rate.rate - previousRate.rate) / previousRate.rate) * 100;
+        ((currentUsdRate - previousUsdRate) / previousUsdRate) * 100;
 
       payload.data.change = {
-        previousRate: previousRate.rate,
-        currentRate: rate.rate,
+        previousRate: previousUsdRate,
+        currentRate: currentUsdRate,
         percentageChange: Number(percentageChange.toFixed(4)),
       };
     }

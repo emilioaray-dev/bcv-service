@@ -4,6 +4,7 @@ import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
 import type { ICacheService } from '@/services/cache.interface';
+import { getCurrencyRate } from '@/services/bcv.service';
 import log from '@/utils/logger';
 import { inject, injectable } from 'inversify';
 import cron from 'node-cron';
@@ -86,15 +87,17 @@ export class SchedulerService implements ISchedulerService {
       }
 
       // Actualizar métrica de última tasa obtenida
-      this.metricsService.setLatestRate(currentData.rate);
+      this.metricsService.setLatestRate(getCurrencyRate(currentData, 'USD'));
 
       // Obtener la tasa almacenada previamente
       const previousRate = await this.cacheService.getLatestRate();
 
       // Solo guardar si hay un cambio significativo o si es la primera vez
+      const currentUsdRate = getCurrencyRate(currentData, 'USD');
+      const previousUsdRate = getCurrencyRate(previousRate, 'USD');
       const hasSignificantChange =
         !previousRate ||
-        Math.abs((previousRate.rate || 0) - currentData.rate) > 0.0001 ||
+        Math.abs(previousUsdRate - currentUsdRate) > 0.0001 ||
         (currentData.rates &&
           previousRate?.rates &&
           JSON.stringify(currentData.rates) !==
@@ -103,23 +106,22 @@ export class SchedulerService implements ISchedulerService {
       if (hasSignificantChange) {
         if (this.saveToDatabase) {
           const newRate = await this.cacheService.saveRate({
-            rate: currentData.rate,
-            rates: currentData.rates || [],
+            rates: currentData.rates,
             date: currentData.date,
             source: 'bcv',
           });
 
           log.info('Tasa actualizada', {
-            rate: newRate.rate,
+            usdRate: getCurrencyRate(newRate, 'USD'),
             date: newRate.date,
             detailedRates: newRate.rates,
           });
 
           // Notificar a los clientes WebSocket
-          const change = previousRate ? newRate.rate - previousRate.rate : 0;
+          const newUsdRate = getCurrencyRate(newRate, 'USD');
+          const change = previousRate ? newUsdRate - previousUsdRate : 0;
           this.webSocketService.broadcastRateUpdate({
             timestamp: new Date().toISOString(),
-            rate: newRate.rate,
             rates: newRate.rates,
             change,
             eventType: 'rate-update',
@@ -129,7 +131,7 @@ export class SchedulerService implements ISchedulerService {
           this.metricsService.incrementBCVUpdateSuccess();
         } else {
           log.info('Modo consola: Tasa cambiada - NO se almacenó en DB', {
-            rate: currentData.rate,
+            usdRate: currentUsdRate,
             date: currentData.date,
             detailedRates: currentData.rates,
           });
@@ -139,7 +141,7 @@ export class SchedulerService implements ISchedulerService {
         }
       } else {
         log.debug('Tasa sin cambios, no se almacenó', {
-          rate: currentData.rate,
+          usdRate: currentUsdRate,
         });
       }
     } catch (error: unknown) {

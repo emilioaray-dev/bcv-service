@@ -6,7 +6,6 @@ export interface CurrencyRate {
 
 export interface Rate {
   id: string;
-  rate: number; // Tasa principal (por ejemplo, USD)
   rates: CurrencyRate[]; // Todas las tasas (EUR, CNY, TRY, RUB, USD, etc.)
   date: string;
   source: string;
@@ -15,8 +14,7 @@ export interface Rate {
 
 export interface RateUpdateEvent {
   timestamp: string;
-  rate: number;
-  rates?: CurrencyRate[]; // Opcional para mantener compatibilidad
+  rates: CurrencyRate[];
   change?: number;
   eventType: 'rate-update';
 }

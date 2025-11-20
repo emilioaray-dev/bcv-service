@@ -1,8 +1,13 @@
 # Usa una imagen base de Node.js con Alpine Linux para un tamaño más pequeño
 FROM node:20-alpine
 
-# Instala pnpm globalmente
-RUN npm install -g pnpm
+# Instala certificados CA raíz, pnpm y wget para healthcheck
+RUN apk add --no-cache ca-certificates wget && \
+    update-ca-certificates && \
+    npm install -g pnpm
+
+# Configura Node.js para usar certificados del sistema
+ENV NODE_OPTIONS="--use-openssl-ca"
 
 # Crea el directorio de trabajo
 WORKDIR /app

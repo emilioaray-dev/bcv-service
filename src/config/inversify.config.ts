@@ -89,8 +89,7 @@ export function createContainer(server: HttpServer): Container {
       disconnect: async () => {},
       saveRate: async (rate) => ({
         id: `${rate.date}-${rate.source}`,
-        rate: rate.rate,
-        rates: rate.rates || [],
+        rates: rate.rates,
         date: rate.date,
         source: rate.source,
         createdAt: new Date().toISOString(),

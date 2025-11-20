@@ -19,8 +19,17 @@ export interface CurrencyRate {
 export interface BCVRateData {
   date: string;
   rates: CurrencyRate[];
-  // Propiedades individuales para compatibilidad hacia atrás
-  rate: number; // Tasa del dólar (para compatibilidad)
+}
+
+/**
+ * Helper function para obtener la tasa de una moneda específica
+ */
+export function getCurrencyRate(
+  rateData: BCVRateData | null,
+  currency: string = 'USD'
+): number {
+  if (!rateData) return 0;
+  return rateData.rates.find((r) => r.currency === currency)?.rate || 0;
 }
 
 export interface BCVConfig {
@@ -81,8 +90,8 @@ export class BCVService implements IBCVService {
 
           if (hasChange) {
             log.info('Detectado cambio en las tasas de cambio', {
-              previousRate: this.lastRate?.rate,
-              currentRate: rateData.rate,
+              previousRate: getCurrencyRate(this.lastRate, 'USD'),
+              currentRate: getCurrencyRate(rateData, 'USD'),
               timestamp: new Date().toISOString(),
             });
 
@@ -121,7 +130,6 @@ export class BCVService implements IBCVService {
             try {
               const rateUpdateEvent = {
                 timestamp: new Date().toISOString(),
-                rate: rateData.rate,
                 rates: rateData.rates,
                 change: this.calculateChange(this.lastRate, rateData),
                 eventType: 'rate-update' as const,
@@ -161,9 +169,10 @@ export class BCVService implements IBCVService {
 
   private async fetchRateData(): Promise<BCVRateData | null> {
     try {
-      // Crear agente HTTPS que ignora verificación de certificados solo en desarrollo
+      // Crear agente HTTPS que ignora verificación de certificados
+      // Necesario porque el sitio del BCV tiene problemas con la cadena de certificados
       const httpsAgent = new https.Agent({
-        rejectUnauthorized: process.env.NODE_ENV === 'production',
+        rejectUnauthorized: false,
       });
 
       // Hacer scraping del sitio oficial del BCV
@@ -240,15 +249,20 @@ export class BCVService implements IBCVService {
       }
 
       if (rates.length > 0) {
-        return {
+        const rateData: BCVRateData = {
           date: dateString,
           rates: rates,
-          // Mantener 'rate' para compatibilidad hacia atrás (seleccionando la tasa del dólar)
-          rate:
-            dollarRate > 0
-              ? dollarRate
-              : rates.find((r) => r.currency === 'USD')?.rate || rates[0].rate,
         };
+
+        // Log exitoso de obtención de tasas
+        log.info('Tasas del BCV obtenidas exitosamente', {
+          date: dateString,
+          dollarRate: getCurrencyRate(rateData, 'USD'),
+          totalCurrencies: rates.length,
+          currencies: rates.map(r => `${r.currency}: ${r.rate}`).join(', '),
+        });
+
+        return rateData;
       }
 
       // Si no se encontraron tasas en el formato esperado, intentar otros métodos
@@ -268,7 +282,6 @@ export class BCVService implements IBCVService {
             return {
               date: new Date().toISOString().split('T')[0],
               rates: [{ currency: 'USD', rate, name: 'Dólar' }], // Tasa genérica
-              rate,
             };
           }
         }
@@ -305,10 +318,11 @@ export class BCVService implements IBCVService {
     }
 
     // Comparar porcentaje de cambio para la tasa principal (dólar)
+    const currentUsdRate = getCurrencyRate(current, 'USD');
+    const previousUsdRate = getCurrencyRate(previous, 'USD');
     const rateChange =
-      Math.abs(
-        ((current.rate || 0) - (previous.rate || 0)) / (previous.rate || 1)
-      ) * 100;
+      Math.abs((currentUsdRate - previousUsdRate) / (previousUsdRate || 1)) *
+      100;
 
     // Consideramos cambio si la diferencia es mayor al 0.1% o si las tasas son diferentes
     if (rateChange > 0.1) {
@@ -349,7 +363,9 @@ export class BCVService implements IBCVService {
       return 0;
     }
 
-    const change = current.rate - previous.rate;
+    const currentUsdRate = getCurrencyRate(current, 'USD');
+    const previousUsdRate = getCurrencyRate(previous, 'USD');
+    const change = currentUsdRate - previousUsdRate;
     return change;
   }
 

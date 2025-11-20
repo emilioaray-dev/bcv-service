@@ -61,7 +61,7 @@ export class WebSocketService implements IWebSocketService {
 
     log.debug('Actualización de tasa transmitida por WebSocket', {
       eventType: rateUpdate.eventType,
-      rate: rateUpdate.rate,
+      currencies: rateUpdate.rates.length,
       clientsSent: sentCount,
       totalClients: this.clients.size,
     });

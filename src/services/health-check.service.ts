@@ -1,6 +1,7 @@
 import { config } from '@/config';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
+import { getCurrencyRate } from '@/services/bcv.service';
 import type {
   HealthCheck,
   HealthCheckResult,
@@ -156,7 +157,7 @@ export class HealthCheckService implements IHealthCheckService {
           status: 'healthy',
           message: 'BCV service is healthy',
           details: {
-            lastRate: rate.rate,
+            lastRate: getCurrencyRate(rate, 'USD'),
             date: rate.date,
             currencies: rate.rates?.length || 0,
           },

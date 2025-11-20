@@ -4,6 +4,7 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 
 import type { BCVRateData, CurrencyRate } from '@/services/bcv.service';
+import { getCurrencyRate } from '@/services/bcv.service';
 
 export interface IDiscordService {
   sendRateUpdateNotification(rate: BCVRateData): Promise<void>;
@@ -38,9 +39,7 @@ export class DiscordService implements IDiscordService {
     }
 
     try {
-      const rateData = Array.isArray(rate.rates)
-        ? rate.rates
-        : [{ currency: 'USD', rate: rate.rate, name: 'Dólar' }];
+      const rateData = rate.rates;
 
       const message = {
         embeds: [
@@ -74,7 +73,7 @@ export class DiscordService implements IDiscordService {
 
       logger.info('Notificación enviada a Discord', {
         webhookUrl: this.webhookUrl ? '***HIDDEN***' : 'No configurado',
-        rate: rate.rate,
+        usdRate: getCurrencyRate(rate, 'USD'),
         timestamp: new Date().toISOString(),
       });
     } catch (error: unknown) {

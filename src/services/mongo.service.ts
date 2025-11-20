@@ -137,8 +137,7 @@ export class MongoService implements ICacheService {
 
     const rateToInsert: Rate = {
       id,
-      rate: rate.rate,
-      rates: rate.rates || [], // Incluir todas las tasas
+      rates: rate.rates,
       date: rate.date,
       source: rate.source,
       createdAt,

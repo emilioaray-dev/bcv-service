@@ -53,10 +53,6 @@ export const BCVRateDataSchema = z.object({
   rates: z
     .array(CurrencyRateSchema)
     .min(1, 'Debe haber al menos una tasa de cambio'),
-  rate: z
-    .number()
-    .positive('La tasa del dólar debe ser un número positivo')
-    .finite('La tasa debe ser un número finito'),
 });
 
 /**
