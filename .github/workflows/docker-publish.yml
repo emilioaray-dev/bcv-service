@@ -1,5 +1,5 @@
 # Nombre del workflow que aparecerá en la pestaña "Actions" de GitHub
-name: Publish Docker Image to GHCR
+name: Build, Publish and Deploy
 
 # Define cuándo se debe ejecutar este workflow
 on:
@@ -47,3 +47,72 @@ jobs:
           # Usa las etiquetas generadas en el paso anterior (ej: latest, y una por commit)
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # Job de deployment automático a Proxmox VM
+  deploy-to-proxmox:
+    name: Deploy to Proxmox VM
+    runs-on: self-hosted
+    needs: build-and-push-image
+    # Solo ejecutar si el build fue exitoso
+    if: success()
+
+    steps:
+      - name: Deploy to Proxmox via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROXMOX_HOST }}
+          username: ${{ secrets.PROXMOX_USER }}
+          key: ${{ secrets.PROXMOX_SSH_KEY }}
+          port: ${{ secrets.PROXMOX_PORT || 22 }}
+          script: |
+            echo "🚀 Iniciando deployment en Proxmox VM"
+            echo "📦 Imagen: ghcr.io/${{ github.repository }}:main"
+
+            # Navegar al directorio del proyecto
+            cd ${{ secrets.PROXMOX_PROJECT_PATH || '/opt/bcv-service' }}
+
+            # Determinar qué archivo docker-compose usar
+            if [ -f "docker-compose.production.yml" ]; then
+              COMPOSE_FILE="docker-compose.production.yml"
+            else
+              COMPOSE_FILE="docker-compose.yml"
+            fi
+            echo "📄 Usando archivo: $COMPOSE_FILE"
+
+            # Mostrar estado actual
+            echo "📊 Estado actual de contenedores:"
+            docker-compose -f $COMPOSE_FILE ps
+
+            # Hacer login en GitHub Container Registry
+            echo "🔐 Autenticando en GHCR..."
+            echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Descargar la nueva imagen
+            echo "⬇️ Descargando nueva imagen..."
+            docker-compose -f $COMPOSE_FILE pull bcv-service
+
+            # Detener y eliminar contenedores antiguos
+            echo "🛑 Deteniendo contenedores..."
+            docker-compose -f $COMPOSE_FILE down
+
+            # Iniciar con la nueva imagen
+            echo "▶️ Iniciando contenedores actualizados..."
+            docker-compose -f $COMPOSE_FILE up -d
+
+            # Esperar a que los servicios estén saludables
+            echo "⏳ Esperando a que los servicios estén listos..."
+            sleep 10
+
+            # Verificar estado final
+            echo "✅ Estado final de contenedores:"
+            docker-compose -f $COMPOSE_FILE ps
+
+            # Verificar logs recientes
+            echo "📝 Logs recientes del servicio:"
+            docker-compose -f $COMPOSE_FILE logs --tail=20 bcv-service
+
+            # Limpiar imágenes antiguas
+            echo "🧹 Limpiando imágenes antiguas..."
+            docker image prune -f
+
+            echo "✅ Deployment completado exitosamente!"
