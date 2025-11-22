@@ -20,7 +20,7 @@ export const swaggerOptions: OAS3Options = {
         description: 'Servidor de desarrollo',
       },
       {
-        url: 'https://api.example.com',
+        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
         description: 'Servidor de producción',
       },
     ],

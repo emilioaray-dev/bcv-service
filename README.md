@@ -17,6 +17,7 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - ✅ **Notificaciones a Discord** cuando se detectan cambios en tasas
 - ✅ API REST con autenticación por API Key
 - ✅ Rate limiting para protección contra abuso
+- ✅ **Apagado gracioso** con cierre ordenado de recursos y conexiones
 
 ### Arquitectura y Calidad
 - ✅ **Arquitectura SOLID** con Inversify para Dependency Injection
@@ -50,6 +51,7 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - [Monitoreo](#-monitoreo)
 - [Scripts](#-scripts-disponibles)
 - [Troubleshooting](#️-solución-de-problemas)
+  - [Apagado Gracioso (Graceful Shutdown)](#apagado-gracioso-graceful-shutdown)
 - [Contribución](#-contribución)
 
 ## 📋 Requisitos
@@ -422,6 +424,9 @@ DEV_FILE_LOGS=false              # Escribir logs a archivo en desarrollo
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000      # Ventana de tiempo (15 min default)
 RATE_LIMIT_MAX_REQUESTS=100      # Máximo de requests por ventana
+
+# Swagger/OpenAPI Documentation
+SWAGGER_PROD_URL=https://bcv-api.yourdomain.com  # URL del servidor de producción para Swagger (default: https://api.example.com)
 ```
 
 ### Docker Secrets (Recomendado para Producción)
@@ -594,10 +599,10 @@ git commit -m "refactor: improve error handling"  # PATCH
 docker-compose up -d
 
 # Usar versión específica
-DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.0.2 docker-compose up -d
+DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.1.0 docker-compose up -d
 
 # Rollback a versión anterior
-DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.0.1 docker-compose up -d
+DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.1.1 docker-compose up -d
 ```
 
 #### 🔄 Proceso de Desarrollo
@@ -669,6 +674,12 @@ src/
 **Configuración de seguridad y rendimiento:**
 - **Security Headers**: Configurados en `src/Application.ts` con Helmet.js
 - **Compresión de respuestas**: Configurada en `src/Application.ts` con compression middleware
+
+**Apagado Gracioso (Graceful Shutdown):**
+- **Manejo de señales**: El servicio maneja las señales SIGTERM y SIGINT para cerrarse ordenadamente
+- **Cierre de conexiones**: Cierra todas las conexiones de Redis, MongoDB y WebSocket antes de apagar
+- **Liberación de recursos**: Asegura la desconexión de todos los servicios antes de finalizar el proceso
+- **Implementación**: Utiliza el método `close()` en la clase `Application` para liberar recursos
 
 ### Flujo de Datos
 
@@ -884,6 +895,30 @@ PORT=3001 pnpm dev
 3. Verificar credenciales si usas autenticación
 4. Verificar firewall y reglas de red
 
+### Apagado Gracioso (Graceful Shutdown)
+
+El servicio implementa un sistema de apagado gracioso que asegura el cierre ordenado de todos los recursos antes de finalizar el proceso. Esto es especialmente importante en entornos de contenedores (Docker, Kubernetes) y en despliegues automatizados.
+
+**Funcionalidades:**
+- **Manejo de señales**: El servicio responde a las señales SIGTERM y SIGINT
+- **Cierre de conexiones**: Cierra de forma segura todas las conexiones activas
+- **Liberación de recursos**: Desconecta Redis, MongoDB, detiene el scheduler y cierra el servidor HTTP
+- **Finalización limpia**: Asegura que no hay procesos pendientes antes de salir
+
+**Comportamiento durante apagado:**
+1. Recibe señal de sistema (SIGTERM/SIGINT)
+2. Detiene nuevas conexiones
+3. Finaliza procesamiento de tareas en curso
+4. Cierra conexiones activas
+5. Desconecta servicios (Redis, MongoDB, etc.)
+6. Cierra servidor HTTP
+7. Finaliza proceso con código 0
+
+**Útil para:**
+- Despliegues sin tiempo de inactividad (zero-downtime deployments)
+- Entornos de contenedores (Docker, Kubernetes)
+- Operaciones de mantenimiento programado
+
 ### Rate Limit alcanzado
 
 **Síntomas:**
@@ -981,6 +1016,6 @@ Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detall
 
 ---
 
-**Versión:** 1.0.0
+**Versión:** 1.1.1
 **Última actualización:** Noviembre 2025
 **Estado:** Production Ready 🚀
