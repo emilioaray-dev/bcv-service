@@ -11,8 +11,8 @@ on:
 # Define los trabajos (jobs) que se van a ejecutar
 jobs:
   build-and-push-image:
-    # ¡Importante! Le dice a GitHub que use tu runner autoalojado
-    runs-on: self-hosted
+    # Usa runners públicos de GitHub
+    runs-on: ubuntu-latest
 
     # Los pasos que ejecutará el runner
     steps:
@@ -51,7 +51,7 @@ jobs:
   # Job de deployment automático a Proxmox VM
   deploy-to-proxmox:
     name: Deploy to Proxmox VM
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: build-and-push-image
     # Solo ejecutar si el build fue exitoso
     if: success()
