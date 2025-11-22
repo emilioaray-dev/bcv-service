@@ -427,6 +427,9 @@ RATE_LIMIT_MAX_REQUESTS=100      # Máximo de requests por ventana
 
 # Swagger/OpenAPI Documentation
 SWAGGER_PROD_URL=https://bcv-api.yourdomain.com  # URL del servidor de producción para Swagger (default: https://api.example.com)
+# Nota: La lista de servidores en Swagger se adapta dinámicamente según NODE_ENV:
+# - En desarrollo: muestra servidores de desarrollo y producción
+# - En producción: muestra solo servidor de producción
 ```
 
 ### Docker Secrets (Recomendado para Producción)
