@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.1.0...v1.1.1) (2025-11-22)
+
+
+### Bug Fixes
+
+* **ci:** corregir outputs del stage de semantic-release para habilitar ejecución de stages siguientes ([c1d1649](https://github.com/emilioaray-dev/bcv-service/commit/c1d1649572eaff3b7b6c6477dd05db5771ab63cd))
+
 # [1.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.0.1...v1.1.0) (2025-11-22)
 
 
