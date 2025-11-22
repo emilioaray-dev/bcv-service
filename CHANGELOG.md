@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.0.0...v1.0.1) (2025-11-22)
+
+
+### Bug Fixes
+
+* **ci:** use semantic-release GitHub Action to properly export outputs ([7da4e41](https://github.com/emilioaray-dev/bcv-service/commit/7da4e410ca5c689a8c63217cdf89600679b0eac3))
+
 # 1.0.0 (2025-11-22)
 
 
