@@ -58,36 +58,47 @@ jobs:
     runs-on: self-hosted
     needs: validate-and-test  # Solo ejecutar si los tests pasaron
     outputs:
-      new-release-published: ${{ steps.semantic.outputs.new-release-published }}
-      new-release-version: ${{ steps.semantic.outputs.new-release-version }}
-      new-release-major-version: ${{ steps.semantic.outputs.new-release-major-version }}
-      new-release-minor-version: ${{ steps.semantic.outputs.new-release-minor-version }}
+      # Determinar si se publicó una nueva versión comparando la versión antes y después
+      new-release-published: ${{ steps.version_check.outputs.new-release-published }}
 
     steps:
-      # 1. Checkout con historial completo para semantic-release
+      # 1. Obtener la versión actual antes de semantic-release
+      - name: 📋 Get current version before semantic-release
+        id: get_version_before
+        run: |
+          if [ -f package.json ]; then
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version_before=$VERSION" >> $GITHUB_OUTPUT
+            echo "Current version before: $VERSION"
+          else
+            echo "version_before=0.0.0" >> $GITHUB_OUTPUT
+            echo "package.json not found, setting default version"
+          fi
+
+      # 2. Checkout con historial completo para semantic-release
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Historial completo necesario
           token: ${{ secrets.GH_PAT }}  # Token con permisos para hacer push
 
-      # 2. Setup Node.js
+      # 3. Setup Node.js
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      # 3. Instalar dependencias
+      # 4. Instalar dependencias
       - name: 📦 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 4. Configurar Git
+      # 5. Configurar Git
       - name: 🔧 Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 5. Run Semantic Release
+      # 6. Run Semantic Release
       - name: 🚀 Run Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
@@ -99,13 +110,33 @@ jobs:
             @semantic-release/changelog
             @semantic-release/git
 
-      # 6. Log release information
-      - name: 📊 Log release information
-        if: steps.semantic.outputs.new-release-published == 'true'
+      # 7. Obtener la versión después de semantic-release y comparar
+      - name: 📋 Check if release was published by comparing versions
+        id: version_check
         run: |
+          VERSION_AFTER=$(node -p "require('./package.json').version")
+          VERSION_BEFORE="${{ steps.get_version_before.outputs.version_before }}"
+
+          echo "Version before: $VERSION_BEFORE"
+          echo "Version after: $VERSION_AFTER"
+
+          if [ "$VERSION_AFTER" != "$VERSION_BEFORE" ]; then
+            echo "new-release-published=true" >> $GITHUB_OUTPUT
+            echo "Version changed, new release published"
+            echo "🎉 New release published: $VERSION_BEFORE -> $VERSION_AFTER"
+          else
+            echo "new-release-published=false" >> $GITHUB_OUTPUT
+            echo "No version change, no new release published"
+          fi
+
+      # 8. Log release information
+      - name: 📊 Log release information
+        if: steps.version_check.outputs.new-release-published == 'true'
+        run: |
+          VERSION_AFTER=$(node -p "require('./package.json').version")
           echo "🎉 New release published!"
-          echo "📦 Version: ${{ steps.semantic.outputs.new-release-version }}"
-          echo "🏷️ Tag: v${{ steps.semantic.outputs.new-release-version }}"
+          echo "📦 Version: $VERSION_AFTER"
+          echo "🏷️ Tag: v$VERSION_AFTER"
 
   # ═══════════════════════════════════════════════════════════════════════════
   # STAGE 3: BUILD & PUBLISH DOCKER IMAGE
