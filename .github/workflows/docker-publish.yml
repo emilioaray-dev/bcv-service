@@ -90,10 +90,14 @@ jobs:
       # 5. Run Semantic Release
       - name: 🚀 Run Semantic Release
         id: semantic
+        uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          pnpm semantic-release
+        with:
+          branch: main
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git
 
       # 6. Log release information
       - name: 📊 Log release information
