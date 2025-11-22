@@ -1,90 +1,235 @@
-# Despliegue Automático con Webhooks de GitHub
+# Configuración de Deployment Automático a Proxmox
 
-Este documento explica cómo funciona el despliegue automático del servicio utilizando un receptor de webhooks en el servidor de destino.
+Este documento explica cómo configurar el deployment automático desde GitHub Actions a tu VM de Proxmox.
 
-## Flujo de Despliegue
+## Flujo de Deployment Automático
 
-El proceso está diseñado para ser simple y seguro. Cada vez que se hace un `push` a la rama `main`:
-
-1.  **Build en GitHub Actions**: Un workflow de GitHub Actions se activa, construye la nueva imagen de Docker del servicio y la publica en el GitHub Container Registry (GHCR).
-2.  **Notificación por Webhook**: Una vez que la imagen es publicada, GitHub envía una notificación (un evento de webhook) a una URL pública configurada en el servidor de despliegue.
-3.  **Recepción y Verificación**: Un servicio ligero (`webhook-listener.js`) que corre en el servidor de despliegue escucha en esa URL. Verifica que la petición venga de GitHub usando un secreto compartido.
-4.  **Ejecución del Despliegue**: Si la firma del webhook es válida, el listener ejecuta el script `update_bcv_service.sh`.
-5.  **Actualización del Servicio**: El script se encarga de:
-    *   Autenticarse en GHCR.
-    *   Descargar (`pull`) la nueva imagen de Docker.
-    *   Reiniciar los servicios usando `docker-compose`.
-    *   Limpiar imágenes de Docker antiguas.
+Cada vez que haces push a `main`:
+1. ✅ GitHub Actions construye la imagen Docker
+2. ✅ La imagen se publica en GitHub Container Registry (GHCR)
+3. ✅ Se conecta automáticamente a tu VM de Proxmox vía SSH
+4. ✅ Descarga la nueva imagen
+5. ✅ Reinicia los contenedores con la nueva versión
+6. ✅ Muestra logs del deployment en GitHub Actions
 
 ## Configuración Requerida
 
-### 1. Prerrequisitos en el Servidor
+### 1. Generar Par de Claves SSH
 
-Asegúrate de que en tu servidor de despliegue (la máquina donde correrá el servicio) tengas instalado:
-*   Node.js (v18+)
-*   pnpm
-*   Docker
-*   Docker Compose
-*   pm2 (recomendado para mantener el listener corriendo)
+En tu máquina local, genera un par de claves SSH específico para deployment:
 
 ```bash
-# Instalar pm2 globalmente
-npm install -g pm2
+# Generar nueva clave SSH (sin passphrase para automatización)
+ssh-keygen -t ed25519 -C "github-actions-deployment" -f ~/.ssh/github_actions_deploy
+
+# Esto creará dos archivos:
+# - ~/.ssh/github_actions_deploy      (clave privada - para GitHub Secrets)
+# - ~/.ssh/github_actions_deploy.pub  (clave pública - para Proxmox VM)
 ```
 
-### 2. El Receptor de Webhooks (`webhook-listener.js`)
+### 2. Configurar la VM de Proxmox
 
-Este repositorio ya incluye el archivo `webhook-listener.js`, que es un servidor de Express simple para recibir las notificaciones. También se ha añadido un script en `package.json` para facilitar su ejecución.
-
-### 3. Iniciar el Receptor de Webhooks
-
-Para iniciar el listener, se recomienda usar `pm2` para asegurar que se mantenga corriendo de forma persistente.
-
-Desde la raíz del proyecto en tu servidor, ejecuta:
+Copia la clave pública a tu VM de Proxmox:
 
 ```bash
-# Reemplaza '<tu_secreto_muy_seguro>' con una clave aleatoria y larga
-GITHUB_WEBHOOK_SECRET='<tu_secreto_muy_seguro>' WEBHOOK_PORT=4000 pm2 start 'node webhook-listener.js' --name bcv-webhook-listener
+# Opción 1: Usando ssh-copy-id
+ssh-copy-id -i ~/.ssh/github_actions_deploy.pub usuario@IP_PROXMOX_VM
+
+# Opción 2: Manualmente
+# En tu VM de Proxmox, agregar la clave pública a:
+# ~/.ssh/authorized_keys
 ```
 
-*   `GITHUB_WEBHOOK_SECRET`: Es la clave secreta que compartirás con GitHub para verificar la autenticidad de los webhooks. **Debe ser un valor seguro y aleatorio**.
-*   `WEBHOOK_PORT`: Es el puerto en el que escuchará el receptor. Asegúrate de que este puerto sea accesible públicamente (puede que necesites configurar tu firewall).
-*   `--name bcv-webhook-listener`: Le da un nombre fácil de recordar al proceso en `pm2`.
+Asegúrate de que Docker y Docker Compose están instalados en la VM:
 
-Puedes verificar que está corriendo con `pm2 list`.
+```bash
+# Verificar instalaciones
+docker --version
+docker-compose --version
+```
 
-### 4. Configurar el Webhook en GitHub
+### 3. Preparar el Proyecto en Proxmox VM
 
-Ahora, debes configurar GitHub para que envíe los eventos a tu listener.
+```bash
+# En tu VM de Proxmox, crear el directorio del proyecto
+sudo mkdir -p /opt/bcv-service
+sudo chown -R $USER:$USER /opt/bcv-service
 
-1.  Ve a la página de tu repositorio en GitHub y navega a **Settings** > **Webhooks**.
-2.  Haz clic en **Add webhook**.
-3.  Rellena el formulario con la siguiente información:
-    *   **Payload URL**: La URL pública de tu servidor apuntando al puerto y la ruta del listener. Ejemplo: `http://TU_IP_PUBLICA:4000/webhook`.
-    *   **Content type**: `application/json`.
-    *   **Secret**: Pega aquí el mismo valor que usaste para la variable de entorno `GITHUB_WEBHOOK_SECRET`. Deben coincidir exactamente.
-    *   **SSL verification**: Se recomienda activarla si usas un dominio con HTTPS (por ejemplo, a través de un proxy inverso como Nginx).
-    *   **Which events would you like to trigger this webhook?**: Selecciona **Let me select individual events.** y luego marca únicamente la casilla de **Pushes**.
+# Copiar archivos necesarios (docker-compose.yml y .env)
+cd /opt/bcv-service
 
-4.  Haz clic en **Add webhook** para guardar.
+# Crear archivo .env con tus configuraciones
+nano .env
+```
 
-## Verificación
+**Importante**: El `docker-compose.yml` en Proxmox debe usar la imagen de GHCR en lugar de build local:
 
-Una vez todo esté configurado, puedes verificar el flujo completo:
+```yaml
+services:
+  bcv-service:
+    # Usar imagen publicada en GitHub Container Registry
+    image: ghcr.io/emilioaray-dev/bcv-service:main
+    # NO usar: build: .
 
-1.  Haz un `git push` a la rama `main`.
-2.  En la pestaña **Actions** de tu repositorio, verás el workflow `Build and Publish` ejecutándose. Espera a que termine.
-3.  En la configuración de **Webhooks** en GitHub, puedes ver el historial de entregas. El último evento de `push` debería tener una marca de verificación verde, indicando que fue entregado y recibido con una respuesta `200 OK`.
-4.  En tu servidor, puedes ver los logs del listener para confirmar que recibió el webhook y ejecutó el script:
+    container_name: bcv-service
+    # ... resto de la configuración
+```
 
-    ```bash
-    pm2 logs bcv-webhook-listener
-    ```
+### 4. Configurar GitHub Secrets
 
-    Deberías ver mensajes como "Firma de webhook verificada" y "Script de despliegue ejecutado exitosamente".
+Ve a tu repositorio en GitHub: `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
+
+Agrega los siguientes secrets:
+
+#### PROXMOX_HOST
+```
+IP o hostname de tu VM de Proxmox
+Ejemplo: 192.168.1.100
+```
+
+#### PROXMOX_USER
+```
+Usuario SSH en la VM
+Ejemplo: root o tu_usuario
+```
+
+#### PROXMOX_SSH_KEY
+```
+Contenido de la clave privada SSH
+```
+
+Para copiar el contenido:
+```bash
+# En tu máquina local
+cat ~/.ssh/github_actions_deploy
+# Copiar TODO el contenido, incluyendo:
+# -----BEGIN OPENSSH PRIVATE KEY-----
+# ...
+# -----END OPENSSH PRIVATE KEY-----
+```
+
+#### PROXMOX_PORT (opcional)
+```
+Puerto SSH (por defecto es 22)
+Si usas un puerto diferente, especifícalo aquí
+```
+
+#### PROXMOX_PROJECT_PATH (opcional)
+```
+Ruta completa donde está el proyecto en Proxmox
+Por defecto: /opt/bcv-service
+Si usas otra ruta, especifícala aquí
+```
+
+### 5. Verificar que GH_PAT está configurado
+
+El secret `GH_PAT` (GitHub Personal Access Token) debe estar configurado con permisos para:
+- ✅ `read:packages` - Leer paquetes del Container Registry
+- ✅ `write:packages` - Escribir paquetes al Container Registry
+
+## Verificación del Deployment
+
+### En GitHub Actions
+
+1. Ve a la pestaña `Actions` en tu repositorio
+2. Verás el workflow `Build, Publish and Deploy`
+3. Cada ejecución mostrará dos jobs:
+   - `build-and-push-image`: Construcción y publicación
+   - `deploy-to-proxmox`: Deployment a la VM
+
+### Logs Visibles
+
+El job `deploy-to-proxmox` mostrará logs detallados:
+```
+🚀 Iniciando deployment en Proxmox VM
+📦 Imagen: ghcr.io/emilioaray-dev/bcv-service:main
+📊 Estado actual de contenedores
+🔐 Autenticando en GHCR...
+⬇️ Descargando nueva imagen...
+🛑 Deteniendo contenedores...
+▶️ Iniciando contenedores actualizados...
+⏳ Esperando a que los servicios estén listos...
+✅ Estado final de contenedores
+📝 Logs recientes del servicio
+🧹 Limpiando imágenes antiguas...
+✅ Deployment completado exitosamente!
+```
+
+### Verificación Manual en Proxmox
+
+Conéctate a tu VM y verifica:
+
+```bash
+ssh usuario@IP_PROXMOX_VM
+
+# Ver contenedores en ejecución
+docker-compose ps
+
+# Ver logs del servicio
+docker-compose logs -f bcv-service
+
+# Verificar imagen actual
+docker images | grep bcv-service
+```
+
+## Troubleshooting
+
+### Error: Permission denied (publickey)
+- Verifica que la clave pública esté en `~/.ssh/authorized_keys` en Proxmox
+- Asegúrate de copiar la clave privada COMPLETA en el secret
+- Verifica que el usuario tenga permisos correctos
+
+### Error: docker-compose: command not found
+```bash
+# Instalar docker-compose en Proxmox VM
+sudo apt update
+sudo apt install docker-compose
+```
+
+### Error: Cannot connect to Docker daemon
+```bash
+# Agregar usuario al grupo docker
+sudo usermod -aG docker $USER
+# Cerrar sesión y volver a entrar
+```
+
+### Ver logs de deployment en tiempo real
+En GitHub Actions, haz clic en el job `deploy-to-proxmox` para ver los logs en vivo mientras se ejecuta.
+
+## Rollback Manual
+
+Si necesitas volver a una versión anterior:
+
+```bash
+# En Proxmox VM
+cd /opt/bcv-service
+
+# Ver imágenes disponibles
+docker images | grep bcv-service
+
+# Modificar docker-compose.yml para usar un tag específico
+# Cambiar: ghcr.io/emilioaray-dev/bcv-service:main
+# Por:     ghcr.io/emilioaray-dev/bcv-service:sha-abc123
+
+# Reiniciar con la versión específica
+docker-compose down
+docker-compose up -d
+```
 
 ## Seguridad
 
-*   **Secreto del Webhook**: El secreto compartido asegura que solo GitHub pueda disparar tus despliegues. No lo expongas públicamente.
-*   **Firewall**: Abre solo los puertos necesarios en tu servidor (en este caso, el `WEBHOOK_PORT` que hayas elegido).
-*   **Permisos mínimos**: El script `update_bcv_service.sh` se ejecuta con los permisos del usuario que corre el proceso `pm2`. Asegúrate de que este usuario tenga permisos para ejecutar `docker` y `docker-compose`.
+- ✅ La clave SSH es exclusiva para deployment (no reutilices tu clave personal)
+- ✅ Los secrets nunca se exponen en los logs
+- ✅ La comunicación SSH está cifrada
+- ✅ El token GH_PAT tiene permisos mínimos necesarios
+- ✅ Las credenciales de MongoDB están en variables de entorno, no en código
+
+## Próximos Pasos
+
+Una vez configurado, cada push a `main` activará automáticamente:
+1. Build de la imagen
+2. Publicación en GHCR
+3. Deployment a Proxmox
+4. Logs visibles en GitHub Actions
+
+¡Todo quedará documentado y rastreable en la pestaña Actions!
