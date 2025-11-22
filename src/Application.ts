@@ -6,6 +6,7 @@ import { createContainer } from '@/config/inversify.config';
 import { isUsingSecrets } from '@/config/secrets';
 import { swaggerOptions } from '@/config/swagger.config';
 import { TYPES } from '@/config/types';
+import { ROUTES } from '@/constants/routes';
 import { apiKeyAuth } from '@/middleware/auth.middleware';
 import log from '@/utils/logger';
 import { createRoutes } from '@/utils/routes';
@@ -92,7 +93,12 @@ export class Application {
     }
 
     // Security headers with Helmet
-    this.app.use(
+    this.app.use((req, res, next) => {
+      // Disable CSP for Swagger UI to allow inline scripts
+      if (req.path.startsWith(ROUTES.DOCS)) {
+        return next();
+      }
+
       helmet({
         contentSecurityPolicy: {
           directives: {
@@ -120,8 +126,8 @@ export class Application {
           action: 'sameorigin',
         },
         xPoweredBy: false, // Remove X-Powered-By header
-      })
-    );
+      })(req, res, next);
+    });
 
     // Compression middleware for performance
     this.app.use(
@@ -161,13 +167,13 @@ export class Application {
       },
       standardHeaders: true,
       legacyHeaders: false,
-      skip: (req) => !req.path.startsWith('/api'),
+      skip: (req) => !req.path.startsWith(ROUTES.API),
     });
 
-    this.app.use('/api/', apiLimiter);
+    this.app.use(`${ROUTES.API}/`, apiLimiter);
 
     // API Key authentication
-    this.app.use('/api/', apiKeyAuth);
+    this.app.use(`${ROUTES.API}/`, apiKeyAuth);
 
     // Metrics endpoint (sin autenticación ni rate limiting, para Prometheus)
     const metricsController = this.container.get<MetricsController>(
@@ -184,26 +190,26 @@ export class Application {
     // Swagger API Documentation (sin autenticación ni rate limiting)
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
     this.app.use(
-      '/api-docs',
+      ROUTES.DOCS,
       swaggerUi.serve,
       swaggerUi.setup(swaggerSpec, {
         customCss: '.swagger-ui .topbar { display: none }',
         customSiteTitle: 'BCV Service API Docs',
       })
     );
-    log.info('Swagger UI disponible en /api-docs');
+    log.info(`Swagger UI disponible en ${ROUTES.DOCS}`);
 
     // Rutas de API (con autenticación y rate limiting)
     this.app.use(createRoutes(this.cacheService, this.redisService));
 
     // Ruta principal
-    this.app.get('/', (_req, res) => {
+    this.app.get(ROUTES.ROOT, (_req, res) => {
       res.json({
         message: 'Microservicio BCV Tasa de Cambio',
         status: 'running',
         connectedClients: this.webSocketService.getConnectedClientsCount(),
         architecture: 'SOLID with Inversify DI',
-        documentation: '/api-docs',
+        documentation: ROUTES.DOCS,
       });
     });
   }

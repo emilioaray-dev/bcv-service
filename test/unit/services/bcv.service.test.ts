@@ -93,7 +93,9 @@ describe('BCVService', () => {
       expect(result).toBeDefined();
       expect(result?.date).toBe('2025-11-12');
       expect(result?.rates).toHaveLength(5);
-      expect(result?.rate).toBe(36.50); // Dólar rate para compatibilidad
+      // Verificar tasa de USD
+      const usdRate = result?.rates.find(r => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.50);
 
       // Verificar todas las monedas
       expect(result?.rates).toEqual(
@@ -175,7 +177,8 @@ describe('BCVService', () => {
       const result = await bcvService.getCurrentRate();
 
       expect(result).toBeDefined();
-      expect(result?.rate).toBe(36.50);
+      const usdRate = result?.rates.find(r => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.50);
       expect(mockedAxios.get).toHaveBeenCalledTimes(2);
     });
 
@@ -238,7 +241,8 @@ describe('BCVService', () => {
       const result = await bcvService.getCurrentRate();
 
       expect(result).toBeDefined();
-      expect(result?.rate).toBe(36.50);
+      const usdRate = result?.rates.find(r => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.50);
       expect(result?.rates).toHaveLength(1);
       expect(result?.rates[0]).toEqual({
         currency: 'USD',
@@ -406,7 +410,8 @@ describe('BCVService', () => {
 
       const result = await bcvService.getCurrentRate();
 
-      expect(result?.rate).toBe(36.50);
+      const usdRate = result?.rates.find(r => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.50);
     });
   });
 

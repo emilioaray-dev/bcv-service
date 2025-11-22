@@ -369,7 +369,7 @@ const swaggerSpec = swaggerJsdoc({
   apis: ['./src/**/*.ts']
 });
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 ```
 
 **Prioridad**: BAJA

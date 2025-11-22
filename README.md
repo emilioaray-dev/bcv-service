@@ -40,6 +40,7 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 - [Requisitos](#-requisitos)
 - [Instalación Rápida](#-instalación-rápida)
 - [Documentación](#-documentación)
+- [API Documentation (Swagger)](#-api-documentation-swagger)
 - [API Endpoints](#-api-endpoints)
 - [WebSockets](#-websockets)
 - [Variables de Entorno](#️-variables-de-entorno)
@@ -97,6 +98,36 @@ La documentación está organizada en las siguientes secciones:
 ### Desarrollo
 - [**Branch Strategy**](docs/development/BRANCH_STRATEGY.md) - Estrategia de branching
 - [**Tasks**](docs/development/TASKS.md) - Tareas y roadmap del proyecto
+
+## 📖 API Documentation (Swagger)
+
+El servicio incluye documentación interactiva de la API mediante **Swagger UI**, que permite:
+
+- ✅ Explorar todos los endpoints disponibles
+- ✅ Ver esquemas de request/response
+- ✅ Probar endpoints directamente desde el navegador
+- ✅ Consultar códigos de error y autenticación
+- ✅ Acceso sin autenticación ni rate limiting
+
+### Acceso a Swagger UI
+
+**Desarrollo local:**
+```
+http://localhost:3000/docs
+```
+
+**Producción:**
+```
+http://your-server-ip:3000/docs
+```
+
+### Características
+
+- **Sin autenticación**: No requiere API Key para visualizar la documentación
+- **Interactivo**: Permite probar endpoints directamente desde la interfaz
+- **OpenAPI 3.0**: Especificación estándar de la industria
+- **Esquemas completos**: Documentación detallada de todos los modelos de datos
+- **Ejemplos de uso**: Requests y responses de ejemplo para cada endpoint
 
 ## 🔌 API Endpoints
 
