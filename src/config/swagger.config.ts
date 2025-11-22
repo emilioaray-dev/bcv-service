@@ -1,12 +1,15 @@
 import type { OAS3Options } from 'swagger-jsdoc';
 import packageJson from '../../package.json';
 
+// URL por defecto para el servidor de producción de Swagger
+const DEFAULT_SWAGGER_PROD_URL = 'https://bcv.celsiusaray.com';
+
 // Determinar servidores según el entorno
 const isProduction = process.env.NODE_ENV === 'production';
 const servers = isProduction
   ? [
       {
-        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
+        url: process.env.SWAGGER_PROD_URL || DEFAULT_SWAGGER_PROD_URL,
         description: 'Servidor de producción',
       },
     ]
@@ -16,7 +19,7 @@ const servers = isProduction
         description: 'Servidor de desarrollo',
       },
       {
-        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
+        url: process.env.SWAGGER_PROD_URL || DEFAULT_SWAGGER_PROD_URL,
         description: 'Servidor de producción (disponible para pruebas)',
       },
     ];
