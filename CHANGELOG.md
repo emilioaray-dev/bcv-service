@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.2](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.1...v1.3.2) (2025-11-22)
+
+
+### Bug Fixes
+
+* **docker:** inject all environment variables from .env file into container ([5fdbdbb](https://github.com/emilioaray-dev/bcv-service/commit/5fdbdbb3616924a6a633a36ee14c9a91aff5ed15))
+
 ## [1.3.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.0...v1.3.1) (2025-11-22)
 
 
