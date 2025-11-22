@@ -10,6 +10,11 @@ services:
     container_name: ${BCV_CONTAINER_NAME:-bcv-service}
     ports:
       - "${BCV_HOST_PORT:-3000}:${PORT:-3000}"
+
+    # Cargar todas las variables de entorno desde el archivo .env
+    env_file:
+      - .env
+
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=${PORT:-3000}
@@ -33,12 +38,15 @@ services:
       # MongoDB Atlas (Cloud) - Toma del archivo .env
       - MONGODB_URI=${MONGODB_URI}
 
-      # Optional: API Keys for authentication
-      # - API_KEYS=${API_KEYS}
+      # Optional: API Keys for authentication (comma-separated)
+      - API_KEYS=${API_KEYS:-}
 
-      # Optional: Webhooks
-      # - WEBHOOK_URL=${WEBHOOK_URL}
-      # - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      # Optional: Webhook URLs for notifications
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+
+      # Optional: Swagger production server URL
+      - SWAGGER_PROD_URL=${SWAGGER_PROD_URL:-}
 
     depends_on:
       redis:

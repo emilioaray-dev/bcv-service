@@ -15,6 +15,11 @@ services:
     container_name: ${BCV_CONTAINER_NAME:-bcv-service}
     ports:
       - "${BCV_HOST_PORT:-3000}:${PORT:-3000}"
+
+    # Cargar todas las variables de entorno desde el archivo .env
+    env_file:
+      - .env
+
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=${PORT:-3000}
@@ -50,7 +55,15 @@ services:
       # MongoDB Local (comentado - solo para desarrollo local)
       # - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@mongo:27017/bcvdb?authSource=bcvdb
 
-      # - API_KEYS=key1,key2,key3  # Múltiples keys separadas por coma
+      # Optional: API Keys for authentication (comma-separated)
+      - API_KEYS=${API_KEYS:-}
+
+      # Optional: Webhook URLs for notifications
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+
+      # Optional: Swagger production server URL
+      - SWAGGER_PROD_URL=${SWAGGER_PROD_URL:-}
 
     # Descomenta la siguiente sección si usas Docker Secrets
     # secrets:
