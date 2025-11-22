@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.1.1...v1.2.0) (2025-11-22)
+
+
+### Features
+
+* **swagger:** add SWAGGER_PROD_URL environment variable for production server URL ([f8d4f58](https://github.com/emilioaray-dev/bcv-service/commit/f8d4f580b9f193b9d151d4c1f274563caa9c7acc))
+
 ## [1.1.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.1.0...v1.1.1) (2025-11-22)
 
 
