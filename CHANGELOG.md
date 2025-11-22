@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.2.0...v1.3.0) (2025-11-22)
+
+
+### Features
+
+* **swagger:** make server URLs dynamic based on NODE_ENV ([bc6da73](https://github.com/emilioaray-dev/bcv-service/commit/bc6da736302273cfc6d5d160cdc72d3eb8674db5))
+
 # [1.2.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.1.1...v1.2.0) (2025-11-22)
 
 
