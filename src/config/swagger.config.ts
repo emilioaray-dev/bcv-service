@@ -1,6 +1,26 @@
 import type { OAS3Options } from 'swagger-jsdoc';
 import packageJson from '../../package.json';
 
+// Determinar servidores según el entorno
+const isProduction = process.env.NODE_ENV === 'production';
+const servers = isProduction
+  ? [
+      {
+        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
+        description: 'Servidor de producción',
+      },
+    ]
+  : [
+      {
+        url: 'http://localhost:3000',
+        description: 'Servidor de desarrollo',
+      },
+      {
+        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
+        description: 'Servidor de producción (disponible para pruebas)',
+      },
+    ];
+
 export const swaggerOptions: OAS3Options = {
   definition: {
     openapi: '3.0.0',
@@ -14,16 +34,7 @@ export const swaggerOptions: OAS3Options = {
         url: 'https://opensource.org/licenses/MIT',
       },
     },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-        description: 'Servidor de desarrollo',
-      },
-      {
-        url: process.env.SWAGGER_PROD_URL || 'https://api.example.com',
-        description: 'Servidor de producción',
-      },
-    ],
+    servers,
     tags: [
       {
         name: 'Rates',
