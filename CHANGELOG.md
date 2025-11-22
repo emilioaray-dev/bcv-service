@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.0...v1.3.1) (2025-11-22)
+
+
+### Bug Fixes
+
+* **swagger:** use proper default production URL for Swagger documentation ([c0f4edc](https://github.com/emilioaray-dev/bcv-service/commit/c0f4edc8ab0d37939b36719b602729163cb3bdf3))
+
 # [1.3.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.2.0...v1.3.0) (2025-11-22)
 
 
