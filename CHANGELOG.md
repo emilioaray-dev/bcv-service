@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.0.1...v1.1.0) (2025-11-22)
+
+
+### Features
+
+* add graceful shutdown functionality with proper resource cleanup ([6d806b8](https://github.com/emilioaray-dev/bcv-service/commit/6d806b8786b728fb952f1ce64a93ea5e74bb173b))
+
 ## [1.0.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.0.0...v1.0.1) (2025-11-22)
 
 
