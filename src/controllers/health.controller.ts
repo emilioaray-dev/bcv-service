@@ -1,4 +1,5 @@
 import { TYPES } from '@/config/types';
+import { ROUTES } from '@/constants/routes';
 import type { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import log from '@/utils/logger';
 import { type Request, type Response, Router } from 'express';
@@ -27,27 +28,68 @@ export class HealthController {
   }
 
   private initializeRoutes(): void {
-    // Health check completo
-    this.router.get('/health', this.getHealth.bind(this));
+    // Kubernetes-style health checks
+    this.router.get(ROUTES.HEALTHZ, this.getLiveness.bind(this)); // Liveness probe
+    this.router.get(ROUTES.READYZ, this.getReadiness.bind(this)); // Readiness probe
+    this.router.get(ROUTES.HEALTH, this.getFullHealth.bind(this)); // Full health check
 
     // Health checks individuales
-    this.router.get('/health/mongodb', this.getMongoHealth.bind(this));
-    this.router.get('/health/scheduler', this.getSchedulerHealth.bind(this));
-    this.router.get('/health/bcv', this.getBCVHealth.bind(this));
-    this.router.get('/health/websocket', this.getWebSocketHealth.bind(this));
-
-    // Alias para Kubernetes
-    this.router.get('/healthz', this.getHealth.bind(this));
-    this.router.get('/readyz', this.getHealth.bind(this));
+    this.router.get(ROUTES.HEALTH_MONGODB, this.getMongoHealth.bind(this));
+    this.router.get(
+      ROUTES.HEALTH_SCHEDULER,
+      this.getSchedulerHealth.bind(this)
+    );
+    this.router.get(ROUTES.HEALTH_BCV, this.getBCVHealth.bind(this));
+    this.router.get(
+      ROUTES.HEALTH_WEBSOCKET,
+      this.getWebSocketHealth.bind(this)
+    );
+    this.router.get(ROUTES.HEALTH_REDIS, this.getRedisHealth.bind(this));
   }
 
   /**
-   * GET /health - Health check completo
-   * También disponible en /healthz y /readyz para Kubernetes
+   * GET /healthz - Liveness probe (ultra-rápido, sin I/O)
+   * Verifica que el proceso Node.js está vivo y puede procesar requests
+   * Debe responder en < 50ms
+   * Usado por Docker/Kubernetes para saber si reiniciar el contenedor
    */
-  private async getHealth(_req: Request, res: Response): Promise<void> {
+  private getLiveness(_req: Request, res: Response): void {
+    // Liveness check: solo verifica que el proceso está vivo
+    // NO hace I/O, NO consulta DB, NO hace HTTP requests
+    res.status(200).send('OK');
+  }
+
+  /**
+   * GET /readyz - Readiness probe (rápido, solo pings)
+   * Verifica que el servicio puede recibir tráfico
+   * Debe responder en < 500ms
+   * Usado por Docker/Kubernetes para saber si enviar tráfico
+   */
+  private async getReadiness(_req: Request, res: Response): Promise<void> {
     try {
-      const healthResult = await this.healthCheckService.checkHealth();
+      // Solo pings rápidos a dependencias críticas
+      const isReady = await this.healthCheckService.checkReadiness();
+
+      if (isReady) {
+        res.status(200).send('READY');
+      } else {
+        res.status(503).send('NOT READY');
+      }
+    } catch (error) {
+      log.error('Readiness check failed', { error });
+      res.status(503).send('ERROR');
+    }
+  }
+
+  /**
+   * GET /health - Full health check (detallado, puede ser lento)
+   * Incluye checks completos de todos los servicios
+   * Usado por dashboards y monitoring humano
+   * Puede tardar varios segundos
+   */
+  private async getFullHealth(_req: Request, res: Response): Promise<void> {
+    try {
+      const healthResult = await this.healthCheckService.checkFullHealth();
 
       // HTTP status code basado en el estado
       const statusCode =
@@ -60,7 +102,7 @@ export class HealthController {
 
       res.status(statusCode).json(healthResult);
     } catch (error) {
-      log.error('Health check endpoint failed', { error });
+      log.error('Full health check endpoint failed', { error });
       res.status(503).json({
         status: 'unhealthy',
         message: 'Health check failed',
@@ -147,6 +189,24 @@ export class HealthController {
       res.status(503).json({
         status: 'unhealthy',
         message: 'WebSocket health check failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * GET /health/redis - Health check del servicio Redis
+   */
+  private async getRedisHealth(_req: Request, res: Response): Promise<void> {
+    try {
+      const redisCheck = await this.healthCheckService.checkRedis();
+      const statusCode = redisCheck.status === 'healthy' ? 200 : 503;
+      res.status(statusCode).json(redisCheck);
+    } catch (error) {
+      log.error('Redis health check endpoint failed', { error });
+      res.status(503).json({
+        status: 'unhealthy',
+        message: 'Redis health check failed',
         error: error instanceof Error ? error.message : String(error),
       });
     }

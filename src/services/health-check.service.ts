@@ -1,7 +1,6 @@
 import { config } from '@/config';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
-import { getCurrencyRate } from '@/services/bcv.service';
 import type {
   HealthCheck,
   HealthCheckResult,
@@ -10,6 +9,7 @@ import type {
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import { getCurrencyRate } from '@/services/bcv.service';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
 import { inject, injectable } from 'inversify';
@@ -38,19 +38,39 @@ export class HealthCheckService implements IHealthCheckService {
   }
 
   /**
-   * Verifica el estado de salud completo del servicio
+   * Readiness check - Verifica si el servicio puede recibir tráfico
+   * Solo hace pings rápidos, NO hace I/O pesado
+   * Debe completarse en < 500ms
    */
-  async checkHealth(): Promise<HealthCheckResult> {
+  async checkReadiness(): Promise<boolean> {
+    try {
+      // Solo pings a dependencias críticas (MongoDB)
+      // Redis no es crítico, el servicio funciona sin cache
+      const [mongoOk] = await Promise.all([this.pingMongoDB()]);
+
+      return mongoOk;
+    } catch (error) {
+      log.error('Readiness check failed', { error });
+      return false;
+    }
+  }
+
+  /**
+   * Full health check - Verifica el estado completo del servicio
+   * Incluye checks detallados que pueden ser lentos
+   * NO incluye BCV scraping (se hace solo bajo demanda en /health/bcv)
+   */
+  async checkFullHealth(): Promise<HealthCheckResult> {
     const timestamp = new Date().toISOString();
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
-    // Ejecutar todos los checks en paralelo
-    const [mongoCheck, redisCheck, schedulerCheck, bcvCheck, websocketCheck] =
+    // Ejecutar checks en paralelo
+    // IMPORTANTE: NO incluimos checkBCV() aquí porque hace web scraping
+    const [mongoCheck, redisCheck, schedulerCheck, websocketCheck] =
       await Promise.all([
         this.checkMongoDB(),
         this.checkRedis(),
         this.checkScheduler(),
-        this.checkBCV(),
         this.checkWebSocket(),
       ]);
 
@@ -59,7 +79,6 @@ export class HealthCheckService implements IHealthCheckService {
       mongodb: mongoCheck,
       redis: redisCheck,
       scheduler: schedulerCheck,
-      bcv: bcvCheck,
       websocket: websocketCheck,
     };
 
@@ -74,13 +93,11 @@ export class HealthCheckService implements IHealthCheckService {
     else if (schedulerCheck.status === 'unhealthy') {
       overallStatus = 'unhealthy';
     }
-    // BCV, WebSocket o Redis degradados/unhealthy = servicio degradado
+    // WebSocket o Redis degradados/unhealthy = servicio degradado
     // (Redis no es crítico ya que el servicio puede funcionar sin cache)
     else if (
-      bcvCheck.status === 'degraded' ||
       websocketCheck.status === 'degraded' ||
       redisCheck.status === 'degraded' ||
-      bcvCheck.status === 'unhealthy' ||
       websocketCheck.status === 'unhealthy' ||
       redisCheck.status === 'unhealthy'
     ) {
@@ -96,16 +113,39 @@ export class HealthCheckService implements IHealthCheckService {
   }
 
   /**
-   * Verifica la conectividad a MongoDB
+   * Ping rápido a MongoDB (< 100ms)
+   * Solo verifica conectividad, NO hace queries
+   */
+  async pingMongoDB(): Promise<boolean> {
+    try {
+      // Verificar que la conexión existe y está activa
+      // Usamos un query muy simple que solo verifica la conexión
+      await this.cacheService.ping();
+      return true;
+    } catch (error) {
+      log.error('MongoDB ping failed', { error });
+      return false;
+    }
+  }
+
+  /**
+   * Verifica la conectividad a MongoDB (check detallado)
+   * Usa ping rápido en lugar de query completa
    */
   async checkMongoDB(): Promise<HealthCheck> {
     try {
-      // Intentar obtener la última tasa para verificar conectividad
-      await this.cacheService.getLatestRate();
+      const isConnected = await this.pingMongoDB();
+
+      if (isConnected) {
+        return {
+          status: 'healthy',
+          message: 'MongoDB connection is healthy',
+        };
+      }
 
       return {
-        status: 'healthy',
-        message: 'MongoDB connection is healthy',
+        status: 'unhealthy',
+        message: 'MongoDB connection failed',
       };
     } catch (error) {
       log.error('MongoDB health check failed', { error });
@@ -207,6 +247,7 @@ export class HealthCheckService implements IHealthCheckService {
 
   /**
    * Verifica el estado del servicio Redis
+   * Usa solo ping, sin operaciones de escritura/lectura
    */
   async checkRedis(): Promise<HealthCheck> {
     // Si Redis está deshabilitado, no es un error
@@ -221,7 +262,7 @@ export class HealthCheckService implements IHealthCheckService {
     }
 
     try {
-      // 1. Verificar conexión con ping
+      // Solo ping, sin write/read/delete para hacer el check más rápido
       const isConnected = await this.redisService.ping();
 
       if (!isConnected) {
@@ -235,32 +276,12 @@ export class HealthCheckService implements IHealthCheckService {
         };
       }
 
-      // 2. Test de escritura/lectura
-      const testKey = 'health:check';
-      const testValue = 'ok';
-      await this.redisService.set(testKey, testValue, 10);
-      const readValue = await this.redisService.get(testKey);
-      await this.redisService.del(testKey);
-
-      if (readValue !== testValue) {
-        return {
-          status: 'degraded',
-          message: 'Redis read/write test failed',
-          details: {
-            enabled: true,
-            connected: true,
-            readWrite: false,
-          },
-        };
-      }
-
       return {
         status: 'healthy',
         message: 'Redis is operational',
         details: {
           enabled: true,
           connected: true,
-          readWrite: true,
         },
       };
     } catch (error) {

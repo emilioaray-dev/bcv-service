@@ -1,6 +1,7 @@
 // Este archivo ya está incluido en app.ts, pero podemos crear un archivo de rutas
 // para mantener la estructura más organizada
 
+import { ROUTES } from '@/constants/routes';
 import { RateController } from '@/controllers/rate.controller';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ICacheService } from '@/services/cache.interface';
@@ -13,7 +14,7 @@ export const createRoutes = (
   const router = express.Router();
   const rateController = new RateController(cacheService, redisService);
 
-  router.use('/api', rateController.router);
+  router.use(ROUTES.API, rateController.router);
 
   // Ruta principal
   router.get('/', (_req: express.Request, res: express.Response) => {

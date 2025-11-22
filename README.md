@@ -226,21 +226,39 @@ curl -X GET http://localhost:3000/api/rate/2025-11-12 \
 
 ### Health Checks (sin autenticación)
 
-```bash
-# Health check completo
-GET /health
+El servicio implementa una arquitectura de health checks estilo Kubernetes con 3 niveles:
 
-# Kubernetes liveness probe
+```bash
+# 1. Liveness Probe - Verifica que el proceso Node.js está vivo (< 50ms)
 GET /healthz
 
-# Kubernetes readiness probe
+# 2. Readiness Probe - Verifica que el servicio puede recibir tráfico (< 500ms)
 GET /readyz
 
-# Health checks individuales
-GET /health/mongodb
-GET /health/scheduler
-GET /health/bcv
-GET /health/websocket
+# 3. Full Health Check - Diagnóstico detallado de todos los componentes
+GET /health
+
+# Health checks individuales (bajo demanda)
+GET /health/mongodb    # Verifica conexión a MongoDB
+GET /health/scheduler  # Verifica estado del cron job
+GET /health/bcv        # Verifica scraping del BCV (hace scraping real)
+GET /health/websocket  # Verifica servidor WebSocket
+GET /health/redis      # Verifica conexión a Redis cache
+```
+
+**Diferencias entre los endpoints:**
+- **`/healthz`**: Ultra-rápido, sin I/O, solo verifica que el proceso responde. Usado por Docker/K8s para decidir si reiniciar el contenedor.
+- **`/readyz`**: Pings rápidos solo a dependencias críticas (MongoDB). Usado por Docker/K8s para decidir si enviar tráfico.
+- **`/health`**: Checks completos de MongoDB, Redis, Scheduler y WebSocket. NO incluye scraping del BCV (use `/health/bcv` para eso).
+
+**Ejemplo de respuesta `/healthz`:**
+```
+OK
+```
+
+**Ejemplo de respuesta `/readyz`:**
+```
+READY
 ```
 
 **Ejemplo de respuesta `/health`:**
@@ -249,11 +267,11 @@ GET /health/websocket
   "status": "healthy",
   "timestamp": "2025-11-12T10:30:00.000Z",
   "uptime": 86400,
-  "services": {
-    "mongodb": { "status": "healthy", "message": "Connected" },
-    "scheduler": { "status": "healthy", "message": "Running" },
-    "bcv": { "status": "healthy", "lastUpdate": "2025-11-12T10:00:00.000Z" },
-    "websocket": { "status": "healthy", "connections": 5 }
+  "checks": {
+    "mongodb": { "status": "healthy", "message": "MongoDB connection is healthy" },
+    "redis": { "status": "healthy", "message": "Redis is operational", "details": { "enabled": true, "connected": true } },
+    "scheduler": { "status": "healthy", "message": "Scheduler is running" },
+    "websocket": { "status": "healthy", "message": "WebSocket service is healthy", "details": { "connectedClients": 5 } }
   }
 }
 ```

@@ -1,4 +1,5 @@
 import { TYPES } from '@/config/types';
+import { ROUTES } from '@/constants/routes';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
 import { type Request, type Response, Router } from 'express';
 import { inject, injectable } from 'inversify';
@@ -27,7 +28,7 @@ export class MetricsController {
    * Inicializa las rutas del controller
    */
   private initializeRoutes(): void {
-    this.router.get('/metrics', this.getMetrics.bind(this));
+    this.router.get(ROUTES.METRICS, this.getMetrics.bind(this));
   }
 
   /**

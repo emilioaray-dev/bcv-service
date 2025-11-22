@@ -8,8 +8,59 @@ El servicio expone varios endpoints para verificar el estado de salud del sistem
 
 ### Endpoints Disponibles
 
-#### `GET /health`
-Verifica el estado completo del sistema, incluyendo todos los servicios.
+El servicio implementa una arquitectura de health checks estilo Kubernetes con 3 niveles de granularidad.
+
+#### `GET /healthz` - Liveness Probe
+**Propósito**: Verifica que el proceso Node.js está vivo y puede procesar requests.
+
+**Características**:
+- ✅ Ultra-rápido (< 50ms)
+- ✅ Sin operaciones I/O
+- ✅ Sin consultas a base de datos
+- ✅ Sin HTTP requests externos
+- ✅ Usado por Docker/Kubernetes para decidir si reiniciar el contenedor
+
+**Respuesta exitosa (200 OK):**
+```
+OK
+```
+
+**Cuándo falla**: Solo si el proceso Node.js está completamente muerto o bloqueado.
+
+---
+
+#### `GET /readyz` - Readiness Probe
+**Propósito**: Verifica que el servicio puede recibir tráfico de producción.
+
+**Características**:
+- ✅ Rápido (< 500ms)
+- ✅ Solo pings a dependencias críticas (MongoDB)
+- ✅ Redis NO es crítico (el servicio funciona sin cache)
+- ✅ Usado por Docker/Kubernetes para decidir si enviar tráfico al pod
+
+**Respuesta exitosa (200 OK):**
+```
+READY
+```
+
+**Respuesta no listo (503 Service Unavailable):**
+```
+NOT READY
+```
+
+**Cuándo falla**: Si MongoDB (dependencia crítica) no responde.
+
+---
+
+#### `GET /health` - Full Health Check
+**Propósito**: Diagnóstico detallado del estado completo del sistema.
+
+**Características**:
+- ⚠️ Puede ser lento (varios segundos)
+- ✅ Verifica MongoDB, Redis, Scheduler, WebSocket
+- ❌ **NO incluye scraping del BCV** (usar `/health/bcv` para eso)
+- ✅ Usado por dashboards y monitoreo humano
+- ✅ Retorna JSON con detalles completos
 
 **Respuesta exitosa (200 OK):**
 ```json
@@ -20,15 +71,19 @@ Verifica el estado completo del sistema, incluyendo todos los servicios.
   "checks": {
     "mongodb": {
       "status": "healthy",
-      "message": "MongoDB connection is active"
+      "message": "MongoDB connection is healthy"
+    },
+    "redis": {
+      "status": "healthy",
+      "message": "Redis is operational",
+      "details": {
+        "enabled": true,
+        "connected": true
+      }
     },
     "scheduler": {
       "status": "healthy",
       "message": "Scheduler is running"
-    },
-    "bcv": {
-      "status": "healthy",
-      "message": "BCV service is operational"
     },
     "websocket": {
       "status": "healthy",
@@ -41,7 +96,41 @@ Verifica el estado completo del sistema, incluyendo todos los servicios.
 }
 ```
 
-**Respuesta con problemas (503 Service Unavailable):**
+**Respuesta degradada (200 OK con status degraded):**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-11-12T18:19:31.381Z",
+  "uptime": 52,
+  "checks": {
+    "mongodb": {
+      "status": "healthy",
+      "message": "MongoDB connection is healthy"
+    },
+    "redis": {
+      "status": "unhealthy",
+      "message": "Redis connection failed",
+      "details": {
+        "enabled": true,
+        "connected": false
+      }
+    },
+    "scheduler": {
+      "status": "healthy",
+      "message": "Scheduler is running"
+    },
+    "websocket": {
+      "status": "healthy",
+      "message": "WebSocket service is healthy",
+      "details": {
+        "connectedClients": 0
+      }
+    }
+  }
+}
+```
+
+**Respuesta crítica (503 Service Unavailable):**
 ```json
 {
   "status": "unhealthy",
@@ -55,13 +144,17 @@ Verifica el estado completo del sistema, incluyendo todos los servicios.
         "error": "Connection timeout"
       }
     },
-    "scheduler": {
+    "redis": {
       "status": "healthy",
-      "message": "Scheduler is running"
+      "message": "Redis is operational",
+      "details": {
+        "enabled": true,
+        "connected": true
+      }
     },
-    "bcv": {
-      "status": "degraded",
-      "message": "BCV service returned no data"
+    "scheduler": {
+      "status": "unhealthy",
+      "message": "Scheduler check failed"
     },
     "websocket": {
       "status": "healthy",
@@ -74,11 +167,7 @@ Verifica el estado completo del sistema, incluyendo todos los servicios.
 }
 ```
 
-#### `GET /healthz`
-Alias de `/health` compatible con Kubernetes liveness probes.
-
-#### `GET /readyz`
-Alias de `/health` compatible con Kubernetes readiness probes.
+---
 
 #### `GET /health/mongodb`
 Verifica solo el estado de la conexión a MongoDB.
@@ -87,18 +176,78 @@ Verifica solo el estado de la conexión a MongoDB.
 ```json
 {
   "status": "healthy",
-  "message": "MongoDB connection is active"
+  "message": "MongoDB connection is healthy"
+}
+```
+
+#### `GET /health/redis`
+Verifica solo el estado de la conexión a Redis.
+
+**Respuesta (Redis habilitado y conectado):**
+```json
+{
+  "status": "healthy",
+  "message": "Redis is operational",
+  "details": {
+    "enabled": true,
+    "connected": true
+  }
+}
+```
+
+**Respuesta (Redis deshabilitado):**
+```json
+{
+  "status": "healthy",
+  "message": "Redis cache is disabled",
+  "details": {
+    "enabled": false
+  }
 }
 ```
 
 #### `GET /health/scheduler`
 Verifica solo el estado del programador de tareas.
 
+**Respuesta:**
+```json
+{
+  "status": "healthy",
+  "message": "Scheduler is running"
+}
+```
+
 #### `GET /health/bcv`
 Verifica solo el estado del servicio de scraping del BCV.
 
+**⚠️ IMPORTANTE**: Este endpoint hace scraping real a www.bcv.org.ve, por lo que puede tardar varios segundos.
+
+**Respuesta:**
+```json
+{
+  "status": "healthy",
+  "message": "BCV service is healthy",
+  "details": {
+    "lastRate": 36.50,
+    "date": "2025-11-12",
+    "currencies": 5
+  }
+}
+```
+
 #### `GET /health/websocket`
 Verifica solo el estado del servicio WebSocket.
+
+**Respuesta:**
+```json
+{
+  "status": "healthy",
+  "message": "WebSocket service is healthy",
+  "details": {
+    "connectedClients": 5
+  }
+}
+```
 
 ### Estados de Salud
 
@@ -117,23 +266,55 @@ spec:
   containers:
   - name: bcv-service
     image: bcv-service:latest
+    ports:
+    - containerPort: 3000
+      protocol: TCP
+
+    # Liveness Probe - Verifica que el proceso está vivo
+    # Usa /healthz que responde en < 50ms (sin I/O)
     livenessProbe:
       httpGet:
         path: /healthz
         port: 3000
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
+      initialDelaySeconds: 30    # Espera 30s después de arrancar
+      periodSeconds: 10           # Verifica cada 10s
+      timeoutSeconds: 2           # Timeout de 2s (healthz responde en < 50ms)
+      failureThreshold: 3         # Reinicia después de 3 fallos consecutivos
+      successThreshold: 1
+
+    # Readiness Probe - Verifica que puede recibir tráfico
+    # Usa /readyz que hace ping a MongoDB (< 500ms)
     readinessProbe:
       httpGet:
         path: /readyz
         port: 3000
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 3
-      failureThreshold: 2
+      initialDelaySeconds: 10     # Espera 10s después de arrancar
+      periodSeconds: 5            # Verifica cada 5s
+      timeoutSeconds: 3           # Timeout de 3s (readyz responde en < 500ms)
+      failureThreshold: 2         # Marca como not ready después de 2 fallos
+      successThreshold: 1
 ```
+
+### Configuración en Docker Compose
+
+El proyecto ya incluye health checks configurados en `docker-compose.yml`:
+
+```yaml
+services:
+  bcv-service:
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**Notas sobre la configuración Docker:**
+- Usa `/healthz` para el health check (ultra-rápido)
+- `timeout: 10s` es más que suficiente (healthz responde en < 50ms)
+- `start_period: 40s` da tiempo para que la app se conecte a MongoDB
+- Después de 3 fallos consecutivos, el contenedor se marca como unhealthy
 
 ## Métricas de Prometheus
 

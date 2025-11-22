@@ -87,6 +87,7 @@ export function createContainer(server: HttpServer): Container {
     container.bind<ICacheService>(TYPES.CacheService).toConstantValue({
       connect: async () => {},
       disconnect: async () => {},
+      ping: async () => {},
       saveRate: async (rate) => ({
         id: `${rate.date}-${rate.source}`,
         rates: rate.rates,

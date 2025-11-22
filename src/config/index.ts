@@ -43,9 +43,8 @@ export const config = {
     retryReads: process.env.MONGODB_RETRY_READS?.toLowerCase() !== 'false',
     compressors: (process.env.MONGODB_COMPRESSORS || 'zstd,snappy,zlib')
       .split(',')
-      .filter(
-        (c): c is 'none' | 'snappy' | 'zlib' | 'zstd' =>
-          ['none', 'snappy', 'zlib', 'zstd'].includes(c)
+      .filter((c): c is 'none' | 'snappy' | 'zlib' | 'zstd' =>
+        ['none', 'snappy', 'zlib', 'zstd'].includes(c)
       ),
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',

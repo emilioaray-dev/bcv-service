@@ -1,5 +1,6 @@
 import { config } from '@/config';
 import { TYPES } from '@/config/types';
+import { RATE_ROUTES } from '@/constants/routes';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import { CacheKeys } from '@/interfaces/IRedisService';
 import {
@@ -37,14 +38,14 @@ export class RateController {
   }
 
   private initializeRoutes(): void {
-    this.router.get('/rate/latest', this.getLatestRate.bind(this));
+    this.router.get(RATE_ROUTES.LATEST, this.getLatestRate.bind(this));
     this.router.get(
-      '/rate/history',
+      RATE_ROUTES.HISTORY,
       validateHistoryQuery,
       this.getRateHistory.bind(this)
     );
     this.router.get(
-      '/rate/:date',
+      RATE_ROUTES.BY_DATE,
       validateDateParam,
       this.getRateByDate.bind(this)
     );

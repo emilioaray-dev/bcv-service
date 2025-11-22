@@ -34,7 +34,7 @@ export class MongoService implements ICacheService {
         heartbeatFrequencyMS: number;
         retryWrites: boolean;
         retryReads: boolean;
-        compressors: ("none" | "snappy" | "zlib" | "zstd")[];
+        compressors: ('none' | 'snappy' | 'zlib' | 'zstd')[];
       };
     }
   ) {
@@ -129,6 +129,21 @@ export class MongoService implements ICacheService {
 
   async disconnect(): Promise<void> {
     await this.client.close();
+  }
+
+  /**
+   * Ping rápido a MongoDB (< 100ms)
+   * Solo verifica que la conexión está activa
+   * Usado por health checks de readiness
+   */
+  async ping(): Promise<void> {
+    try {
+      await this.db.admin().ping();
+    } catch (error) {
+      throw new Error(
+        `MongoDB ping failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   async saveRate(rate: Omit<Rate, 'id' | 'createdAt'>): Promise<Rate> {

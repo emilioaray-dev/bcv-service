@@ -26,7 +26,7 @@ export interface BCVRateData {
  */
 export function getCurrencyRate(
   rateData: BCVRateData | null,
-  currency: string = 'USD'
+  currency = 'USD'
 ): number {
   if (!rateData) return 0;
   return rateData.rates.find((r) => r.currency === currency)?.rate || 0;
@@ -204,7 +204,6 @@ export class BCVService implements IBCVService {
       ];
 
       const rates: CurrencyRate[] = [];
-      let dollarRate = 0; // Valor por defecto para compatibilidad hacia atrás
 
       // Extraer la fecha del elemento span con clase 'date-display-single'
       let dateString = '';
@@ -238,11 +237,6 @@ export class BCVService implements IBCVService {
                 rate,
                 name: selector.name,
               });
-
-              // Guardar la tasa del dólar para compatibilidad hacia atrás
-              if (selector.currency === 'USD') {
-                dollarRate = rate;
-              }
             }
           }
         }
@@ -259,7 +253,7 @@ export class BCVService implements IBCVService {
           date: dateString,
           dollarRate: getCurrencyRate(rateData, 'USD'),
           totalCurrencies: rates.length,
-          currencies: rates.map(r => `${r.currency}: ${r.rate}`).join(', '),
+          currencies: rates.map((r) => `${r.currency}: ${r.rate}`).join(', '),
         });
 
         return rateData;

@@ -18,6 +18,7 @@ export const ROUTES = {
   HEALTH_SCHEDULER: '/health/scheduler',
   HEALTH_BCV: '/health/bcv',
   HEALTH_WEBSOCKET: '/health/websocket',
+  HEALTH_REDIS: '/health/redis',
 
   // Metrics
   METRICS: '/metrics',
@@ -31,4 +32,11 @@ export const API_ROUTES = {
   RATE_LATEST: `${ROUTES.API}/rate/latest`,
   RATE_HISTORY: `${ROUTES.API}/rate/history`,
   RATE_BY_DATE: `${ROUTES.API}/rate/:date`,
+} as const;
+
+// Export relative routes for RateController (without /api prefix)
+export const RATE_ROUTES = {
+  LATEST: '/rate/latest',
+  HISTORY: '/rate/history',
+  BY_DATE: '/rate/:date',
 } as const;

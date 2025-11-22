@@ -21,15 +21,24 @@ export interface HealthCheckResult {
     scheduler?: HealthCheck;
     bcv?: HealthCheck;
     websocket?: HealthCheck;
+    redis?: HealthCheck;
   };
 }
 
 export interface IHealthCheckService {
   /**
-   * Verifica el estado de salud completo del servicio
-   * @returns Promise con el resultado del health check
+   * Readiness check - Verifica si el servicio puede recibir tráfico
+   * Solo hace pings rápidos a dependencias críticas (< 500ms)
+   * @returns Promise<boolean> - true si el servicio está listo
    */
-  checkHealth(): Promise<HealthCheckResult>;
+  checkReadiness(): Promise<boolean>;
+
+  /**
+   * Full health check - Verifica el estado completo del servicio
+   * Incluye checks detallados de todas las dependencias
+   * @returns Promise con el resultado del health check completo
+   */
+  checkFullHealth(): Promise<HealthCheckResult>;
 
   /**
    * Verifica solo la conectividad a MongoDB
@@ -54,4 +63,10 @@ export interface IHealthCheckService {
    * @returns Promise con el resultado del check del WebSocket
    */
   checkWebSocket(): Promise<HealthCheck>;
+
+  /**
+   * Verifica el estado del servicio Redis
+   * @returns Promise con el resultado del check de Redis
+   */
+  checkRedis(): Promise<HealthCheck>;
 }
