@@ -490,6 +490,147 @@ docker service create \
   bcv-service:latest
 ```
 
+### Versionamiento Automático con Conventional Commits
+
+El proyecto implementa versionamiento semántico 100% automático usando **Conventional Commits + Semantic Release**.
+
+#### 🎯 Flujo Automatizado (CI/CD Pipeline)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Desarrollador hace commit con formato convencional         │
+│     git commit -m "feat: add new feature"                      │
+│     git push origin main                                       │
+└────────────────────┬────────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. STAGE 1: Validate & Test (< 2 min)                         │
+│     ✓ Biome linting                                            │
+│     ✓ TypeScript type checking                                 │
+│     ✓ 111 unit tests                                           │
+│     ✓ Build project                                            │
+│     → Si falla, pipeline se detiene (NO se versiona)           │
+└────────────────────┬────────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. STAGE 2: Semantic Release (< 30 sec)                       │
+│     → Analiza commits desde última versión                     │
+│     → Determina tipo de versión:                               │
+│       • feat: nueva funcionalidad → MINOR (1.0.0 → 1.1.0)      │
+│       • fix: corrección bug → PATCH (1.0.0 → 1.0.1)            │
+│       • BREAKING CHANGE → MAJOR (1.0.0 → 2.0.0)                │
+│     → Actualiza package.json                                   │
+│     → Genera CHANGELOG.md                                      │
+│     → Crea tag de Git (v1.1.0)                                 │
+│     → Crea GitHub Release                                      │
+└────────────────────┬────────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  4. STAGE 3: Build & Publish Docker Image (< 3 min)            │
+│     → Construye imagen Docker                                  │
+│     → Publica con tags semánticos:                             │
+│       • ghcr.io/emilioaray-dev/bcv-service:1.1.0 (exacto)      │
+│       • ghcr.io/emilioaray-dev/bcv-service:1.1 (minor)         │
+│       • ghcr.io/emilioaray-dev/bcv-service:1 (major)           │
+│       • ghcr.io/emilioaray-dev/bcv-service:latest              │
+│       • ghcr.io/emilioaray-dev/bcv-service:main                │
+└────────────────────┬────────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  5. STAGE 4: Deploy to Proxmox (< 1 min)                       │
+│     → SSH a Proxmox VM                                         │
+│     → Pull nueva imagen                                        │
+│     → Restart contenedores                                     │
+│     → Verify health                                            │
+│     ✅ Deployment exitoso                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 📝 Formato de Commits (Conventional Commits)
+
+```bash
+# Nueva funcionalidad (incrementa MINOR: 1.0.0 → 1.1.0)
+git commit -m "feat: add email notifications for rate changes"
+git commit -m "feat(websocket): add reconnection logic"
+
+# Corrección de bug (incrementa PATCH: 1.0.0 → 1.0.1)
+git commit -m "fix: resolve timeout in BCV scraping"
+git commit -m "fix(health): correct MongoDB ping timeout"
+
+# Breaking change (incrementa MAJOR: 1.0.0 → 2.0.0)
+git commit -m "feat!: change API response format
+
+BREAKING CHANGE: API responses now use 'data' field"
+
+# Otros cambios (NO incrementan versión)
+git commit -m "docs: update README"
+git commit -m "style: format code with Biome"
+git commit -m "test: add health check tests"
+git commit -m "refactor: improve error handling"  # PATCH
+```
+
+**📚 Guía Completa:** Ver [Conventional Commits Guide](docs/guides/CONVENTIONAL_COMMITS.md)
+
+#### 🎯 Mejores Prácticas de la Industria
+
+✅ **Lo que hace el proyecto:**
+- Tests OBLIGATORIOS antes de versionar (linting, type-check, tests, build)
+- Versionamiento basado en commits (semántico y automático)
+- CHANGELOG generado automáticamente
+- GitHub Releases automáticos
+- Tags de Git automáticos
+- Zero-downtime deployment
+
+✅ **Ventajas:**
+- No hay commits manuales de versionamiento
+- Historial claro y semántico
+- Rollbacks fáciles con tags
+- Trazabilidad perfecta (commit → versión → deployment)
+- CI/CD completo y automático
+
+**Usar versión específica:**
+```bash
+# Producción (siempre usa latest)
+docker-compose up -d
+
+# Usar versión específica
+DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.0.2 docker-compose up -d
+
+# Rollback a versión anterior
+DOCKER_IMAGE=ghcr.io/emilioaray-dev/bcv-service:1.0.1 docker-compose up -d
+```
+
+#### 🔄 Proceso de Desarrollo
+
+```bash
+# 1. Desarrollar funcionalidad
+git checkout -b feature/my-feature
+# ... hacer cambios ...
+
+# 2. Commit con formato convencional
+git commit -m "feat(api): add rate limiting middleware"
+
+# 3. Push a main
+git push origin main
+
+# 4. GitHub Actions hace TODO automáticamente:
+#    - Tests
+#    - Versionamiento (ej: 1.0.2 → 1.1.0)
+#    - Build Docker
+#    - Deploy a Proxmox
+#    - GitHub Release
+```
+
+#### 📊 Versionamiento Automático Sincronizado
+
+La versión se sincroniza automáticamente en:
+- ✅ `package.json`
+- ✅ Swagger API Documentation (`/docs`)
+- ✅ Docker image tags
+- ✅ GitHub Releases
+- ✅ CHANGELOG.md
+- ✅ Git tags
+
 ## 🏗️ Arquitectura SOLID
 
 El proyecto implementa los principios SOLID con Inversify para Dependency Injection:

@@ -1,5 +1,5 @@
 # Nombre del workflow que aparecerá en la pestaña "Actions" de GitHub
-name: Build, Publish and Deploy
+name: CI/CD Pipeline with Semantic Release
 
 # Define cuándo se debe ejecutar este workflow
 on:
@@ -10,54 +10,211 @@ on:
 
 # Define los trabajos (jobs) que se van a ejecutar
 jobs:
-  build-and-push-image:
-    # ¡Importante! Le dice a GitHub que use tu runner autoalojado
+  # ═══════════════════════════════════════════════════════════════════════════
+  # STAGE 1: VALIDATE & TEST
+  # ═══════════════════════════════════════════════════════════════════════════
+  validate-and-test:
+    name: 🧪 Validate & Test
     runs-on: self-hosted
 
-    # Los pasos que ejecutará el runner
     steps:
-      # 1. Clona tu repositorio en el runner para tener acceso al código y al Dockerfile
-      - name: Check out the repo
+      # 1. Clona el repositorio
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para semantic-release
 
-      # 2. Inicia sesión en el GitHub Container Registry (ghcr.io)
-      - name: Log in to GitHub Container Registry
+      # 2. Setup Node.js
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Instalar dependencias
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 4. Linting con Biome
+      - name: 🔍 Run Biome linter
+        run: pnpm lint
+
+      # 5. Type checking
+      - name: 🔍 TypeScript type checking
+        run: pnpm tsc --noEmit
+
+      # 6. Run tests
+      - name: 🧪 Run tests
+        run: pnpm test
+
+      # 7. Build project
+      - name: 🏗️ Build project
+        run: pnpm build
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # STAGE 2: SEMANTIC RELEASE
+  # ═══════════════════════════════════════════════════════════════════════════
+  semantic-release:
+    name: 🚀 Semantic Release
+    runs-on: self-hosted
+    needs: validate-and-test  # Solo ejecutar si los tests pasaron
+    outputs:
+      new-release-published: ${{ steps.semantic.outputs.new-release-published }}
+      new-release-version: ${{ steps.semantic.outputs.new-release-version }}
+      new-release-major-version: ${{ steps.semantic.outputs.new-release-major-version }}
+      new-release-minor-version: ${{ steps.semantic.outputs.new-release-minor-version }}
+
+    steps:
+      # 1. Checkout con historial completo para semantic-release
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Historial completo necesario
+          token: ${{ secrets.GH_PAT }}  # Token con permisos para hacer push
+
+      # 2. Setup Node.js
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Instalar dependencias
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 4. Configurar Git
+      - name: 🔧 Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 5. Run Semantic Release
+      - name: 🚀 Run Semantic Release
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          pnpm semantic-release
+
+      # 6. Log release information
+      - name: 📊 Log release information
+        if: steps.semantic.outputs.new-release-published == 'true'
+        run: |
+          echo "🎉 New release published!"
+          echo "📦 Version: ${{ steps.semantic.outputs.new-release-version }}"
+          echo "🏷️ Tag: v${{ steps.semantic.outputs.new-release-version }}"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # STAGE 3: BUILD & PUBLISH DOCKER IMAGE
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-and-push-image:
+    name: 🐳 Build & Publish Docker Image
+    runs-on: self-hosted
+    needs: semantic-release
+    # Solo ejecutar si se publicó una nueva versión
+    if: needs.semantic-release.outputs.new-release-published == 'true'
+
+    steps:
+      # 1. Checkout del código
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main  # Asegurar que usamos main con la versión actualizada
+          fetch-depth: 0
+
+      # 2. Pull latest changes (incluye el commit de semantic-release)
+      - name: 🔄 Pull latest changes
+        run: git pull origin main
+
+      # 3. Extraer versión desde package.json
+      - name: 📦 Extract version from package.json
+        id: package_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+          # Extraer versión mayor.menor (ej: 1.0 de 1.0.2)
+          MAJOR_MINOR=$(echo $VERSION | cut -d. -f1-2)
+          echo "major_minor=$MAJOR_MINOR" >> $GITHUB_OUTPUT
+          echo "📊 Major.Minor: $MAJOR_MINOR"
+
+          # Extraer solo versión mayor (ej: 1 de 1.0.2)
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "🔢 Major: $MAJOR"
+
+      # 4. Login a GitHub Container Registry
+      - name: 🔐 Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          # El usuario es tu nombre de usuario de GitHub
           username: ${{ github.actor }}
-          # La contraseña es el token que guardamos como secreto
           password: ${{ secrets.GH_PAT }}
 
-      # 3. Extrae metadatos (como las etiquetas) para la imagen de Docker
-      - name: Extract metadata for Docker
+      # 5. Generar metadata para Docker
+      - name: 🏷️ Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # Define el nombre de la imagen usando tu usuario/organización y nombre de repositorio
           images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ steps.package_version.outputs.version }}
+            type=raw,value=${{ steps.package_version.outputs.major_minor }}
+            type=raw,value=${{ steps.package_version.outputs.major }}
+            type=raw,value=latest
+            type=raw,value=main
 
-      # 4. Construye la imagen de Docker y la sube al registro
-      - name: Build and push Docker image
+      # 6. Build y Push Docker image
+      - name: 🔨 Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Usa las etiquetas generadas en el paso anterior (ej: latest, y una por commit)
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Job de deployment automático a Proxmox VM
+      # 7. Log de imágenes creadas
+      - name: 📝 Log created images
+        run: |
+          echo "✅ Docker images published:"
+          echo "  - ghcr.io/${{ github.repository }}:${{ steps.package_version.outputs.version }}"
+          echo "  - ghcr.io/${{ github.repository }}:${{ steps.package_version.outputs.major_minor }}"
+          echo "  - ghcr.io/${{ github.repository }}:${{ steps.package_version.outputs.major }}"
+          echo "  - ghcr.io/${{ github.repository }}:latest"
+          echo "  - ghcr.io/${{ github.repository }}:main"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # STAGE 4: DEPLOY TO PROXMOX
+  # ═══════════════════════════════════════════════════════════════════════════
   deploy-to-proxmox:
-    name: Deploy to Proxmox VM
+    name: 🚀 Deploy to Proxmox VM
     runs-on: self-hosted
-    needs: build-and-push-image
+    needs: [semantic-release, build-and-push-image]
     # Solo ejecutar si el build fue exitoso
-    if: success()
+    if: success() && needs.semantic-release.outputs.new-release-published == 'true'
 
     steps:
-      - name: Deploy to Proxmox via SSH
+      # 1. Checkout para acceder a package.json
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # 2. Pull latest changes
+      - name: 🔄 Pull latest changes
+        run: git pull origin main
+
+      # 3. Extraer versión para deployment
+      - name: 📦 Get version for deployment
+        id: deploy_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Deploying version: $VERSION"
+
+      # 4. Deploy via SSH
+      - name: 🚀 Deploy to Proxmox via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROXMOX_HOST }}
@@ -67,8 +224,13 @@ jobs:
           script: |
             set -e  # Salir inmediatamente si un comando falla
 
-            echo "🚀 Iniciando deployment en Proxmox VM"
-            echo "📦 Imagen: ghcr.io/${{ github.repository }}:main"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 INICIANDO DEPLOYMENT EN PROXMOX VM"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Versión: ${{ steps.deploy_version.outputs.version }}"
+            echo "🐳 Imagen: ghcr.io/${{ github.repository }}:latest"
+            echo "🕐 Fecha: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
             # Navegar al directorio del proyecto
             PROJECT_PATH="${{ secrets.PROXMOX_PROJECT_PATH || '/opt/bcv-service' }}"
@@ -102,30 +264,37 @@ jobs:
             echo "📄 Usando archivo: $COMPOSE_FILE"
 
             # Mostrar estado actual
+            echo ""
             echo "📊 Estado actual de contenedores:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE ps || true
 
             # Hacer login en GitHub Container Registry
+            echo ""
             echo "🔐 Autenticando en GHCR..."
             echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Descargar la nueva imagen
-            echo "⬇️ Descargando nueva imagen..."
+            echo ""
+            echo "⬇️  Descargando nueva imagen (versión ${{ steps.deploy_version.outputs.version }})..."
             $DOCKER_COMPOSE -f $COMPOSE_FILE pull bcv-service
 
             # Detener y eliminar contenedores antiguos
+            echo ""
             echo "🛑 Deteniendo contenedores..."
             $DOCKER_COMPOSE -f $COMPOSE_FILE down
 
             # Iniciar con la nueva imagen
-            echo "▶️ Iniciando contenedores actualizados..."
+            echo ""
+            echo "▶️  Iniciando contenedores actualizados..."
             $DOCKER_COMPOSE -f $COMPOSE_FILE up -d
 
             # Esperar a que los servicios estén saludables
+            echo ""
             echo "⏳ Esperando a que los servicios estén listos..."
             sleep 15
 
             # Verificar que los contenedores estén corriendo
+            echo ""
             echo "🔍 Verificando contenedores..."
             RUNNING_CONTAINERS=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --services --filter "status=running" | wc -l)
             TOTAL_SERVICES=$($DOCKER_COMPOSE -f $COMPOSE_FILE config --services | wc -l)
@@ -134,23 +303,33 @@ jobs:
               echo "✅ Todos los contenedores están corriendo ($RUNNING_CONTAINERS/$TOTAL_SERVICES)"
             else
               echo "❌ Error: Solo $RUNNING_CONTAINERS de $TOTAL_SERVICES contenedores están corriendo"
+              echo ""
               echo "📊 Estado de contenedores:"
               $DOCKER_COMPOSE -f $COMPOSE_FILE ps
+              echo ""
               echo "📝 Logs de error:"
               $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=50
               exit 1
             fi
 
             # Verificar estado final
-            echo "✅ Estado final de contenedores:"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ DEPLOYMENT COMPLETADO EXITOSAMENTE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Versión desplegada: ${{ steps.deploy_version.outputs.version }}"
+            echo "🕐 Completado: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo ""
+            echo "📊 Estado final de contenedores:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE ps
-
-            # Verificar logs recientes
+            echo ""
             echo "📝 Logs recientes del servicio:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=20 bcv-service
 
             # Limpiar imágenes antiguas
+            echo ""
             echo "🧹 Limpiando imágenes antiguas..."
             docker image prune -f
 
-            echo "✅ Deployment completado exitosamente!"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

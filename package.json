@@ -20,7 +20,10 @@
     "load-test:medium": "artillery run load-tests/load-test-medium.yml",
     "load-test:stress": "artillery run load-tests/load-test-stress.yml",
     "docker:build": "docker build -t bcv-service .",
-    "docker:run": "docker run -p 3000:3000 bcv-service"
+    "docker:run": "docker run -p 3000:3000 bcv-service",
+    "semantic-release": "semantic-release",
+    "commit": "git-cz",
+    "commitlint": "commitlint --edit"
   },
   "keywords": [
     "bcv",
@@ -33,6 +36,11 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.2",
     "@types/autocannon": "^7.12.7",
     "@types/cheerio": "^1.0.0",
     "@types/express": "^5.0.5",
@@ -47,6 +55,7 @@
     "@vitest/ui": "^4.0.8",
     "artillery": "^2.0.27",
     "autocannon": "^8.0.0",
+    "semantic-release": "^25.0.2",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",

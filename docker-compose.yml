@@ -3,10 +3,13 @@ version: '3.8'
 services:
   # BCV Service - Stateless microservice
   bcv-service:
-    # Opción 1: Usar imagen publicada en GitHub Container Registry
-    # image: ${DOCKER_IMAGE:-ghcr.io/emilioaray-dev/bcv-service:main}
+    # Opción 1: Usar imagen publicada en GitHub Container Registry (PRODUCCIÓN)
+    # Descomenta la siguiente línea para usar la imagen publicada
+    # Por defecto usa tag "latest", pero puedes especificar versión: 1.0.2, 1.0, 1
+    # image: ${DOCKER_IMAGE:-ghcr.io/emilioaray-dev/bcv-service:latest}
 
-    # Opción 2: Construir localmente (para desarrollo)
+    # Opción 2: Construir localmente (DESARROLLO)
+    # Comenta esta línea en producción
     build: .
 
     container_name: ${BCV_CONTAINER_NAME:-bcv-service}

@@ -1,11 +1,12 @@
 import type { OAS3Options } from 'swagger-jsdoc';
+import packageJson from '../../package.json';
 
 export const swaggerOptions: OAS3Options = {
   definition: {
     openapi: '3.0.0',
     info: {
       title: 'BCV Service API',
-      version: '1.0.0',
+      version: packageJson.version,
       description:
         'API REST para consultar tasas de cambio del Banco Central de Venezuela (BCV) con actualizaciones en tiempo real mediante WebSockets',
       license: {
