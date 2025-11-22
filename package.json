@@ -20,7 +20,8 @@
     "load-test:medium": "artillery run load-tests/load-test-medium.yml",
     "load-test:stress": "artillery run load-tests/load-test-stress.yml",
     "docker:build": "docker build -t bcv-service .",
-    "docker:run": "docker run -p 3000:3000 bcv-service"
+    "docker:run": "docker run -p 3000:3000 bcv-service",
+    "webhook:start": "node webhook-listener.js"
   },
   "keywords": [
     "bcv",
