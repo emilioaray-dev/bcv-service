@@ -65,23 +65,45 @@ jobs:
           key: ${{ secrets.PROXMOX_SSH_KEY }}
           port: ${{ secrets.PROXMOX_PORT || 22 }}
           script: |
+            set -e  # Salir inmediatamente si un comando falla
+
             echo "🚀 Iniciando deployment en Proxmox VM"
             echo "📦 Imagen: ghcr.io/${{ github.repository }}:main"
 
             # Navegar al directorio del proyecto
-            cd ${{ secrets.PROXMOX_PROJECT_PATH || '/opt/bcv-service' }}
+            PROJECT_PATH="${{ secrets.PROXMOX_PROJECT_PATH || '/opt/bcv-service' }}"
+            if [ ! -d "$PROJECT_PATH" ]; then
+              echo "❌ Error: Directorio $PROJECT_PATH no existe"
+              exit 1
+            fi
+            cd "$PROJECT_PATH"
+            echo "📁 Directorio: $PROJECT_PATH"
+
+            # Detectar comando docker-compose disponible
+            if command -v docker compose &> /dev/null; then
+              DOCKER_COMPOSE="docker compose"
+            elif command -v docker-compose &> /dev/null; then
+              DOCKER_COMPOSE="docker-compose"
+            else
+              echo "❌ Error: docker-compose no está instalado"
+              exit 1
+            fi
+            echo "🔧 Usando comando: $DOCKER_COMPOSE"
 
             # Determinar qué archivo docker-compose usar
             if [ -f "docker-compose.production.yml" ]; then
               COMPOSE_FILE="docker-compose.production.yml"
-            else
+            elif [ -f "docker-compose.yml" ]; then
               COMPOSE_FILE="docker-compose.yml"
+            else
+              echo "❌ Error: No se encontró archivo docker-compose"
+              exit 1
             fi
             echo "📄 Usando archivo: $COMPOSE_FILE"
 
             # Mostrar estado actual
             echo "📊 Estado actual de contenedores:"
-            docker-compose -f $COMPOSE_FILE ps
+            $DOCKER_COMPOSE -f $COMPOSE_FILE ps || true
 
             # Hacer login en GitHub Container Registry
             echo "🔐 Autenticando en GHCR..."
@@ -89,27 +111,43 @@ jobs:
 
             # Descargar la nueva imagen
             echo "⬇️ Descargando nueva imagen..."
-            docker-compose -f $COMPOSE_FILE pull bcv-service
+            $DOCKER_COMPOSE -f $COMPOSE_FILE pull bcv-service
 
             # Detener y eliminar contenedores antiguos
             echo "🛑 Deteniendo contenedores..."
-            docker-compose -f $COMPOSE_FILE down
+            $DOCKER_COMPOSE -f $COMPOSE_FILE down
 
             # Iniciar con la nueva imagen
             echo "▶️ Iniciando contenedores actualizados..."
-            docker-compose -f $COMPOSE_FILE up -d
+            $DOCKER_COMPOSE -f $COMPOSE_FILE up -d
 
             # Esperar a que los servicios estén saludables
             echo "⏳ Esperando a que los servicios estén listos..."
-            sleep 10
+            sleep 15
+
+            # Verificar que los contenedores estén corriendo
+            echo "🔍 Verificando contenedores..."
+            RUNNING_CONTAINERS=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --services --filter "status=running" | wc -l)
+            TOTAL_SERVICES=$($DOCKER_COMPOSE -f $COMPOSE_FILE config --services | wc -l)
+
+            if [ "$RUNNING_CONTAINERS" -eq "$TOTAL_SERVICES" ]; then
+              echo "✅ Todos los contenedores están corriendo ($RUNNING_CONTAINERS/$TOTAL_SERVICES)"
+            else
+              echo "❌ Error: Solo $RUNNING_CONTAINERS de $TOTAL_SERVICES contenedores están corriendo"
+              echo "📊 Estado de contenedores:"
+              $DOCKER_COMPOSE -f $COMPOSE_FILE ps
+              echo "📝 Logs de error:"
+              $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=50
+              exit 1
+            fi
 
             # Verificar estado final
             echo "✅ Estado final de contenedores:"
-            docker-compose -f $COMPOSE_FILE ps
+            $DOCKER_COMPOSE -f $COMPOSE_FILE ps
 
             # Verificar logs recientes
             echo "📝 Logs recientes del servicio:"
-            docker-compose -f $COMPOSE_FILE logs --tail=20 bcv-service
+            $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=20 bcv-service
 
             # Limpiar imágenes antiguas
             echo "🧹 Limpiando imágenes antiguas..."
