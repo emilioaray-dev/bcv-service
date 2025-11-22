@@ -349,4 +349,39 @@ export class Application {
   getServer(): http.Server {
     return this.server;
   }
+
+  /**
+   * Cierra la aplicación de forma graciosa
+   */
+  async close(): Promise<void> {
+    log.info('Iniciando cierre graceful de la aplicación...');
+
+    // Detener el scheduler
+    this.schedulerService.stop();
+
+    // Desconectar de Redis
+    if (config.redis.enabled) {
+      log.info('Cerrando conexión a Redis...');
+      await this.redisService.disconnect();
+    }
+
+    // Desconectar de la base de datos
+    if (config.saveToDatabase) {
+      log.info('Cerrando conexión a MongoDB...');
+      await this.cacheService.disconnect();
+    }
+
+    // Cerrar el servidor HTTP
+    return new Promise((resolve, reject) => {
+      this.server.close((err) => {
+        if (err) {
+          log.error('Error cerrando el servidor HTTP', { error: err });
+          reject(err);
+        } else {
+          log.info('Servidor HTTP cerrado correctamente');
+          resolve();
+        }
+      });
+    });
+  }
 }

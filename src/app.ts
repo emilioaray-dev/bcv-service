@@ -23,6 +23,31 @@ application.start().catch((error) => {
   process.exit(1);
 });
 
+// Manejo de señales para apagado gracioso
+process.on('SIGTERM', async () => {
+  log.info('SIGTERM recibida. Iniciando apagado gracioso...');
+  try {
+    await application.close();
+    log.info('Aplicación cerrada correctamente');
+  } catch (error) {
+    log.error('Error durante el apagado', { error });
+  } finally {
+    process.exit(0);
+  }
+});
+
+process.on('SIGINT', async () => {
+  log.info('SIGINT recibida. Iniciando apagado gracioso...');
+  try {
+    await application.close();
+    log.info('Aplicación cerrada correctamente');
+  } catch (error) {
+    log.error('Error durante el apagado', { error });
+  } finally {
+    process.exit(0);
+  }
+});
+
 // Exportar para testing
 export const app = application.getExpressApp();
 export const server = application.getServer();
