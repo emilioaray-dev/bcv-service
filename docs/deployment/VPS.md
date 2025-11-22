@@ -145,12 +145,12 @@ sudo fail2ban-client status sshd
 ### 1. Node.js y pnpm
 
 ```bash
-# Instalar Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Instalar Node.js 24 LTS
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Verificar instalación
-node --version  # v20.x.x
+node --version  # v24.x.x
 npm --version   # 10.x.x
 
 # Instalar pnpm globalmente
@@ -880,7 +880,7 @@ location /api/ {
 - [ ] SSH con autenticación por clave
 - [ ] Firewall (UFW) configurado
 - [ ] Fail2Ban activo
-- [ ] Node.js 20 LTS instalado
+- [ ] Node.js 24 LTS instalado
 - [ ] MongoDB instalado y autenticación habilitada
 - [ ] Nginx instalado y configurado
 - [ ] Código cloneado y build exitoso

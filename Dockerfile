@@ -1,5 +1,5 @@
 # Usa una imagen base de Node.js con Alpine Linux para un tamaño más pequeño
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Instala certificados CA raíz, pnpm y wget para healthcheck
 RUN apk add --no-cache ca-certificates wget && \

@@ -45,7 +45,7 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 
 Before you begin, ensure you have:
 
-- Node.js 20 LTS installed
+- Node.js 24 LTS installed
 - pnpm installed (`npm install -g pnpm`)
 - MongoDB running locally (optional, set `SAVE_TO_DATABASE=false` for development without DB)
 - Git configured with your name and email

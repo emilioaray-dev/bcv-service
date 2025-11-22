@@ -54,7 +54,7 @@ docker-compose down
 
 ```dockerfile
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Instalar pnpm
 RUN npm install -g pnpm
@@ -74,7 +74,7 @@ COPY . .
 RUN pnpm run build
 
 # Stage 2: Production
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 
 # Instalar pnpm
 RUN npm install -g pnpm
