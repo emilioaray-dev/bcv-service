@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.0...v2.0.1) (2025-11-23)
+
+### Bug Fixes
+
+* **api:** standardize API response format with success wrapper ([725ecbd](https://github.com/emilioaray-dev/bcv-service/commit/725ecbd952e1d0eed340d97754b226f9e1b42d12))
+
 ## [2.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v2.0.0) (2025-11-23)
 
 ### ⚠ BREAKING CHANGES
