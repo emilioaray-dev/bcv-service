@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.1...v2.1.0) (2025-11-23)
+
+### Features
+
+* **notification-state:** implement persistent notification state system with enhanced API documentation ([4036ef5](https://github.com/emilioaray-dev/bcv-service/commit/4036ef592cc662e004912c4b7638a8e886540a5f))
+
 ## [2.0.1](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.0...v2.0.1) (2025-11-23)
 
 ### Bug Fixes
