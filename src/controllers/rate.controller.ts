@@ -56,6 +56,7 @@ export class RateController {
       if (!config.saveToDatabase) {
         // En modo consola, indicar que no hay acceso a base de datos
         res.status(405).json({
+          success: false,
           error: 'Modo consola activado: No hay acceso a la base de datos',
           message: 'SAVE_TO_DATABASE está configurado como false',
         });
@@ -67,7 +68,10 @@ export class RateController {
         const cached = await this.redisService.get(CacheKeys.LATEST_RATE);
         if (cached) {
           log.debug('Cache hit: latest_rate');
-          res.json(cached);
+          res.json({
+            success: true,
+            data: cached,
+          });
           return;
         }
         log.debug('Cache miss: latest_rate');
@@ -76,9 +80,10 @@ export class RateController {
       // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getLatestRate();
       if (!rate) {
-        res
-          .status(404)
-          .json({ error: 'No se encontró ninguna tasa de cambio' });
+        res.status(404).json({
+          success: false,
+          error: 'No se encontró ninguna tasa de cambio',
+        });
         return;
       }
 
@@ -91,10 +96,16 @@ export class RateController {
         );
       }
 
-      res.json(rate);
+      res.json({
+        success: true,
+        data: rate,
+      });
     } catch (error) {
       log.error('Error obteniendo tasa más reciente', { error });
-      res.status(500).json({ error: 'Error interno del servidor' });
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+      });
     }
   }
 
@@ -103,6 +114,7 @@ export class RateController {
       if (!config.saveToDatabase) {
         // En modo consola, indicar que no hay acceso a base de datos
         res.status(405).json({
+          success: false,
           error: 'Modo consola activado: No hay acceso a la base de datos',
           message: 'SAVE_TO_DATABASE está configurado como false',
         });
@@ -116,10 +128,17 @@ export class RateController {
       const safeLimit = Math.min(limit, maxLimit);
 
       const rates = await this.cacheService.getRateHistory(safeLimit);
-      res.json(rates);
+      res.json({
+        success: true,
+        data: rates,
+        count: rates.length,
+      });
     } catch (error) {
       log.error('Error obteniendo historial de tasas', { error });
-      res.status(500).json({ error: 'Error interno del servidor' });
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+      });
     }
   }
 
@@ -128,6 +147,7 @@ export class RateController {
       if (!config.saveToDatabase) {
         // En modo consola, indicar que no hay acceso a base de datos
         res.status(405).json({
+          success: false,
           error: 'Modo consola activado: No hay acceso a la base de datos',
           message: 'SAVE_TO_DATABASE está configurado como false',
         });
@@ -143,7 +163,10 @@ export class RateController {
         const cached = await this.redisService.get(cacheKey);
         if (cached) {
           log.debug('Cache hit: history by date', { date });
-          res.json(cached);
+          res.json({
+            success: true,
+            data: cached,
+          });
           return;
         }
         log.debug('Cache miss: history by date', { date });
@@ -152,9 +175,10 @@ export class RateController {
       // Cache miss o Redis deshabilitado - consultar MongoDB
       const rate = await this.cacheService.getRateByDate(date);
       if (!rate) {
-        res
-          .status(404)
-          .json({ error: `No se encontró tasa para la fecha ${date}` });
+        res.status(404).json({
+          success: false,
+          error: `No se encontró tasa para la fecha ${date}`,
+        });
         return;
       }
 
@@ -164,10 +188,16 @@ export class RateController {
         await this.redisService.set(cacheKey, rate, config.cacheTTL.history);
       }
 
-      res.json(rate);
+      res.json({
+        success: true,
+        data: rate,
+      });
     } catch (error) {
       log.error('Error obteniendo tasa por fecha', { error });
-      res.status(500).json({ error: 'Error interno del servidor' });
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+      });
     }
   }
 }
