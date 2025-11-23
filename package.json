@@ -1,6 +1,6 @@
 {
   "name": "bcv-service",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Microservicio para consultar la tasa de cambio del BCV",
   "main": "dist/app.js",
   "scripts": {
