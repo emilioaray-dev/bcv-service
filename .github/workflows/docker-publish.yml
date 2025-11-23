@@ -229,16 +229,17 @@ jobs:
     if: success() && needs.semantic-release.outputs.new-release-published == 'true'
 
     steps:
-      # 1. Checkout para acceder a package.json
+      # 1. Checkout para acceder a package.json (silencioso)
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+          show-progress: false  # Deshabilita el progreso de git
 
-      # 2. Pull latest changes
+      # 2. Pull latest changes (silencioso)
       - name: 🔄 Pull latest changes
-        run: git pull origin main
+        run: git pull origin main --quiet
 
       # 3. Extraer versión para deployment
       - name: 📦 Get version for deployment
@@ -301,12 +302,12 @@ jobs:
             # Mostrar estado actual
             echo ""
             echo "📊 Estado actual de contenedores:"
-            $DOCKER_COMPOSE -f $COMPOSE_FILE ps || true
+            $DOCKER_COMPOSE -f $COMPOSE_FILE ps 2>&1 | grep -v "version.*obsolete" || true
 
-            # Hacer login en GitHub Container Registry
+            # Hacer login en GitHub Container Registry (silenciar warnings)
             echo ""
             echo "🔐 Autenticando en GHCR..."
-            echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>&1 | grep -v "WARNING" || true
 
             # Exportar secretos como variables de entorno para docker-compose
             echo ""
@@ -319,20 +320,20 @@ jobs:
             export SWAGGER_PROD_URL="${{ secrets.SWAGGER_PROD_URL }}"
             echo "✅ Secretos configurados correctamente"
 
-            # Descargar la nueva imagen
+            # Descargar la nueva imagen (mostrar progreso, filtrar solo warnings)
             echo ""
             echo "⬇️  Descargando nueva imagen (versión ${{ steps.deploy_version.outputs.version }})..."
-            $DOCKER_COMPOSE -f $COMPOSE_FILE pull bcv-service
+            $DOCKER_COMPOSE -f $COMPOSE_FILE pull bcv-service 2>&1 | grep -v "version.*obsolete" || true
 
-            # Detener y eliminar contenedores antiguos
+            # Detener y eliminar contenedores antiguos (silenciar warnings)
             echo ""
             echo "🛑 Deteniendo contenedores..."
-            $DOCKER_COMPOSE -f $COMPOSE_FILE down
+            $DOCKER_COMPOSE -f $COMPOSE_FILE down 2>&1 | grep -v "version.*obsolete" || true
 
-            # Iniciar con la nueva imagen
+            # Iniciar con la nueva imagen (silenciar warnings)
             echo ""
             echo "▶️  Iniciando contenedores actualizados..."
-            $DOCKER_COMPOSE -f $COMPOSE_FILE up -d
+            $DOCKER_COMPOSE -f $COMPOSE_FILE up -d 2>&1 | grep -v "version.*obsolete" || true
 
             # Esperar a que los servicios estén saludables
             echo ""
@@ -342,8 +343,8 @@ jobs:
             # Verificar que los contenedores estén corriendo
             echo ""
             echo "🔍 Verificando contenedores..."
-            RUNNING_CONTAINERS=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --services --filter "status=running" | wc -l)
-            TOTAL_SERVICES=$($DOCKER_COMPOSE -f $COMPOSE_FILE config --services | wc -l)
+            RUNNING_CONTAINERS=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --services --filter "status=running" 2>/dev/null | wc -l)
+            TOTAL_SERVICES=$($DOCKER_COMPOSE -f $COMPOSE_FILE config --services 2>/dev/null | wc -l)
 
             if [ "$RUNNING_CONTAINERS" -eq "$TOTAL_SERVICES" ]; then
               echo "✅ Todos los contenedores están corriendo ($RUNNING_CONTAINERS/$TOTAL_SERVICES)"
