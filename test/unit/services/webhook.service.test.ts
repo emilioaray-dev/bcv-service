@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WebhookService } from '@/services/webhook.service';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
+import { WebhookService } from '@/services/webhook.service';
 import axios from 'axios';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock axios
 vi.mock('axios');
@@ -148,7 +148,8 @@ describe('WebhookService', () => {
           data: { success: true },
         });
 
-      const result = await webhookService.sendRateUpdateNotification(mockRateData);
+      const result =
+        await webhookService.sendRateUpdateNotification(mockRateData);
 
       expect(result.success).toBe(true);
       expect(result.attempt).toBe(3);
@@ -158,7 +159,8 @@ describe('WebhookService', () => {
     it('should fail after max retries and record failure metrics', async () => {
       mockedAxios.post.mockRejectedValue(new Error('Network error'));
 
-      const result = await webhookService.sendRateUpdateNotification(mockRateData);
+      const result =
+        await webhookService.sendRateUpdateNotification(mockRateData);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Network error');
@@ -237,14 +239,17 @@ describe('WebhookService', () => {
 
       // (36.5 - 36.4) / 36.4 * 100 = 0.2747%
       const expectedChange = ((36.5 - 36.4) / 36.4) * 100;
-      expect(payload.data.change.percentageChange).toBeCloseTo(expectedChange, 4);
+      expect(payload.data.change.percentageChange).toBeCloseTo(
+        expectedChange,
+        4
+      );
     });
   });
 
   describe('verifySignature', () => {
     it('should verify valid HMAC signature', () => {
       const payload = JSON.stringify({ test: 'data' });
-      const crypto = require('crypto');
+      const crypto = require('node:crypto');
       const hmac = crypto.createHmac('sha256', 'test-secret-key');
       hmac.update(payload, 'utf8');
       const signature = `sha256=${hmac.digest('hex')}`;

@@ -23,6 +23,7 @@ import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookService } from '@/interfaces/IWebhookService';
 // Interfaces
 import type { ICacheService } from '@/services/cache.interface';
 
@@ -54,6 +55,7 @@ export class Application {
   private webSocketService: IWebSocketService;
   private bcvService: IBCVService;
   private metricsService: IMetricsService;
+  private webhookService: IWebhookService;
 
   constructor() {
     // Inicializar Express y HTTP Server
@@ -75,6 +77,9 @@ export class Application {
     this.bcvService = this.container.get<IBCVService>(TYPES.BCVService);
     this.metricsService = this.container.get<IMetricsService>(
       TYPES.MetricsService
+    );
+    this.webhookService = this.container.get<IWebhookService>(
+      TYPES.WebhookService
     );
 
     // Configurar la aplicación
@@ -256,13 +261,30 @@ export class Application {
 
     // Iniciar el servidor
     await new Promise<void>((resolve) => {
-      this.server.listen(port, () => {
+      this.server.listen(port, async () => {
         log.info('Servidor BCV iniciado', {
           port,
           schedule: config.cronSchedule,
           environment: config.nodeEnv,
           architecture: 'SOLID with Inversify',
         });
+
+        // Enviar notificación de despliegue exitoso
+        try {
+          await this.webhookService.sendDeploymentNotification(
+            'deployment.success',
+            {
+              environment: config.nodeEnv,
+              version: process.env.npm_package_version || 'unknown',
+              deploymentId: `start-${Date.now()}`,
+              message: `Servidor BCV iniciado en el puerto ${port}`,
+            }
+          );
+          log.info('Notificación de despliegue exitoso enviada');
+        } catch (error) {
+          log.error('Error enviando notificación de despliegue', { error });
+        }
+
         resolve();
       });
     });
@@ -305,6 +327,22 @@ export class Application {
   private setupGracefulShutdown(): void {
     const gracefulShutdown = async () => {
       log.info('Iniciando cierre graceful de la aplicación...');
+
+      // Enviar notificación de cierre del servicio
+      try {
+        await this.webhookService.sendDeploymentNotification(
+          'deployment.failure', // O podríamos usar un evento especializado
+          {
+            environment: config.nodeEnv,
+            version: process.env.npm_package_version || 'unknown',
+            deploymentId: `shutdown-${Date.now()}`,
+            message: 'Aplicación BCV Service cerrándose gracefulmente',
+          }
+        );
+        log.info('Notificación de cierre de aplicación enviada');
+      } catch (error) {
+        log.error('Error enviando notificación de cierre', { error });
+      }
 
       // Detener el scheduler
       this.schedulerService.stop();

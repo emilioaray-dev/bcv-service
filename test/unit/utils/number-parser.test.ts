@@ -1,23 +1,23 @@
-import { describe, it, expect } from 'vitest';
 import {
+  formatToVenezuelanNumber,
   parseVenezuelanNumber,
   parseVenezuelanNumberSafe,
-  formatToVenezuelanNumber
 } from '@/utils/number-parser';
+import { describe, expect, it } from 'vitest';
 
 describe('number-parser', () => {
   describe('parseVenezuelanNumber', () => {
     describe('formato con coma decimal solamente', () => {
       it('debe parsear "36,50" correctamente', () => {
-        expect(parseVenezuelanNumber('36,50')).toBe(36.50);
+        expect(parseVenezuelanNumber('36,50')).toBe(36.5);
       });
 
       it('debe parsear "0,50" correctamente', () => {
-        expect(parseVenezuelanNumber('0,50')).toBe(0.50);
+        expect(parseVenezuelanNumber('0,50')).toBe(0.5);
       });
 
       it('debe parsear "1,00" correctamente', () => {
-        expect(parseVenezuelanNumber('1,00')).toBe(1.00);
+        expect(parseVenezuelanNumber('1,00')).toBe(1.0);
       });
 
       it('debe parsear "999,99" correctamente', () => {
@@ -31,7 +31,7 @@ describe('number-parser', () => {
       });
 
       it('debe parsear "36.500,00" correctamente', () => {
-        expect(parseVenezuelanNumber('36.500,00')).toBe(36500.00);
+        expect(parseVenezuelanNumber('36.500,00')).toBe(36500.0);
       });
 
       it('debe parsear "1.234.567,89" correctamente', () => {
@@ -39,7 +39,7 @@ describe('number-parser', () => {
       });
 
       it('debe parsear "10.000,50" correctamente', () => {
-        expect(parseVenezuelanNumber('10.000,50')).toBe(10000.50);
+        expect(parseVenezuelanNumber('10.000,50')).toBe(10000.5);
       });
     });
 
@@ -73,7 +73,7 @@ describe('number-parser', () => {
 
     describe('formato con espacios', () => {
       it('debe parsear "  36,50  " correctamente', () => {
-        expect(parseVenezuelanNumber('  36,50  ')).toBe(36.50);
+        expect(parseVenezuelanNumber('  36,50  ')).toBe(36.5);
       });
 
       it('debe parsear "1 234,56" correctamente (con espacios)', () => {
@@ -81,7 +81,7 @@ describe('number-parser', () => {
       });
 
       it('debe parsear "36 500,00" correctamente', () => {
-        expect(parseVenezuelanNumber('36 500,00')).toBe(36500.00);
+        expect(parseVenezuelanNumber('36 500,00')).toBe(36500.0);
       });
     });
 
@@ -109,7 +109,7 @@ describe('number-parser', () => {
 
     describe('formato con caracteres especiales', () => {
       it('debe parsear "Bs. 36,50" correctamente', () => {
-        expect(parseVenezuelanNumber('Bs. 36,50')).toBe(36.50);
+        expect(parseVenezuelanNumber('Bs. 36,50')).toBe(36.5);
       });
 
       it('debe parsear "$ 1.234,56" correctamente', () => {
@@ -117,13 +117,13 @@ describe('number-parser', () => {
       });
 
       it('debe parsear "36,50 USD" correctamente', () => {
-        expect(parseVenezuelanNumber('36,50 USD')).toBe(36.50);
+        expect(parseVenezuelanNumber('36,50 USD')).toBe(36.5);
       });
     });
 
     describe('casos reales del BCV', () => {
       it('debe parsear tasa típica del BCV "36,50"', () => {
-        expect(parseVenezuelanNumber('36,50')).toBe(36.50);
+        expect(parseVenezuelanNumber('36,50')).toBe(36.5);
       });
 
       it('debe parsear tasa con miles "36.789,25"', () => {
@@ -142,7 +142,7 @@ describe('number-parser', () => {
 
   describe('parseVenezuelanNumberSafe', () => {
     it('debe retornar el valor parseado si es válido', () => {
-      expect(parseVenezuelanNumberSafe('36,50')).toBe(36.50);
+      expect(parseVenezuelanNumberSafe('36,50')).toBe(36.5);
     });
 
     it('debe retornar el valor por defecto (0) para string inválido', () => {
@@ -164,7 +164,7 @@ describe('number-parser', () => {
 
   describe('formatToVenezuelanNumber', () => {
     it('debe formatear 36.50 como "36,50"', () => {
-      expect(formatToVenezuelanNumber(36.50)).toBe('36,50');
+      expect(formatToVenezuelanNumber(36.5)).toBe('36,50');
     });
 
     it('debe formatear 1234.56 como "1.234,56"', () => {
@@ -188,7 +188,7 @@ describe('number-parser', () => {
     });
 
     it('debe formatear NaN como "0,00"', () => {
-      expect(formatToVenezuelanNumber(NaN)).toBe('0,00');
+      expect(formatToVenezuelanNumber(Number.NaN)).toBe('0,00');
     });
 
     it('debe formatear números grandes correctamente', () => {
@@ -206,10 +206,10 @@ describe('number-parser', () => {
 
     it('debe parsear y formatear correctamente múltiples valores', () => {
       const testCases = [
-        { input: '36,50', expected: 36.50 },
+        { input: '36,50', expected: 36.5 },
         { input: '1.234,56', expected: 1234.56 },
         { input: '36.789,25', expected: 36789.25 },
-        { input: '100.000,00', expected: 100000.00 },
+        { input: '100.000,00', expected: 100000.0 },
       ];
 
       testCases.forEach(({ input, expected }) => {

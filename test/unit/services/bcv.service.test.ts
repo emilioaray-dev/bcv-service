@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BCVService } from '@/services/bcv.service';
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock axios
 vi.mock('axios');
@@ -14,7 +14,7 @@ vi.mock('@/utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-  }
+  },
 }));
 
 describe('BCVService', () => {
@@ -25,18 +25,29 @@ describe('BCVService', () => {
     // Crear mocks para las dependencias
     const mockConfig = { bcvWebsiteUrl: mockBcvUrl };
     const mockDiscordService = {
-      sendRateUpdateNotification: vi.fn()
+      sendRateUpdateNotification: vi.fn(),
     };
     const mockWebhookService = {
       sendRateUpdateNotification: vi.fn(),
-      isEnabled: vi.fn().mockReturnValue(false)
+      isEnabled: vi.fn().mockReturnValue(false),
     };
     const mockWebSocketService = {
       broadcastRateUpdate: vi.fn(),
-      getConnectedClientsCount: vi.fn().mockReturnValue(0)
+      getConnectedClientsCount: vi.fn().mockReturnValue(0),
+    };
+    const mockNotificationStateService = {
+      hasSignificantChangeAndNotify: vi.fn().mockResolvedValue(true), // Simula que siempre hay cambios significativos para pruebas
+      getLastNotificationState: vi.fn().mockResolvedValue(null), // No hay estado anterior
+      updateNotificationState: vi.fn(),
     };
 
-    bcvService = new BCVService(mockConfig, mockDiscordService, mockWebhookService, mockWebSocketService);
+    bcvService = new BCVService(
+      mockConfig,
+      mockDiscordService,
+      mockWebhookService,
+      mockWebSocketService,
+      mockNotificationStateService
+    );
     vi.clearAllMocks();
   });
 
@@ -94,15 +105,15 @@ describe('BCVService', () => {
       expect(result?.date).toBe('2025-11-12');
       expect(result?.rates).toHaveLength(5);
       // Verificar tasa de USD
-      const usdRate = result?.rates.find(r => r.currency === 'USD');
-      expect(usdRate?.rate).toBe(36.50);
+      const usdRate = result?.rates.find((r) => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.5);
 
       // Verificar todas las monedas
       expect(result?.rates).toEqual(
         expect.arrayContaining([
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-          { currency: 'EUR', rate: 39.20, name: 'Euro' },
-          { currency: 'CNY', rate: 5.10, name: 'Yuan' },
+          { currency: 'USD', rate: 36.5, name: 'Dólar' },
+          { currency: 'EUR', rate: 39.2, name: 'Euro' },
+          { currency: 'CNY', rate: 5.1, name: 'Yuan' },
           { currency: 'TRY', rate: 1.15, name: 'Lira Turca' },
           { currency: 'RUB', rate: 0.38, name: 'Rublo Ruso' },
         ])
@@ -143,8 +154,8 @@ describe('BCVService', () => {
       expect(result?.rates).toHaveLength(2);
       expect(result?.rates).toEqual(
         expect.arrayContaining([
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-          { currency: 'EUR', rate: 39.20, name: 'Euro' },
+          { currency: 'USD', rate: 36.5, name: 'Dólar' },
+          { currency: 'EUR', rate: 39.2, name: 'Euro' },
         ])
       );
     });
@@ -177,8 +188,8 @@ describe('BCVService', () => {
       const result = await bcvService.getCurrentRate();
 
       expect(result).toBeDefined();
-      const usdRate = result?.rates.find(r => r.currency === 'USD');
-      expect(usdRate?.rate).toBe(36.50);
+      const usdRate = result?.rates.find((r) => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.5);
       expect(mockedAxios.get).toHaveBeenCalledTimes(2);
     });
 
@@ -241,13 +252,13 @@ describe('BCVService', () => {
       const result = await bcvService.getCurrentRate();
 
       expect(result).toBeDefined();
-      const usdRate = result?.rates.find(r => r.currency === 'USD');
-      expect(usdRate?.rate).toBe(36.50);
+      const usdRate = result?.rates.find((r) => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.5);
       expect(result?.rates).toHaveLength(1);
       expect(result?.rates[0]).toEqual({
         currency: 'USD',
-        rate: 36.50,
-        name: 'Dólar'
+        rate: 36.5,
+        name: 'Dólar',
       });
     });
 
@@ -285,8 +296,8 @@ describe('BCVService', () => {
       expect(result?.rates).toHaveLength(1);
       expect(result?.rates[0]).toEqual({
         currency: 'EUR',
-        rate: 39.20,
-        name: 'Euro'
+        rate: 39.2,
+        name: 'Euro',
       });
     });
   });
@@ -375,14 +386,14 @@ describe('BCVService', () => {
       expect(result?.rates).toHaveLength(5);
 
       // Verify each currency
-      const usdRate = result?.rates.find(r => r.currency === 'USD');
+      const usdRate = result?.rates.find((r) => r.currency === 'USD');
       expect(usdRate).toBeDefined();
-      expect(usdRate?.rate).toBe(36.50);
+      expect(usdRate?.rate).toBe(36.5);
       expect(usdRate?.name).toBe('Dólar');
 
-      const eurRate = result?.rates.find(r => r.currency === 'EUR');
+      const eurRate = result?.rates.find((r) => r.currency === 'EUR');
       expect(eurRate).toBeDefined();
-      expect(eurRate?.rate).toBe(39.20);
+      expect(eurRate?.rate).toBe(39.2);
       expect(eurRate?.name).toBe('Euro');
     });
 
@@ -410,8 +421,8 @@ describe('BCVService', () => {
 
       const result = await bcvService.getCurrentRate();
 
-      const usdRate = result?.rates.find(r => r.currency === 'USD');
-      expect(usdRate?.rate).toBe(36.50);
+      const usdRate = result?.rates.find((r) => r.currency === 'USD');
+      expect(usdRate?.rate).toBe(36.5);
     });
   });
 
@@ -419,7 +430,7 @@ describe('BCVService', () => {
     it('should handle network timeout', async () => {
       mockedAxios.get.mockRejectedValue({
         code: 'ECONNABORTED',
-        message: 'timeout of 15000ms exceeded'
+        message: 'timeout of 15000ms exceeded',
       });
 
       const result = await bcvService.getCurrentRate();
@@ -431,8 +442,8 @@ describe('BCVService', () => {
       mockedAxios.get.mockRejectedValue({
         response: {
           status: 500,
-          statusText: 'Internal Server Error'
-        }
+          statusText: 'Internal Server Error',
+        },
       });
 
       const result = await bcvService.getCurrentRate();

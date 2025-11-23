@@ -1,6 +1,6 @@
 # Webhook Integration Guide
 
-This guide explains how to configure and use HTTP webhooks to receive real-time notifications when BCV exchange rates change.
+This guide explains how to configure and use HTTP webhooks to receive real-time notifications for BCV exchange rate changes, service status updates, and deployment events.
 
 ## Table of Contents
 
@@ -16,7 +16,21 @@ This guide explains how to configure and use HTTP webhooks to receive real-time 
 
 ## Overview
 
-The BCV service can send HTTP POST requests to a configured webhook URL whenever exchange rates change. This allows your application to receive real-time updates without polling the API.
+The BCV service can send HTTP POST requests to a configured webhook URL for various events:
+- Exchange rate changes (using persistent notification state to prevent duplicates)
+- Service health status changes
+- Deployment events (start, success, failure)
+
+This allows your application to receive real-time updates without polling the API.
+
+### Persistent Notification State
+
+The service now implements a persistent notification state system that:
+- Stores the last notified rates in MongoDB for persistence across restarts
+- Uses Redis as a cache layer for faster read/write operations
+- Prevents duplicate notifications when the service is restarted
+- Uses absolute difference (≥0.01) instead of percentage change for determining significant changes
+- Tracks changes in all currencies (USD, EUR, CNY, TRY, RUB, etc.)
 
 ### Features
 
@@ -212,7 +226,9 @@ The webhook request includes the following headers:
 
 ### Event Types
 
-#### `rate.updated`
+#### Rate Change Events
+
+##### `rate.updated`
 
 Sent when rates are fetched for the first time or after a restart.
 
@@ -228,9 +244,9 @@ Sent when rates are fetched for the first time or after a restart.
 }
 ```
 
-#### `rate.changed`
+##### `rate.changed`
 
-Sent when rates change by more than 0.1% compared to the previous rate.
+Sent when rates change by absolute difference >= 0.01 compared to the previous rate (in any currency).
 
 ```json
 {
@@ -244,6 +260,122 @@ Sent when rates change by more than 0.1% compared to the previous rate.
       "currentRate": 36.50,
       "percentageChange": 0.2747
     }
+  }
+}
+```
+
+#### Service Status Events
+
+##### `service.healthy`
+
+Sent when the service changes to a healthy status.
+
+```json
+{
+  "event": "service.healthy",
+  "timestamp": "2025-11-23T18:00:00.000Z",
+  "data": {
+    "status": "healthy",
+    "uptime": 3600,
+    "checks": {
+      "mongodb": {
+        "status": "healthy",
+        "message": "MongoDB connection is healthy"
+      },
+      "redis": {
+        "status": "healthy",
+        "message": "Redis is operational",
+        "details": {
+          "enabled": true,
+          "connected": true
+        }
+      }
+    },
+    "previousStatus": "unhealthy"
+  }
+}
+```
+
+##### `service.unhealthy`
+
+Sent when the service changes to an unhealthy status.
+
+```json
+{
+  "event": "service.unhealthy",
+  "timestamp": "2025-11-23T18:05:00.000Z",
+  "data": {
+    "status": "unhealthy",
+    "uptime": 3900,
+    "checks": {
+      "mongodb": {
+        "status": "unhealthy",
+        "message": "MongoDB connection failed"
+      }
+    },
+    "previousStatus": "healthy"
+  }
+}
+```
+
+##### `service.degraded`
+
+Sent when the service changes to a degraded status.
+
+```json
+{
+  "event": "service.degraded",
+  "timestamp": "2025-11-23T18:10:00.000Z",
+  "data": {
+    "status": "degraded",
+    "uptime": 4200,
+    "checks": {
+      "mongodb": {
+        "status": "healthy",
+        "message": "MongoDB connection is healthy"
+      },
+      "websocket": {
+        "status": "unhealthy",
+        "message": "WebSocket service check failed"
+      }
+    },
+    "previousStatus": "healthy"
+  }
+}
+```
+
+#### Deployment Events
+
+##### `deployment.success`
+
+Sent when the service starts successfully.
+
+```json
+{
+  "event": "deployment.success",
+  "timestamp": "2025-11-23T17:30:00.000Z",
+  "data": {
+    "deploymentId": "start-1700723400000",
+    "environment": "production",
+    "version": "2.0.1",
+    "message": "Servidor BCV iniciado en el puerto 3000"
+  }
+}
+```
+
+##### `deployment.failure`
+
+Sent when the service stops (during graceful shutdown).
+
+```json
+{
+  "event": "deployment.failure",
+  "timestamp": "2025-11-23T19:00:00.000Z",
+  "data": {
+    "deploymentId": "shutdown-1700727600000",
+    "environment": "production",
+    "version": "2.0.1",
+    "message": "Aplicación BCV Service cerrándose gracefulmente"
   }
 }
 ```

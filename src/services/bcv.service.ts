@@ -1,6 +1,7 @@
 import https from 'node:https';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
+import type { INotificationStateService } from '@/interfaces/INotificationStateService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
 import type { IWebhookService } from '@/interfaces/IWebhookService';
 import log from '@/utils/logger';
@@ -61,7 +62,9 @@ export class BCVService implements IBCVService {
     @inject(TYPES.WebhookService)
     private readonly webhookService: IWebhookService,
     @inject(TYPES.WebSocketService)
-    private readonly webSocketService: IWebSocketService
+    private readonly webSocketService: IWebSocketService,
+    @inject(TYPES.NotificationStateService)
+    private readonly notificationStateService: INotificationStateService
   ) {
     this.bcvUrl = config.bcvWebsiteUrl || 'https://www.bcv.org.ve/';
     this.maxRetries = 3;
@@ -85,19 +88,29 @@ export class BCVService implements IBCVService {
 
         const rateData = await this.fetchRateData();
         if (rateData) {
-          // Verificar si hay cambio en las tasas
-          const hasChange = this.hasRateChanged(this.lastRate, rateData);
+          // Verificar si hay cambio significativo usando el estado persistente
+          const hasSignificantChange =
+            await this.notificationStateService.hasSignificantChangeAndNotify(
+              rateData
+            );
 
-          if (hasChange) {
-            log.info('Detectado cambio en las tasas de cambio', {
-              previousRate: getCurrencyRate(this.lastRate, 'USD'),
+          if (hasSignificantChange) {
+            log.info('Detectado cambio significativo en las tasas de cambio', {
               currentRate: getCurrencyRate(rateData, 'USD'),
               timestamp: new Date().toISOString(),
             });
 
+            // Obtener la tasa anterior desde el estado persistente
+            const lastState =
+              await this.notificationStateService.getLastNotificationState();
+            const previousRate = lastState?.lastNotifiedRate || null;
+
             // Enviar notificación a Discord
             try {
-              await this.discordService.sendRateUpdateNotification(rateData);
+              await this.discordService.sendRateUpdateNotification(
+                rateData,
+                previousRate
+              );
               log.info('Notificación de cambio de tasa enviada a Discord');
             } catch (notificationError) {
               log.error('Error enviando notificación a Discord', {
@@ -110,7 +123,7 @@ export class BCVService implements IBCVService {
               const webhookResult =
                 await this.webhookService.sendRateUpdateNotification(
                   rateData,
-                  this.lastRate
+                  previousRate
                 );
 
               if (webhookResult.success) {
@@ -131,7 +144,7 @@ export class BCVService implements IBCVService {
               const rateUpdateEvent = {
                 timestamp: new Date().toISOString(),
                 rates: rateData.rates,
-                change: this.calculateChange(this.lastRate, rateData),
+                change: this.calculateChange(previousRate, rateData),
                 eventType: 'rate-update' as const,
               };
 
@@ -144,7 +157,7 @@ export class BCVService implements IBCVService {
             }
           }
 
-          // Actualizar la tasa anterior
+          // Actualizar la tasa anterior (solo con fines de cálculo local, ya no se usa para comparación)
           this.lastRate = rateData;
 
           return rateData;
@@ -300,53 +313,6 @@ export class BCVService implements IBCVService {
       return error.message;
     }
     return String(error);
-  }
-
-  private hasRateChanged(
-    previous: BCVRateData | null,
-    current: BCVRateData
-  ): boolean {
-    // Si no hay tasa anterior, consideramos que hay un cambio
-    if (!previous) {
-      return true;
-    }
-
-    // Comparar porcentaje de cambio para la tasa principal (dólar)
-    const currentUsdRate = getCurrencyRate(current, 'USD');
-    const previousUsdRate = getCurrencyRate(previous, 'USD');
-    const rateChange =
-      Math.abs((currentUsdRate - previousUsdRate) / (previousUsdRate || 1)) *
-      100;
-
-    // Consideramos cambio si la diferencia es mayor al 0.1% o si las tasas son diferentes
-    if (rateChange > 0.1) {
-      return true;
-    }
-
-    // Verificar si hay cambios en tasas múltiples (e.g., EUR, CNY, etc.)
-    if (Array.isArray(current.rates) && Array.isArray(previous.rates)) {
-      // Comparar cada moneda individualmente
-      for (const currentRate of current.rates) {
-        const previousRate = previous.rates.find(
-          (r) => r.currency === currentRate.currency
-        );
-        if (!previousRate) {
-          // Nueva moneda añadida
-          return true;
-        }
-
-        const currencyChange =
-          Math.abs(
-            ((currentRate.rate || 0) - (previousRate.rate || 0)) /
-              (previousRate.rate || 1)
-          ) * 100;
-        if (currencyChange > 0.1) {
-          return true;
-        }
-      }
-    }
-
-    return false;
   }
 
   private calculateChange(

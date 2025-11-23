@@ -25,13 +25,7 @@
     "commit": "git-cz",
     "commitlint": "commitlint --edit"
   },
-  "keywords": [
-    "bcv",
-    "tasa-cambio",
-    "venezuela",
-    "typescript",
-    "nodejs"
-  ],
+  "keywords": ["bcv", "tasa-cambio", "venezuela", "typescript", "nodejs"],
   "author": "RCV-APP",
   "license": "MIT",
   "devDependencies": {

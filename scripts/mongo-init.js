@@ -10,9 +10,11 @@ db.createUser({
   roles: [
     {
       role: 'readWrite',
-      db: 'bcvdb'
-    }
-  ]
+      db: 'bcvdb',
+    },
+  ],
 });
 
-print('MongoDB user "bcv_user" created successfully with readWrite permissions on "bcvdb" database');
+print(
+  'MongoDB user "bcv_user" created successfully with readWrite permissions on "bcvdb" database'
+);

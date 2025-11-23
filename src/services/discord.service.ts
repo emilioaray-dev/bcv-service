@@ -7,7 +7,10 @@ import type { BCVRateData, CurrencyRate } from '@/services/bcv.service';
 import { getCurrencyRate } from '@/services/bcv.service';
 
 export interface IDiscordService {
-  sendRateUpdateNotification(rate: BCVRateData): Promise<void>;
+  sendRateUpdateNotification(
+    rate: BCVRateData,
+    previousRate?: BCVRateData | null
+  ): Promise<void>;
 }
 
 @injectable()
@@ -30,7 +33,10 @@ export class DiscordService implements IDiscordService {
     }
   }
 
-  async sendRateUpdateNotification(rate: BCVRateData): Promise<void> {
+  async sendRateUpdateNotification(
+    rate: BCVRateData,
+    previousRate?: BCVRateData | null
+  ): Promise<void> {
     if (!this.enabled) {
       logger.debug(
         'Notificación por Discord ignorada - webhook no configurado'
@@ -41,21 +47,66 @@ export class DiscordService implements IDiscordService {
     try {
       const rateData = rate.rates;
 
+      // Determinar la tendencia general basada en USD
+      let mainTrend: 'up' | 'down' | 'neutral' = 'neutral';
+      if (previousRate) {
+        const currentUsd = getCurrencyRate(rate, 'USD');
+        const previousUsd = getCurrencyRate(previousRate, 'USD');
+        if (currentUsd > previousUsd) {
+          mainTrend = 'up';
+        } else if (currentUsd < previousUsd) {
+          mainTrend = 'down';
+        }
+      }
+
+      // Construir los campos con indicadores de cambio
+      const fields = rateData.map((r: CurrencyRate) => {
+        const formattedRate = r.rate?.toLocaleString('es-VE', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+
+        // Si hay tasa anterior, calcular cambio
+        if (previousRate) {
+          const prevRate = previousRate.rates.find(
+            (pr) => pr.currency === r.currency
+          );
+
+          if (prevRate && prevRate.rate !== r.rate) {
+            const percentChange =
+              ((r.rate - prevRate.rate) / prevRate.rate) * 100;
+            const sign = percentChange > 0 ? '+' : '';
+            const trend = percentChange > 0 ? '↗️' : '↘️';
+
+            return {
+              name: `${r.name || r.currency} (${r.currency}) ${trend}  ${sign}${percentChange.toFixed(2)}%`,
+              value: `${formattedRate} Bs`,
+              inline: false,
+            };
+          }
+        }
+
+        // Sin cambio o sin tasa anterior
+        return {
+          name: `${r.name || r.currency} (${r.currency})`,
+          value: `${formattedRate} Bs`,
+          inline: false,
+        };
+      });
+
       const message = {
         embeds: [
           {
             title: '🔄 Actualización de Tasas de Cambio',
             description:
               'Se ha detectado un cambio en las tasas de cambio del BCV',
-            color: 0x00ff00, // Verde
-            fields: rateData.map((r: CurrencyRate) => ({
-              name: `${r.name || r.currency} (${r.currency})`,
-              value: r.rate?.toLocaleString('es-VE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }),
-              inline: false,
-            })),
+            color:
+              mainTrend === 'up'
+                ? 0x00ff00
+                : mainTrend === 'down'
+                  ? 0xff0000
+                  : 0xffff00, // Verde/Rojo/Amarillo
+            fields,
             timestamp: new Date().toISOString(),
             footer: {
               text: 'Servicio BCV - Notificaciones',

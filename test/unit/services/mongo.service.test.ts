@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Rate } from '@/models/rate';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({
@@ -8,7 +8,7 @@ vi.mock('@/utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-  }
+  },
 }));
 
 // Test MongoDB configuration
@@ -24,8 +24,13 @@ const testMongoConfig = {
     heartbeatFrequencyMS: 10000,
     retryWrites: true,
     retryReads: true,
-    compressors: ['zstd', 'snappy', 'zlib'] as ('none' | 'snappy' | 'zlib' | 'zstd')[],
-  }
+    compressors: ['zstd', 'snappy', 'zlib'] as (
+      | 'none'
+      | 'snappy'
+      | 'zlib'
+      | 'zstd'
+    )[],
+  },
 };
 
 describe('MongoService', () => {
@@ -103,9 +108,9 @@ describe('MongoService', () => {
       const { MongoService } = await import('@/services/mongo.service');
       const mongoService = new MongoService(testMongoConfig);
 
-      const rateData = {
-        rate: 36.50,
-        rates: [{ currency: 'USD', rate: 36.50, name: 'Dólar' }],
+      const _rateData = {
+        rate: 36.5,
+        rates: [{ currency: 'USD', rate: 36.5, name: 'Dólar' }],
         date: '2025-11-12',
         source: 'bcv',
       };
@@ -132,10 +137,8 @@ describe('MongoService', () => {
     it('should work with complete Rate objects', () => {
       const completeRate: Rate = {
         id: '2025-11-12-bcv',
-        rate: 36.50,
-        rates: [
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-        ],
+        rate: 36.5,
+        rates: [{ currency: 'USD', rate: 36.5, name: 'Dólar' }],
         date: '2025-11-12',
         source: 'bcv',
         createdAt: '2025-11-12T10:00:00Z',
@@ -152,11 +155,11 @@ describe('MongoService', () => {
     it('should work with multiple currency rates', () => {
       const multiCurrencyRate: Rate = {
         id: '2025-11-12-bcv',
-        rate: 36.50,
+        rate: 36.5,
         rates: [
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-          { currency: 'EUR', rate: 39.20, name: 'Euro' },
-          { currency: 'CNY', rate: 5.10, name: 'Yuan' },
+          { currency: 'USD', rate: 36.5, name: 'Dólar' },
+          { currency: 'EUR', rate: 39.2, name: 'Euro' },
+          { currency: 'CNY', rate: 5.1, name: 'Yuan' },
           { currency: 'TRY', rate: 1.15, name: 'Lira Turca' },
           { currency: 'RUB', rate: 0.38, name: 'Rublo Ruso' },
         ],
@@ -166,7 +169,9 @@ describe('MongoService', () => {
       };
 
       expect(multiCurrencyRate.rates).toHaveLength(5);
-      expect(multiCurrencyRate.rates.every(r => r.currency && r.rate && r.name)).toBe(true);
+      expect(
+        multiCurrencyRate.rates.every((r) => r.currency && r.rate && r.name)
+      ).toBe(true);
     });
   });
 

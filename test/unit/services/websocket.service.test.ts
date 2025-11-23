@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import type { Server as HttpServer } from 'node:http';
 import type { RateUpdateEvent } from '@/models/rate';
-import type { Server as HttpServer } from 'http';
+import { describe, expect, it } from 'vitest';
 
 // Mock ws library completely
 import { vi } from 'vitest';
@@ -34,7 +34,7 @@ vi.mock('@/utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-  }
+  },
 }));
 
 // Helper function to create mock IMetricsService
@@ -59,17 +59,28 @@ describe('WebSocketService', () => {
   describe('class interface', () => {
     it('should be constructable with a server parameter', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
-      const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockServer = {
+        on: vi.fn(),
+        listen: vi.fn(),
+      } as unknown as HttpServer;
       const mockMetricsService = createMockMetricsService();
 
-      expect(() => new WebSocketService(mockServer, mockMetricsService as any)).not.toThrow();
+      expect(
+        () => new WebSocketService(mockServer, mockMetricsService as any)
+      ).not.toThrow();
     });
 
     it('should have required methods', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
-      const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockServer = {
+        on: vi.fn(),
+        listen: vi.fn(),
+      } as unknown as HttpServer;
       const mockMetricsService = createMockMetricsService();
-      const instance = new WebSocketService(mockServer, mockMetricsService as any);
+      const instance = new WebSocketService(
+        mockServer,
+        mockMetricsService as any
+      );
 
       expect(instance.broadcastRateUpdate).toBeDefined();
       expect(instance.getConnectedClientsCount).toBeDefined();
@@ -81,14 +92,20 @@ describe('WebSocketService', () => {
   describe('type safety', () => {
     it('should accept RateUpdateEvent for broadcastRateUpdate', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
-      const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockServer = {
+        on: vi.fn(),
+        listen: vi.fn(),
+      } as unknown as HttpServer;
       const mockMetricsService = createMockMetricsService();
-      const instance = new WebSocketService(mockServer, mockMetricsService as any);
+      const instance = new WebSocketService(
+        mockServer,
+        mockMetricsService as any
+      );
 
       const validEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
-        rate: 36.50,
-        rates: [{ currency: 'USD', rate: 36.50, name: 'Dólar' }],
+        rate: 36.5,
+        rates: [{ currency: 'USD', rate: 36.5, name: 'Dólar' }],
         change: 0.05,
         eventType: 'rate-update',
       };
@@ -99,17 +116,23 @@ describe('WebSocketService', () => {
 
     it('should handle multi-currency rate updates', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
-      const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockServer = {
+        on: vi.fn(),
+        listen: vi.fn(),
+      } as unknown as HttpServer;
       const mockMetricsService = createMockMetricsService();
-      const instance = new WebSocketService(mockServer, mockMetricsService as any);
+      const instance = new WebSocketService(
+        mockServer,
+        mockMetricsService as any
+      );
 
       const multiCurrencyEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
-        rate: 36.50,
+        rate: 36.5,
         rates: [
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-          { currency: 'EUR', rate: 39.20, name: 'Euro' },
-          { currency: 'CNY', rate: 5.10, name: 'Yuan' },
+          { currency: 'USD', rate: 36.5, name: 'Dólar' },
+          { currency: 'EUR', rate: 39.2, name: 'Euro' },
+          { currency: 'CNY', rate: 5.1, name: 'Yuan' },
           { currency: 'TRY', rate: 1.15, name: 'Lira Turca' },
           { currency: 'RUB', rate: 0.38, name: 'Rublo Ruso' },
         ],
@@ -117,14 +140,22 @@ describe('WebSocketService', () => {
         eventType: 'rate-update',
       };
 
-      expect(() => instance.broadcastRateUpdate(multiCurrencyEvent)).not.toThrow();
+      expect(() =>
+        instance.broadcastRateUpdate(multiCurrencyEvent)
+      ).not.toThrow();
     });
 
     it('should return number from getConnectedClientsCount', async () => {
       const { WebSocketService } = await import('@/services/websocket.service');
-      const mockServer = { on: vi.fn(), listen: vi.fn() } as unknown as HttpServer;
+      const mockServer = {
+        on: vi.fn(),
+        listen: vi.fn(),
+      } as unknown as HttpServer;
       const mockMetricsService = createMockMetricsService();
-      const instance = new WebSocketService(mockServer, mockMetricsService as any);
+      const instance = new WebSocketService(
+        mockServer,
+        mockMetricsService as any
+      );
 
       const count = instance.getConnectedClientsCount();
       expect(typeof count).toBe('number');
@@ -136,10 +167,8 @@ describe('WebSocketService', () => {
     it('should validate complete RateUpdateEvent structure', () => {
       const validEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
-        rate: 36.50,
-        rates: [
-          { currency: 'USD', rate: 36.50, name: 'Dólar' }
-        ],
+        rate: 36.5,
+        rates: [{ currency: 'USD', rate: 36.5, name: 'Dólar' }],
         change: 0.05,
         eventType: 'rate-update',
       };
@@ -155,19 +184,21 @@ describe('WebSocketService', () => {
     it('should handle multiple currency rates in event', () => {
       const multiCurrencyEvent: RateUpdateEvent = {
         timestamp: '2025-11-12T10:00:00Z',
-        rate: 36.50,
+        rate: 36.5,
         rates: [
-          { currency: 'USD', rate: 36.50, name: 'Dólar' },
-          { currency: 'EUR', rate: 39.20, name: 'Euro' },
+          { currency: 'USD', rate: 36.5, name: 'Dólar' },
+          { currency: 'EUR', rate: 39.2, name: 'Euro' },
         ],
         change: 0.05,
         eventType: 'rate-update',
       };
 
       expect(multiCurrencyEvent.rates).toHaveLength(2);
-      expect(multiCurrencyEvent.rates!.every(r =>
-        r.currency && typeof r.rate === 'number' && r.name
-      )).toBe(true);
+      expect(
+        multiCurrencyEvent.rates?.every(
+          (r) => r.currency && typeof r.rate === 'number' && r.name
+        )
+      ).toBe(true);
     });
   });
 });

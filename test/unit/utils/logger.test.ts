@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Logger', () => {
   let log: any;
@@ -60,7 +60,9 @@ describe('Logger', () => {
         timestamp: new Date().toISOString(),
       };
 
-      expect(() => log.info('Complex metadata test', complexMeta)).not.toThrow();
+      expect(() =>
+        log.info('Complex metadata test', complexMeta)
+      ).not.toThrow();
     });
 
     it('should handle undefined metadata', () => {

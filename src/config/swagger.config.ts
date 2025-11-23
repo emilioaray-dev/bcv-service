@@ -68,18 +68,19 @@ export const swaggerOptions: OAS3Options = {
             currency: {
               type: 'string',
               description: 'Código de moneda (ISO 4217)',
+              enum: ['EUR', 'CNY', 'TRY', 'RUB', 'USD'],
               example: 'USD',
             },
             rate: {
               type: 'number',
               format: 'double',
-              description: 'Tasa de cambio',
-              example: 36.5,
+              description: 'Tasa de cambio en bolívares',
+              example: 243.1105,
             },
             name: {
               type: 'string',
               description: 'Nombre completo de la moneda',
-              example: 'Dólar de los Estados Unidos de América',
+              example: 'Dólar',
             },
           },
           required: ['currency', 'rate', 'name'],
@@ -89,21 +90,53 @@ export const swaggerOptions: OAS3Options = {
           properties: {
             _id: {
               type: 'string',
-              description: 'ID único del registro',
-              example: '67330d5f123abc456def7890',
+              description: 'ID único del registro (MongoDB ObjectId)',
+              example: '69210b11004e71ed86a744ff',
+            },
+            id: {
+              type: 'string',
+              description: 'ID compuesto generado automáticamente (fecha-source)',
+              example: '2025-11-25-bcv',
             },
             date: {
               type: 'string',
-              format: 'date-time',
-              description: 'Fecha de la tasa',
-              example: '2025-11-12T00:00:00.000Z',
+              format: 'date',
+              description: 'Fecha de la tasa en formato YYYY-MM-DD',
+              example: '2025-11-25',
             },
             rates: {
               type: 'array',
               items: {
                 $ref: '#/components/schemas/CurrencyRate',
               },
-              description: 'Array de tasas por moneda',
+              description: 'Array de tasas de cambio por moneda',
+              example: [
+                {
+                  currency: 'EUR',
+                  rate: 280.04870937,
+                  name: 'Euro',
+                },
+                {
+                  currency: 'CNY',
+                  rate: 34.2057462,
+                  name: 'Yuan',
+                },
+                {
+                  currency: 'TRY',
+                  rate: 5.72783475,
+                  name: 'Lira Turca',
+                },
+                {
+                  currency: 'RUB',
+                  rate: 3.07773768,
+                  name: 'Rublo Ruso',
+                },
+                {
+                  currency: 'USD',
+                  rate: 243.1105,
+                  name: 'Dólar',
+                },
+              ],
             },
             source: {
               type: 'string',
@@ -113,17 +146,11 @@ export const swaggerOptions: OAS3Options = {
             createdAt: {
               type: 'string',
               format: 'date-time',
-              description: 'Fecha de creación del registro',
-              example: '2025-11-12T10:30:00.000Z',
-            },
-            updatedAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Fecha de última actualización',
-              example: '2025-11-12T10:30:00.000Z',
+              description: 'Fecha y hora de creación del registro',
+              example: '2025-11-22T01:00:01.469Z',
             },
           },
-          required: ['_id', 'date', 'rates', 'source'],
+          required: ['_id', 'id', 'date', 'rates', 'source', 'createdAt'],
         },
         SuccessResponse: {
           type: 'object',
@@ -144,7 +171,7 @@ export const swaggerOptions: OAS3Options = {
             count: {
               type: 'number',
               description: 'Número de registros (solo en historial)',
-              example: 10,
+              example: 2,
             },
           },
           required: ['success', 'data'],
@@ -169,7 +196,7 @@ export const swaggerOptions: OAS3Options = {
           properties: {
             status: {
               type: 'string',
-              enum: ['healthy', 'unhealthy'],
+              enum: ['healthy', 'unhealthy', 'degraded'],
               description: 'Estado general del servicio',
               example: 'healthy',
             },
@@ -177,32 +204,61 @@ export const swaggerOptions: OAS3Options = {
               type: 'string',
               format: 'date-time',
               description: 'Timestamp del health check',
-              example: '2025-11-12T10:30:00.000Z',
+              example: '2025-11-23T17:53:55.147Z',
             },
             uptime: {
               type: 'number',
               description: 'Tiempo de actividad en segundos',
-              example: 86400,
+              example: 42041,
             },
-            services: {
+            checks: {
               type: 'object',
               properties: {
                 mongodb: {
-                  $ref: '#/components/schemas/ServiceStatus',
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'healthy' },
+                    message: { type: 'string', example: 'MongoDB connection is healthy' },
+                  },
+                },
+                redis: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'healthy' },
+                    message: { type: 'string', example: 'Redis is operational' },
+                    details: {
+                      type: 'object',
+                      properties: {
+                        enabled: { type: 'boolean', example: true },
+                        connected: { type: 'boolean', example: true },
+                      },
+                    },
+                  },
                 },
                 scheduler: {
-                  $ref: '#/components/schemas/ServiceStatus',
-                },
-                bcv: {
-                  $ref: '#/components/schemas/BcvServiceStatus',
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'healthy' },
+                    message: { type: 'string', example: 'Scheduler is running' },
+                  },
                 },
                 websocket: {
-                  $ref: '#/components/schemas/WebSocketServiceStatus',
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'healthy' },
+                    message: { type: 'string', example: 'WebSocket service is healthy' },
+                    details: {
+                      type: 'object',
+                      properties: {
+                        connectedClients: { type: 'number', example: 0 },
+                      },
+                    },
+                  },
                 },
               },
             },
           },
-          required: ['status', 'timestamp', 'uptime', 'services'],
+          required: ['status', 'timestamp', 'uptime', 'checks'],
         },
         ServiceStatus: {
           type: 'object',
@@ -341,7 +397,50 @@ export const swaggerOptions: OAS3Options = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/SuccessResponse',
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        $ref: '#/components/schemas/RateData',
+                      },
+                    },
+                  },
+                  example: {
+                    success: true,
+                    data: {
+                      _id: '69210b11004e71ed86a744ff',
+                      id: '2025-11-25-bcv',
+                      createdAt: '2025-11-22T01:00:01.469Z',
+                      date: '2025-11-25',
+                      rates: [
+                        {
+                          currency: 'EUR',
+                          rate: 280.04870937,
+                          name: 'Euro',
+                        },
+                        {
+                          currency: 'CNY',
+                          rate: 34.2057462,
+                          name: 'Yuan',
+                        },
+                        {
+                          currency: 'TRY',
+                          rate: 5.72783475,
+                          name: 'Lira Turca',
+                        },
+                        {
+                          currency: 'RUB',
+                          rate: 3.07773768,
+                          name: 'Rublo Ruso',
+                        },
+                        {
+                          currency: 'USD',
+                          rate: 243.1105,
+                          name: 'Dólar',
+                        },
+                      ],
+                      source: 'bcv',
+                    },
                   },
                 },
               },
@@ -401,9 +500,83 @@ export const swaggerOptions: OAS3Options = {
                       },
                       count: {
                         type: 'number',
-                        example: 10,
+                        example: 2,
                       },
                     },
+                  },
+                  example: {
+                    success: true,
+                    data: [
+                      {
+                        _id: '69210b11004e71ed86a744ff',
+                        id: '2025-11-25-bcv',
+                        createdAt: '2025-11-22T01:00:01.469Z',
+                        date: '2025-11-25',
+                        rates: [
+                          {
+                            currency: 'EUR',
+                            rate: 280.04870937,
+                            name: 'Euro',
+                          },
+                          {
+                            currency: 'CNY',
+                            rate: 34.2057462,
+                            name: 'Yuan',
+                          },
+                          {
+                            currency: 'TRY',
+                            rate: 5.72783475,
+                            name: 'Lira Turca',
+                          },
+                          {
+                            currency: 'RUB',
+                            rate: 3.07773768,
+                            name: 'Rublo Ruso',
+                          },
+                          {
+                            currency: 'USD',
+                            rate: 243.1105,
+                            name: 'Dólar',
+                          },
+                        ],
+                        source: 'bcv',
+                      },
+                      {
+                        _id: '691f8f62004e71ed86a6be1c',
+                        id: '2025-11-21-bcv',
+                        createdAt: '2025-11-20T22:00:01.773Z',
+                        date: '2025-11-21',
+                        rates: [
+                          {
+                            currency: 'EUR',
+                            rate: 278.42830812,
+                            name: 'Euro',
+                          },
+                          {
+                            currency: 'CNY',
+                            rate: 33.95811076,
+                            name: 'Yuan',
+                          },
+                          {
+                            currency: 'TRY',
+                            rate: 5.70180345,
+                            name: 'Lira Turca',
+                          },
+                          {
+                            currency: 'RUB',
+                            rate: 3.01257014,
+                            name: 'Rublo Ruso',
+                          },
+                          {
+                            currency: 'USD',
+                            rate: 241.578,
+                            name: 'Dólar',
+                          },
+                        ],
+                        source: 'bcv',
+                      },
+                    ],
+                    count: 2,
                   },
                 },
               },
@@ -448,7 +621,50 @@ export const swaggerOptions: OAS3Options = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/SuccessResponse',
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        $ref: '#/components/schemas/RateData',
+                      },
+                    },
+                  },
+                  example: {
+                    success: true,
+                    data: {
+                      _id: '69210b11004e71ed86a744ff',
+                      id: '2025-11-25-bcv',
+                      createdAt: '2025-11-22T01:00:01.469Z',
+                      date: '2025-11-25',
+                      rates: [
+                        {
+                          currency: 'EUR',
+                          rate: 280.04870937,
+                          name: 'Euro',
+                        },
+                        {
+                          currency: 'CNY',
+                          rate: 34.2057462,
+                          name: 'Yuan',
+                        },
+                        {
+                          currency: 'TRY',
+                          rate: 5.72783475,
+                          name: 'Lira Turca',
+                        },
+                        {
+                          currency: 'RUB',
+                          rate: 3.07773768,
+                          name: 'Rublo Ruso',
+                        },
+                        {
+                          currency: 'USD',
+                          rate: 243.1105,
+                          name: 'Dólar',
+                        },
+                      ],
+                      source: 'bcv',
+                    },
                   },
                 },
               },
@@ -485,6 +701,36 @@ export const swaggerOptions: OAS3Options = {
                   schema: {
                     $ref: '#/components/schemas/HealthCheck',
                   },
+                  example: {
+                    status: 'healthy',
+                    timestamp: '2025-11-23T17:53:55.147Z',
+                    uptime: 42041,
+                    checks: {
+                      mongodb: {
+                        status: 'healthy',
+                        message: 'MongoDB connection is healthy',
+                      },
+                      redis: {
+                        status: 'healthy',
+                        message: 'Redis is operational',
+                        details: {
+                          enabled: true,
+                          connected: true,
+                        },
+                      },
+                      scheduler: {
+                        status: 'healthy',
+                        message: 'Scheduler is running',
+                      },
+                      websocket: {
+                        status: 'healthy',
+                        message: 'WebSocket service is healthy',
+                        details: {
+                          connectedClients: 0,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -494,6 +740,36 @@ export const swaggerOptions: OAS3Options = {
                 'application/json': {
                   schema: {
                     $ref: '#/components/schemas/HealthCheck',
+                  },
+                  example: {
+                    status: 'healthy',
+                    timestamp: '2025-11-23T17:53:55.147Z',
+                    uptime: 42041,
+                    checks: {
+                      mongodb: {
+                        status: 'healthy',
+                        message: 'MongoDB connection is healthy',
+                      },
+                      redis: {
+                        status: 'healthy',
+                        message: 'Redis is operational',
+                        details: {
+                          enabled: true,
+                          connected: true,
+                        },
+                      },
+                      scheduler: {
+                        status: 'healthy',
+                        message: 'Scheduler is running',
+                      },
+                      websocket: {
+                        status: 'healthy',
+                        message: 'WebSocket service is healthy',
+                        details: {
+                          connectedClients: 0,
+                        },
+                      },
+                    },
                   },
                 },
               },

@@ -360,6 +360,54 @@ socket.on('disconnect', () => {
 });
 ```
 
+## 🔔 Webhook Notifications
+
+El servicio puede enviar notificaciones por HTTP Webhook no solo para cambios en tasas de cambio, sino también para eventos de estado del servicio y despliegues.
+
+### Sistema de estado persistente de notificaciones
+
+El servicio implementa un sistema de estado persistente de notificaciones que:
+- Almacena en MongoDB la última tasa notificada para persistencia a través de reinicios
+- Usa Redis como capa de caché para operaciones rápidas de lectura/escritura
+- Previene notificaciones duplicadas al reiniciar el servicio
+- Usa una diferencia absoluta (≥0.01) en lugar de porcentaje para detectar cambios significativos
+- Rastrea cambios en todas las monedas (USD, EUR, CNY, TRY, RUB, etc.)
+
+### Configuración
+
+Para habilitar la integración de webhooks, configura las siguientes variables de entorno:
+
+```bash
+# URL del webhook genérico (usado para tasas de cambio)
+WEBHOOK_URL=https://your-webhook-url.com/webhook
+
+# URLs específicas para diferentes tipos de notificaciones (opcional)
+# SERVICE_STATUS_WEBHOOK_URL=https://your-webhook-url.com/service-status
+# DEPLOYMENT_WEBHOOK_URL=https://your-webhook-url.com/deployment
+
+# Clave secreta para firmar las solicitudes (recomendado para producción)
+WEBHOOK_SECRET=your-super-secret-key
+```
+
+### Tipos de Eventos
+
+#### Eventos de Tasas de Cambio
+- `rate.updated`: Cuando se obtienen nuevas tasas (incluso si no han cambiado)
+- `rate.changed`: Cuando las tasas han cambiado significativamente (diferencia absoluta >= 0.01 en cualquier moneda)
+
+#### Eventos de Estado del Servicio
+- `service.healthy`: Cuando el servicio cambia a estado saludable
+- `service.unhealthy`: Cuando el servicio cambia a estado no saludable
+- `service.degraded`: Cuando el servicio cambia a estado degradado
+
+#### Eventos de Despliegue
+- `deployment.success`: Cuando el servicio se inicia correctamente
+- `deployment.failure`: Cuando el servicio se detiene (en el cierre gracioso)
+
+### Seguridad
+
+Todas las solicitudes de webhook incluyen una firma HMAC-SHA256 en el header `X-Webhook-Signature` para verificar autenticidad.
+
 ## 🤖 Discord Integration
 
 El servicio puede enviar notificaciones automáticamente a un canal de Discord cuando se detectan cambios significativos en las tasas de cambio (>0.1%).

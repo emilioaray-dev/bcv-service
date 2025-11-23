@@ -9,6 +9,7 @@ import type {
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookService } from '@/interfaces/IWebhookService';
 import { getCurrencyRate } from '@/services/bcv.service';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
@@ -27,12 +28,15 @@ import { inject, injectable } from 'inversify';
 export class HealthCheckService implements IHealthCheckService {
   private startTime: number;
 
+  private previousOverallStatus?: string;
+
   constructor(
     @inject(TYPES.CacheService) private cacheService: ICacheService,
     @inject(TYPES.RedisService) private redisService: IRedisService,
     @inject(TYPES.SchedulerService) private schedulerService: ISchedulerService,
     @inject(TYPES.BCVService) private bcvService: IBCVService,
-    @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService
+    @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
+    @inject(TYPES.WebhookService) private webhookService: IWebhookService
   ) {
     this.startTime = Date.now();
   }
@@ -103,6 +107,43 @@ export class HealthCheckService implements IHealthCheckService {
     ) {
       overallStatus = 'degraded';
     }
+
+    // Verificar si hubo cambio en el estado general y enviar notificación
+    if (
+      this.previousOverallStatus &&
+      this.previousOverallStatus !== overallStatus
+    ) {
+      try {
+        // Determinar el evento correspondiente según el nuevo estado
+        let eventType:
+          | 'service.healthy'
+          | 'service.unhealthy'
+          | 'service.degraded';
+        if (overallStatus === 'healthy') {
+          eventType = 'service.healthy';
+        } else if (overallStatus === 'unhealthy') {
+          eventType = 'service.unhealthy';
+        } else {
+          eventType = 'service.degraded';
+        }
+
+        await this.webhookService.sendServiceStatusNotification(
+          eventType,
+          {
+            status: overallStatus,
+            timestamp,
+            uptime,
+            checks,
+          },
+          this.previousOverallStatus
+        );
+      } catch (error) {
+        log.error('Error sending service status notification', { error });
+      }
+    }
+
+    // Actualizar el estado anterior
+    this.previousOverallStatus = overallStatus;
 
     return {
       status: overallStatus,

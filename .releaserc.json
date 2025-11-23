@@ -48,7 +48,9 @@
         "successComment": false,
         "failComment": false,
         "labels": ["released"],
-        "releasedLabels": ["released<%= nextRelease.channel ? \"-\" + nextRelease.channel : \"\" %>"],
+        "releasedLabels": [
+          "released<%= nextRelease.channel ? \"-\" + nextRelease.channel : \"\" %>"
+        ],
         "addReleases": "bottom"
       }
     ]

@@ -7,10 +7,10 @@
  * and generate performance metrics.
  */
 
+import { writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import autocannon from 'autocannon';
-import { writeFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -111,12 +111,9 @@ const results: BenchmarkResult[] = [];
 /**
  * Run benchmark for a single endpoint
  */
-async function benchmarkEndpoint(endpoint: Endpoint): Promise<autocannon.Result> {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`Benchmarking: ${endpoint.name}`);
-  console.log(`URL: ${BASE_URL}${endpoint.path}`);
-  console.log(`${'='.repeat(60)}\n`);
-
+async function benchmarkEndpoint(
+  endpoint: Endpoint
+): Promise<autocannon.Result> {
   return new Promise((resolve, reject) => {
     const instance = autocannon(
       {
@@ -153,7 +150,9 @@ async function benchmarkEndpoint(endpoint: Endpoint): Promise<autocannon.Result>
 /**
  * Format results for storage
  */
-function formatResults(result: autocannon.Result): Omit<BenchmarkResult, 'endpoint' | 'path'> {
+function formatResults(
+  result: autocannon.Result
+): Omit<BenchmarkResult, 'endpoint' | 'path'> {
   return {
     requests: {
       total: result.requests.total,
@@ -204,41 +203,18 @@ function formatResults(result: autocannon.Result): Omit<BenchmarkResult, 'endpoi
 /**
  * Print formatted results
  */
-function printResults(name: string, result: autocannon.Result): void {
-  console.log(`\n📊 Results for ${name}:`);
-  console.log(`   Requests/sec: ${result.requests.mean.toFixed(2)}`);
-  console.log(`   Latency (avg): ${result.latency.mean.toFixed(2)}ms`);
-  console.log(`   Latency (p50): ${result.latency.p50}ms`);
-  console.log(`   Latency (p90): ${result.latency.p90}ms`);
-  console.log(`   Latency (p99): ${result.latency.p99}ms`);
-  console.log(`   Throughput: ${(result.throughput.mean / 1024 / 1024).toFixed(2)} MB/s`);
-  console.log(`   Total Requests: ${result.requests.total}`);
-  console.log(`   Errors: ${result.errors}`);
-  console.log(`   Timeouts: ${result.timeouts}`);
-}
+function printResults(_name: string, _result: autocannon.Result): void {}
 
 /**
  * Generate summary report
  */
 function generateSummary(): void {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('BENCHMARK SUMMARY');
-  console.log(`${'='.repeat(60)}\n`);
-
-  console.log('┌─────────────────────────┬──────────┬───────────┬───────────┐');
-  console.log('│ Endpoint                │ Req/sec  │ Latency   │ Errors    │');
-  console.log('├─────────────────────────┼──────────┼───────────┼───────────┤');
-
   for (const result of results) {
-    const endpoint = result.endpoint.padEnd(23);
-    const reqSec = result.requests.mean.toFixed(2).padStart(8);
-    const latency = `${result.latency.mean.toFixed(2)}ms`.padStart(9);
-    const errors = result.errors.toString().padStart(9);
-
-    console.log(`│ ${endpoint} │ ${reqSec} │ ${latency} │ ${errors} │`);
+    const _endpoint = result.endpoint.padEnd(23);
+    const _reqSec = result.requests.mean.toFixed(2).padStart(8);
+    const _latency = `${result.latency.mean.toFixed(2)}ms`.padStart(9);
+    const _errors = result.errors.toString().padStart(9);
   }
-
-  console.log('└─────────────────────────┴──────────┴───────────┴───────────┘');
 
   // Save results to JSON file
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -261,20 +237,12 @@ function generateSummary(): void {
       2
     )
   );
-
-  console.log(`\n✅ Results saved to: ${outputPath}`);
 }
 
 /**
  * Main execution
  */
 async function main(): Promise<void> {
-  console.log('🚀 BCV Service Performance Benchmark');
-  console.log(`Base URL: ${BASE_URL}`);
-  console.log(`Duration: ${DURATION}s per endpoint`);
-  console.log(`Connections: ${CONNECTIONS}`);
-  console.log(`Pipelining: ${PIPELINING}`);
-
   try {
     // Run benchmarks sequentially
     for (const endpoint of endpoints) {
@@ -285,8 +253,6 @@ async function main(): Promise<void> {
 
     // Generate summary
     generateSummary();
-
-    console.log('\n✅ All benchmarks completed successfully!\n');
   } catch (error) {
     console.error('❌ Benchmark failed:', error);
     process.exit(1);

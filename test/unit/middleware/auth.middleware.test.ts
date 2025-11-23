@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
 import { apiKeyAuth, optionalApiKeyAuth } from '@/middleware/auth.middleware';
+import type { NextFunction, Request, Response } from 'express';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock del config
 vi.mock('@/config', () => ({
@@ -54,7 +54,8 @@ describe('auth.middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
         error: 'Unauthorized',
-        message: 'API key es requerida. Incluye el header X-API-Key en tu petición.',
+        message:
+          'API key es requerida. Incluye el header X-API-Key en tu petición.',
         code: 'MISSING_API_KEY',
       });
     });
@@ -86,7 +87,11 @@ describe('auth.middleware', () => {
       (mockRequest.header as any).mockReturnValue(undefined);
 
       // Act
-      optionalApiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
+      optionalApiKeyAuth(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
 
       // Assert
       expect(mockNext).toHaveBeenCalledTimes(1);
@@ -98,7 +103,11 @@ describe('auth.middleware', () => {
       (mockRequest.header as any).mockReturnValue('test-key-1');
 
       // Act
-      optionalApiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
+      optionalApiKeyAuth(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
 
       // Assert
       expect(mockNext).toHaveBeenCalledTimes(1);
@@ -110,7 +119,11 @@ describe('auth.middleware', () => {
       (mockRequest.header as any).mockReturnValue('invalid-key');
 
       // Act
-      optionalApiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
+      optionalApiKeyAuth(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
 
       // Assert
       expect(mockNext).not.toHaveBeenCalled();

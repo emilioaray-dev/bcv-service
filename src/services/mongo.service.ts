@@ -1,4 +1,5 @@
 import { TYPES } from '@/config/types';
+import type { NotificationState } from '@/interfaces/INotificationStateService';
 import type { Rate } from '@/models/rate';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
@@ -209,5 +210,41 @@ export class MongoService implements ICacheService {
       .toArray();
 
     return result;
+  }
+
+  async getNotificationState(id: string): Promise<NotificationState | null> {
+    try {
+      const notificationStatesCollection =
+        this.db.collection<NotificationState>('notification_states');
+      const result = await notificationStatesCollection.findOne({ _id: id });
+      return result;
+    } catch (error) {
+      log.error('Error obteniendo estado de notificación', {
+        error: (error as Error).message,
+        id,
+      });
+      throw error;
+    }
+  }
+
+  async saveNotificationState(
+    id: string,
+    state: NotificationState
+  ): Promise<void> {
+    try {
+      const notificationStatesCollection =
+        this.db.collection<NotificationState>('notification_states');
+      await notificationStatesCollection.updateOne(
+        { _id: id },
+        { $set: { ...state, _id: id, updatedAt: new Date() } },
+        { upsert: true }
+      );
+    } catch (error) {
+      log.error('Error guardando estado de notificación', {
+        error: (error as Error).message,
+        id,
+      });
+      throw error;
+    }
   }
 }

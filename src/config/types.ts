@@ -17,6 +17,7 @@ export const TYPES = {
   LoggerService: Symbol.for('LoggerService'),
   DiscordService: Symbol.for('DiscordService'),
   WebhookService: Symbol.for('WebhookService'),
+  NotificationStateService: Symbol.for('NotificationStateService'),
 
   // Controllers
   RateController: Symbol.for('RateController'),

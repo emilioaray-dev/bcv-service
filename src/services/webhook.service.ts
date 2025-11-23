@@ -5,6 +5,7 @@ import { inject, injectable } from 'inversify';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 
+import type { HealthCheckResult } from '@/interfaces/IHealthCheckService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type {
   IWebhookService,
@@ -82,6 +83,72 @@ export class WebhookService implements IWebhookService {
     }
 
     const payload = this.buildPayload(rate, previousRate);
+    return await this.sendWithRetry(payload);
+  }
+
+  async sendServiceStatusNotification(
+    event: 'service.healthy' | 'service.unhealthy' | 'service.degraded',
+    status: HealthCheckResult,
+    previousStatus?: string
+  ): Promise<WebhookDeliveryResult> {
+    if (!this.isEnabled()) {
+      logger.debug('Service status notification skipped - service not enabled');
+      return {
+        success: false,
+        url: 'N/A',
+        error: 'Webhook service not enabled',
+        attempt: 0,
+        duration: 0,
+      };
+    }
+
+    const payload: WebhookPayload = {
+      event,
+      timestamp: new Date().toISOString(),
+      data: {
+        status: status.status,
+        uptime: status.uptime,
+        checks: status.checks,
+        previousStatus,
+      },
+    };
+
+    return await this.sendWithRetry(payload);
+  }
+
+  async sendDeploymentNotification(
+    event: 'deployment.started' | 'deployment.success' | 'deployment.failure',
+    deploymentInfo: {
+      deploymentId?: string;
+      environment?: string;
+      version?: string;
+      duration?: number;
+      message?: string;
+    }
+  ): Promise<WebhookDeliveryResult> {
+    if (!this.isEnabled()) {
+      logger.debug('Deployment notification skipped - service not enabled');
+      return {
+        success: false,
+        url: 'N/A',
+        error: 'Webhook service not enabled',
+        attempt: 0,
+        duration: 0,
+      };
+    }
+
+    const payload: WebhookPayload = {
+      event,
+      timestamp: new Date().toISOString(),
+      data: {
+        deploymentId: deploymentInfo.deploymentId,
+        environment: deploymentInfo.environment,
+        version: deploymentInfo.version,
+        duration: deploymentInfo.duration,
+        message: deploymentInfo.message,
+      },
+    };
+
     return await this.sendWithRetry(payload);
   }
 

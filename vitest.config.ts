@@ -1,5 +1,5 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -52,10 +52,7 @@ export default defineConfig({
     },
 
     // Ubicación de tests
-    include: [
-      'test/**/*.test.ts',
-      'test/**/*.spec.ts',
-    ],
+    include: ['test/**/*.test.ts', 'test/**/*.spec.ts'],
 
     // Timeout para tests async
     testTimeout: 10000,

@@ -9,7 +9,7 @@ module.exports = {
   /**
    * Generate a random date string for testing historical queries
    */
-  generateRandomDate: function(requestParams, context, ee, next) {
+  generateRandomDate: (_requestParams, context, _ee, next) => {
     const year = 2024;
     const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
     const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
@@ -21,9 +21,8 @@ module.exports = {
   /**
    * Log response times for analysis
    */
-  logResponse: function(requestParams, response, context, ee, next) {
+  logResponse: (_requestParams, response, _context, _ee, next) => {
     if (response.statusCode >= 400) {
-      console.log(`Error response: ${response.statusCode} for ${requestParams.url}`);
     }
     return next();
   },
@@ -31,7 +30,7 @@ module.exports = {
   /**
    * Before scenario hook - runs before each virtual user scenario
    */
-  beforeScenario: function(userContext, events, done) {
+  beforeScenario: (userContext, _events, done) => {
     // Initialize custom variables
     userContext.vars.userId = Math.floor(Math.random() * 10000);
     return done();
@@ -40,7 +39,7 @@ module.exports = {
   /**
    * After response hook - runs after each HTTP response
    */
-  afterResponse: function(requestParams, response, userContext, events, done) {
+  afterResponse: (_requestParams, response, _userContext, events, done) => {
     // Check cache headers
     if (response.headers['x-cache-hit']) {
       events.emit('counter', 'cache.hits', 1);
@@ -54,7 +53,7 @@ module.exports = {
   /**
    * Custom metrics function
    */
-  customMetrics: function(requestParams, response, context, ee, next) {
+  customMetrics: (_requestParams, response, _context, ee, next) => {
     // Track response sizes
     if (response.body) {
       const size = Buffer.byteLength(response.body);
@@ -62,5 +61,5 @@ module.exports = {
     }
 
     return next();
-  }
+  },
 };

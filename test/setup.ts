@@ -3,7 +3,7 @@
  * Este archivo se ejecuta antes de todos los tests
  */
 
-import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // Mock de variables de entorno para testing
 process.env.NODE_ENV = 'test';
@@ -14,15 +14,9 @@ process.env.BCV_WEBSITE_URL = 'https://www.bcv.org.ve/';
 process.env.CRON_SCHEDULE = '0 0 * * *';
 
 // Configuración global de tests
-beforeAll(() => {
-  // Setup global antes de todos los tests
-  console.log('🧪 Iniciando suite de tests...');
-});
+beforeAll(() => {});
 
-afterAll(() => {
-  // Cleanup global después de todos los tests
-  console.log('✅ Tests completados');
-});
+afterAll(() => {});
 
 beforeEach(() => {
   // Setup antes de cada test
