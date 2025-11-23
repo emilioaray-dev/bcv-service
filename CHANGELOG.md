@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v2.0.0) (2025-11-23)
+
+### ⚠ BREAKING CHANGES
+
+* **deployment:** .env file on Proxmox server is no longer used for secrets.
+All secrets must be configured in GitHub repository settings before deployment.
+
+### Features
+
+* **deployment:** implement centralized secrets management via GitHub Secrets ([c94b751](https://github.com/emilioaray-dev/bcv-service/commit/c94b7513ac88e3719cf6ef3d9c7c3d980a1d5ef2))
+
+### Bug Fixes
+
+* **config:** revert version and migrate to conventionalcommits preset ([1a98855](https://github.com/emilioaray-dev/bcv-service/commit/1a98855780e5403428c04e3ac32868707ca7450b))
+
 ## [2.0.1](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.0...v2.0.1) (2025-11-23)
 
 # [2.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v2.0.0) (2025-11-23)
