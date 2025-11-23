@@ -79,7 +79,7 @@ describe('WebSocketService', () => {
       const mockMetricsService = createMockMetricsService();
       const instance = new WebSocketService(
         mockServer,
-        mockMetricsService as any
+        mockMetricsService as IMetricsService
       );
 
       expect(instance.broadcastRateUpdate).toBeDefined();
@@ -99,7 +99,7 @@ describe('WebSocketService', () => {
       const mockMetricsService = createMockMetricsService();
       const instance = new WebSocketService(
         mockServer,
-        mockMetricsService as any
+        mockMetricsService as IMetricsService
       );
 
       const validEvent: RateUpdateEvent = {
@@ -123,7 +123,7 @@ describe('WebSocketService', () => {
       const mockMetricsService = createMockMetricsService();
       const instance = new WebSocketService(
         mockServer,
-        mockMetricsService as any
+        mockMetricsService as IMetricsService
       );
 
       const multiCurrencyEvent: RateUpdateEvent = {
@@ -154,7 +154,7 @@ describe('WebSocketService', () => {
       const mockMetricsService = createMockMetricsService();
       const instance = new WebSocketService(
         mockServer,
-        mockMetricsService as any
+        mockMetricsService as IMetricsService
       );
 
       const count = instance.getConnectedClientsCount();

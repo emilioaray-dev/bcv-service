@@ -40,5 +40,17 @@
       "semicolons": "always",
       "arrowParentheses": "always"
     }
+  },
+  "files": {
+    "ignore": [
+      "dist/**",
+      "coverage/**",
+      ".coverage/**",
+      "node_modules/**",
+      ".git/**",
+      ".vscode/**",
+      "*.log",
+      "test-bcv-scraping.ts"
+    ]
   }
 }

@@ -95,7 +95,8 @@ export const swaggerOptions: OAS3Options = {
             },
             id: {
               type: 'string',
-              description: 'ID compuesto generado automáticamente (fecha-source)',
+              description:
+                'ID compuesto generado automáticamente (fecha-source)',
               example: '2025-11-25-bcv',
             },
             date: {
@@ -218,14 +219,20 @@ export const swaggerOptions: OAS3Options = {
                   type: 'object',
                   properties: {
                     status: { type: 'string', example: 'healthy' },
-                    message: { type: 'string', example: 'MongoDB connection is healthy' },
+                    message: {
+                      type: 'string',
+                      example: 'MongoDB connection is healthy',
+                    },
                   },
                 },
                 redis: {
                   type: 'object',
                   properties: {
                     status: { type: 'string', example: 'healthy' },
-                    message: { type: 'string', example: 'Redis is operational' },
+                    message: {
+                      type: 'string',
+                      example: 'Redis is operational',
+                    },
                     details: {
                       type: 'object',
                       properties: {
@@ -239,14 +246,20 @@ export const swaggerOptions: OAS3Options = {
                   type: 'object',
                   properties: {
                     status: { type: 'string', example: 'healthy' },
-                    message: { type: 'string', example: 'Scheduler is running' },
+                    message: {
+                      type: 'string',
+                      example: 'Scheduler is running',
+                    },
                   },
                 },
                 websocket: {
                   type: 'object',
                   properties: {
                     status: { type: 'string', example: 'healthy' },
-                    message: { type: 'string', example: 'WebSocket service is healthy' },
+                    message: {
+                      type: 'string',
+                      example: 'WebSocket service is healthy',
+                    },
                     details: {
                       type: 'object',
                       properties: {

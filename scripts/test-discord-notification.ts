@@ -38,7 +38,7 @@ async function main() {
       process.exit(1);
     }
     if (realRateData.rates && Array.isArray(realRateData.rates)) {
-      realRateData.rates.forEach((_rate: any) => {});
+      realRateData.rates.forEach((_rate: { currency: string; rate: number; name: string }) => {});
     } else {
     }
 

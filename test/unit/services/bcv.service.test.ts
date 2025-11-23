@@ -96,7 +96,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -145,7 +145,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -182,7 +182,7 @@ describe('BCVService', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: {} as any,
+          config: {} as InternalAxiosRequestConfig,
         } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -221,7 +221,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -246,7 +246,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -286,7 +286,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -329,7 +329,7 @@ describe('BCVService', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: {} as any,
+          config: {} as InternalAxiosRequestConfig,
         } as AxiosResponse);
 
         const result = await bcvService.getCurrentRate();
@@ -378,7 +378,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -416,7 +416,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();
@@ -457,7 +457,7 @@ describe('BCVService', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {} as any,
+        config: {} as InternalAxiosRequestConfig,
       } as AxiosResponse);
 
       const result = await bcvService.getCurrentRate();

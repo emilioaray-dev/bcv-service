@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Logger', () => {
-  let log: any;
+  let log: LoggerWrapper;
 
   beforeEach(async () => {
     // Import logger dynamically to get fresh instance

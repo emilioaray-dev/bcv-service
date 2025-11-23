@@ -109,7 +109,7 @@ describe('WebhookService', () => {
       );
 
       const callArgs = mockedAxios.post.mock.calls[0];
-      const payload = callArgs[1] as any;
+      const payload = callArgs[1] as WebhookPayload;
 
       expect(payload).toHaveProperty('event', 'rate.changed');
       expect(payload).toHaveProperty('timestamp');
@@ -181,7 +181,7 @@ describe('WebhookService', () => {
       await webhookService.sendRateUpdateNotification(mockRateData);
 
       const callArgs = mockedAxios.post.mock.calls[0];
-      const payload = callArgs[1] as any;
+      const payload = callArgs[1] as WebhookPayload;
 
       expect(payload.event).toBe('rate.updated');
       expect(payload.data.change).toBeUndefined();
@@ -199,7 +199,7 @@ describe('WebhookService', () => {
       );
 
       const callArgs = mockedAxios.post.mock.calls[0];
-      const payload = callArgs[1] as any;
+      const payload = callArgs[1] as WebhookPayload;
 
       expect(payload.event).toBe('rate.changed');
       expect(payload.data.change).toBeDefined();
@@ -235,7 +235,7 @@ describe('WebhookService', () => {
       );
 
       const callArgs = mockedAxios.post.mock.calls[0];
-      const payload = callArgs[1] as any;
+      const payload = callArgs[1] as WebhookPayload;
 
       // (36.5 - 36.4) / 36.4 * 100 = 0.2747%
       const expectedChange = ((36.5 - 36.4) / 36.4) * 100;

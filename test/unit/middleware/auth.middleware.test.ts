@@ -31,7 +31,7 @@ describe('auth.middleware', () => {
   describe('apiKeyAuth', () => {
     it('debe permitir acceso con API key válida', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue('test-key-1');
+      (mockRequest.header as Mock).mockReturnValue('test-key-1');
 
       // Act
       apiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
@@ -44,7 +44,7 @@ describe('auth.middleware', () => {
 
     it('debe rechazar con 401 cuando falta el header X-API-Key', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue(undefined);
+      (mockRequest.header as Mock).mockReturnValue(undefined);
 
       // Act
       apiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
@@ -62,7 +62,7 @@ describe('auth.middleware', () => {
 
     it('debe rechazar con 403 cuando el API key es inválido', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue('invalid-key');
+      (mockRequest.header as Mock).mockReturnValue('invalid-key');
 
       // Act
       apiKeyAuth(mockRequest as Request, mockResponse as Response, mockNext);
@@ -84,7 +84,7 @@ describe('auth.middleware', () => {
   describe('optionalApiKeyAuth', () => {
     it('debe permitir acceso cuando no se proporciona API key', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue(undefined);
+      (mockRequest.header as Mock).mockReturnValue(undefined);
 
       // Act
       optionalApiKeyAuth(
@@ -100,7 +100,7 @@ describe('auth.middleware', () => {
 
     it('debe permitir acceso con API key válida', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue('test-key-1');
+      (mockRequest.header as Mock).mockReturnValue('test-key-1');
 
       // Act
       optionalApiKeyAuth(
@@ -116,7 +116,7 @@ describe('auth.middleware', () => {
 
     it('debe rechazar con 403 cuando el API key proporcionado es inválido', () => {
       // Arrange
-      (mockRequest.header as any).mockReturnValue('invalid-key');
+      (mockRequest.header as Mock).mockReturnValue('invalid-key');
 
       // Act
       optionalApiKeyAuth(
