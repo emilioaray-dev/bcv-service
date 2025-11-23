@@ -554,7 +554,11 @@ El proyecto implementa versionamiento semántico 100% automático usando **Conve
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 📝 Formato de Commits (Conventional Commits)
+#### 📝 Formato de Commits (Conventional Commits Preset)
+
+El proyecto usa el preset **`conventionalcommits`** siguiendo la especificación estándar de [Conventional Commits](https://www.conventionalcommits.org).
+
+**Tipos de commits que incrementan versión:**
 
 ```bash
 # Nueva funcionalidad (incrementa MINOR: 1.0.0 → 1.1.0)
@@ -570,12 +574,32 @@ git commit -m "feat!: change API response format
 
 BREAKING CHANGE: API responses now use 'data' field"
 
-# Otros cambios (NO incrementan versión)
-git commit -m "docs: update README"
+# Refactorización (incrementa PATCH: 1.0.0 → 1.0.1)
+git commit -m "refactor: improve error handling in services"
+git commit -m "refactor(mongo): optimize query performance"
+
+# Mejoras de rendimiento (incrementa PATCH: 1.0.0 → 1.0.1)
+git commit -m "perf: reduce scraping time by 30%"
+git commit -m "perf(cache): implement Redis caching for rates"
+```
+
+**Tipos de commits que NO incrementan versión:**
+
+```bash
+git commit -m "docs: update README with new examples"
 git commit -m "style: format code with Biome"
 git commit -m "test: add health check tests"
-git commit -m "refactor: improve error handling"  # PATCH
+git commit -m "chore: update dependencies"
+git commit -m "build: configure Docker image optimization"
+git commit -m "ci: add GitHub Actions workflow"
 ```
+
+**Ventajas del preset `conventionalcommits`:**
+- ✅ Especificación estándar universal (no específica de Angular)
+- ✅ Incluye `refactor` y `perf` en el CHANGELOG automáticamente
+- ✅ Más flexible y configurable
+- ✅ Mejor soporte para tipos personalizados
+- ✅ Ampliamente adoptado en la industria
 
 **📚 Guía Completa:** Ver [Conventional Commits Guide](docs/guides/CONVENTIONAL_COMMITS.md)
 
@@ -979,15 +1003,27 @@ Las contribuciones son bienvenidas! Por favor sigue estos pasos:
 3. Seguir convenciones de código (Biome)
 4. Escribir tests para nuevas features
 5. Asegurar que todos los tests pasen (`pnpm test`)
-6. Commit con convención semántica:
-   - `feat:` nueva funcionalidad
-   - `fix:` corrección de bug
+6. Commit siguiendo **Conventional Commits** (preset `conventionalcommits`):
+
+   **Incrementan versión:**
+   - `feat:` nueva funcionalidad → MINOR (1.0.0 → 1.1.0)
+   - `fix:` corrección de bug → PATCH (1.0.0 → 1.0.1)
+   - `refactor:` refactorización de código → PATCH (1.0.0 → 1.0.1)
+   - `perf:` mejora de rendimiento → PATCH (1.0.0 → 1.0.1)
+   - `BREAKING CHANGE:` cambio incompatible → MAJOR (1.0.0 → 2.0.0)
+
+   **NO incrementan versión:**
    - `docs:` cambios en documentación
-   - `refactor:` refactorización de código
    - `test:` añadir o modificar tests
    - `chore:` cambios menores (deps, config)
+   - `style:` formato de código
+   - `build:` cambios en build
+   - `ci:` cambios en CI/CD
+
 7. Push a la rama (`git push origin feature/amazing-feature`)
 8. Abrir Pull Request
+
+**Importante:** El versionamiento es 100% automático basado en los commits. No edites manualmente `package.json` ni crees tags de versión.
 
 Ver [Branch Strategy](docs/development/BRANCH_STRATEGY.md) para más detalles sobre el workflow.
 

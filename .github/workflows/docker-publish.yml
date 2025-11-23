@@ -257,6 +257,8 @@ jobs:
           username: ${{ secrets.PROXMOX_USER }}
           key: ${{ secrets.PROXMOX_SSH_KEY }}
           port: ${{ secrets.PROXMOX_PORT || 22 }}
+          timeout: 60m  # Timeout de 60 minutos para descarga de imágenes grandes
+          command_timeout: 60m  # Timeout para comandos individuales (docker pull)
           script: |
             set -e  # Salir inmediatamente si un comando falla
 
