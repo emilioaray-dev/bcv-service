@@ -308,6 +308,17 @@ jobs:
             echo "🔐 Autenticando en GHCR..."
             echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+            # Exportar secretos como variables de entorno para docker-compose
+            echo ""
+            echo "🔑 Configurando secretos desde GitHub..."
+            export MONGODB_URI="${{ secrets.MONGODB_URI }}"
+            export API_KEYS="${{ secrets.API_KEYS }}"
+            export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
+            export WEBHOOK_URL="${{ secrets.WEBHOOK_URL }}"
+            export DISCORD_WEBHOOK_URL="${{ secrets.DISCORD_WEBHOOK_URL }}"
+            export SWAGGER_PROD_URL="${{ secrets.SWAGGER_PROD_URL }}"
+            echo "✅ Secretos configurados correctamente"
+
             # Descargar la nueva imagen
             echo ""
             echo "⬇️  Descargando nueva imagen (versión ${{ steps.deploy_version.outputs.version }})..."

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # BCV Service - Stateless microservice
   bcv-service:

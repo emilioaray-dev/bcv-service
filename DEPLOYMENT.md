@@ -54,13 +54,10 @@ docker-compose --version
 # En tu VM de Proxmox, crear el directorio del proyecto
 sudo mkdir -p /opt/bcv-service
 sudo chown -R $USER:$USER /opt/bcv-service
-
-# Copiar archivos necesarios (docker-compose.yml y .env)
 cd /opt/bcv-service
-
-# Crear archivo .env con tus configuraciones
-nano .env
 ```
+
+**Nota**: Ya NO necesitas crear un archivo `.env` en Proxmox. Los secretos se inyectan automáticamente desde GitHub Secrets durante el deployment (ver sección 5).
 
 **Importante**: El `docker-compose.yml` en Proxmox debe usar la imagen de GHCR en lugar de build local:
 
@@ -121,11 +118,56 @@ Por defecto: /opt/bcv-service
 Si usas otra ruta, especifícala aquí
 ```
 
-### 5. Verificar que GH_PAT está configurado
+### 5. Configurar Secretos de Aplicación (REQUERIDO)
+
+**IMPORTANTE**: A partir de la versión 1.3.2, las variables sensibles se inyectan desde GitHub Secrets en lugar de usar archivos `.env` en el servidor. Esto sigue las mejores prácticas de seguridad de la industria.
+
+Agrega los siguientes secrets en GitHub (`Settings` → `Secrets and variables` → `Actions`):
+
+#### MONGODB_URI (Requerido)
+```
+Conexión a MongoDB Atlas o servidor MongoDB
+Ejemplo: mongodb+srv://user:password@cluster.mongodb.net/bcvdb?retryWrites=true&w=majority
+```
+
+#### API_KEYS (Requerido)
+```
+Claves de API separadas por comas para autenticación
+Ejemplo: key1,key2,key3
+```
+
+#### REDIS_PASSWORD (Requerido)
+```
+Password para Redis (dejar vacío si no usa autenticación)
+Ejemplo: your-secure-redis-password
+```
+
+#### SWAGGER_PROD_URL (Opcional)
+```
+URL de producción para documentación Swagger
+Ejemplo: https://bcv-api.yourdomain.com
+```
+
+#### DISCORD_WEBHOOK_URL (Opcional)
+```
+URL de webhook de Discord para notificaciones
+Ejemplo: https://discord.com/api/webhooks/xxx/yyy
+```
+
+#### WEBHOOK_URL (Opcional)
+```
+URL de webhook genérico para notificaciones HTTP
+Ejemplo: https://your-webhook-url.com/webhook
+```
+
+**Nota**: Estos secretos se inyectan automáticamente durante el deployment vía SSH. NO necesitas crear un archivo `.env` en el servidor de Proxmox para estas variables.
+
+### 6. Verificar que GH_PAT está configurado
 
 El secret `GH_PAT` (GitHub Personal Access Token) debe estar configurado con permisos para:
 - ✅ `read:packages` - Leer paquetes del Container Registry
 - ✅ `write:packages` - Escribir paquetes al Container Registry
+- ✅ `repo` - Acceso al repositorio (para Semantic Release)
 
 ## Verificación del Deployment
 
