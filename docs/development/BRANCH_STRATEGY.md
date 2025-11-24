@@ -1,587 +1,492 @@
-# Estrategia de Ramas por Fase
+# Estrategia de Ramas - BCV Service
 
-Esta guía define la estrategia de branching para implementar las mejoras del servicio BCV en 4 fases progresivas.
+Esta guía define la estrategia de branching para el desarrollo del servicio BCV con las mejoras ya implementadas.
 
-## 📌 Rama Base
+## 📌 Estado Actual del Repositorio
 
-```bash
-main (commit: 156222b)
-└── feat: initial BCV exchange rate service with security improvements
+**Ramas principales existentes**:
+- `main`: Versión estable con todas las mejoras implementadas
+- `develop`: Desarrollo activo (si aplica)
+- Ramas de feature ya fusionadas:
+  - `feat/secrets-management`
+  - `feat/api-authentication` 
+  - `feat/production-rate-limiting`
+  - `feat/unit-tests`
+  - `feat/structured-logging`
+  - `feat/zod-validation-complete`
+  - `feat/health-checks`
+  - `feat/prometheus-metrics`
+  - `feat/graceful-shutdown`
+  - `feat/websocket-improvements`
+  - `feat/discord-notifications`
+  - `feat/webhook-notifications`
+  - `feat/notification-state-persistent`
+  - `feat/solid-architecture`
+  - `feat/conventional-commits-automation`
+
+## 🌳 Estructura Actual de Ramas
+
 ```
-
-## 🌳 Estructura de Ramas
-
-```
-main
-├── phase-1/security-critical
-│   ├── feat/secrets-management
-│   ├── feat/api-authentication
-│   └── feat/production-rate-limiting
-│
-├── phase-2/quality-stability
-│   ├── feat/unit-tests
-│   ├── feat/structured-logging
-│   ├── feat/zod-validation-complete
-│   └── feat/health-checks
-│
-├── phase-3/optimization
-│   ├── feat/redis-cache-decision
-│   ├── feat/integration-tests
-│   ├── feat/graceful-shutdown
-│   └── feat/api-documentation
-│
-└── phase-4/observability
-    ├── feat/prometheus-metrics
-    ├── feat/monitoring-dashboard
-    └── feat/alerting-system
-```
-
----
-
-## 🔴 Fase 1: Seguridad Crítica
-
-**Base branch**: `main`
-**Target**: `phase-1/security-critical`
-**Duración estimada**: 1-2 días
-
-### Comandos para crear las ramas:
-
-```bash
-# Crear rama de fase
-git checkout -b phase-1/security-critical main
-
-# Sub-ramas de features
-git checkout -b feat/secrets-management phase-1/security-critical
-git checkout -b feat/api-authentication phase-1/security-critical
-git checkout -b feat/production-rate-limiting phase-1/security-critical
-```
-
-### Features a implementar:
-
-#### 1. `feat/secrets-management`
-**Prioridad**: CRÍTICA - INMEDIATA
-
-Tareas:
-- [ ] Rotar credenciales de MongoDB
-- [ ] Implementar Docker Secrets o HashiCorp Vault
-- [ ] Actualizar .env.example con variables de secretos
-- [ ] Crear script de inicialización de secretos
-- [ ] Documentar proceso de gestión de secretos
-
-Mensaje de commit sugerido:
-```
-feat(security): implement secrets management system
-
-- Rotate MongoDB credentials
-- Add Docker Secrets integration
-- Create secrets initialization script
-- Update environment variable handling
-- Document secrets management process
-
-BREAKING CHANGE: Old .env format no longer supported, use Docker Secrets
-
-Closes #1
-```
-
-#### 2. `feat/api-authentication`
-**Prioridad**: ALTA
-
-Tareas:
-- [ ] Implementar middleware de API Key authentication
-- [ ] Crear sistema de generación de API keys
-- [ ] Agregar endpoint de validación de API key
-- [ ] Actualizar documentación de API
-- [ ] Agregar tests de autenticación
-
-Mensaje de commit sugerido:
-```
-feat(security): add API key authentication
-
-- Implement API key middleware
-- Add key generation and validation system
-- Protect all /api/* endpoints
-- Update API documentation with auth instructions
-- Add authentication tests
-
-Closes #2
-```
-
-#### 3. `feat/production-rate-limiting`
-**Prioridad**: MEDIA
-
-Tareas:
-- [ ] Ajustar límites de rate limiting para producción
-- [ ] Implementar diferentes límites por tier/API key
-- [ ] Agregar Redis store para rate limiting distribuido
-- [ ] Monitorear y ajustar límites
-
-Mensaje de commit sugerido:
-```
-feat(security): enhance rate limiting for production
-
-- Add Redis-based rate limiting store
-- Implement tiered limits (free/premium)
-- Add rate limit monitoring
-- Configure production-ready limits
-
-Closes #3
-```
-
-### Merge a main:
-```bash
-# Una vez todas las features estén completas
-git checkout phase-1/security-critical
-git merge feat/secrets-management
-git merge feat/api-authentication
-git merge feat/production-rate-limiting
-
-# Crear PR a main
-git push origin phase-1/security-critical
+main (v2.1.0) [ESTABLE - PRODUCCIÓN]
+├── feat/secrets-management (merged) [✅ Completado]
+├── feat/api-authentication (merged) [✅ Completado] 
+├── feat/production-rate-limiting (merged) [✅ Completado]
+├── feat/unit-tests (merged) [✅ Completado]
+├── feat/structured-logging (merged) [✅ Completado]
+├── feat/zod-validation-complete (merged) [✅ Completado]
+├── feat/health-checks (merged) [✅ Completado]
+├── feat/prometheus-metrics (merged) [✅ Completado]
+├── feat/graceful-shutdown (merged) [✅ Completado]
+├── feat/websocket-improvements (merged) [✅ Completado]
+├── feat/discord-notifications (merged) [✅ Completado]
+├── feat/webhook-notifications (merged) [✅ Completado]
+├── feat/notification-state-persistent (merged) [✅ Completado]
+├── feat/solid-architecture (merged) [✅ Completado]
+├── feat/conventional-commits-automation (merged) [✅ Completado]
+└── feat/redis-cache-implementation (merged) [✅ Completado]
 ```
 
 ---
 
-## 🟡 Fase 2: Calidad y Estabilidad
+## 🔄 Workflow de Desarrollo Actual
 
-**Base branch**: `phase-1/security-critical` (o `main` después de merge)
-**Target**: `phase-2/quality-stability`
-**Duración estimada**: 3-4 días
+Desde que todas las fases principales han sido completadas, el workflow actual es:
 
-### Comandos:
-
+### 1. Nueva Feature o Hotfix
 ```bash
-git checkout -b phase-2/quality-stability main
-
-# Sub-ramas
-git checkout -b feat/unit-tests phase-2/quality-stability
-git checkout -b feat/structured-logging phase-2/quality-stability
-git checkout -b feat/zod-validation-complete phase-2/quality-stability
-git checkout -b feat/health-checks phase-2/quality-stability
-```
-
-### Features a implementar:
-
-#### 1. `feat/unit-tests`
-**Prioridad**: ALTA
-
-Tareas:
-- [ ] Tests para BCVService (scraping, parsing, retry logic)
-- [ ] Tests para MongoService (CRUD operations)
-- [ ] Tests para WebSocketService
-- [ ] Tests para middleware de validación
-- [ ] Configurar coverage reporting (target: 80%)
-
-Mensaje de commit:
-```
-test: add comprehensive unit test suite
-
-- Add BCVService tests (scraping, retry logic)
-- Add MongoService tests (CRUD operations)
-- Add middleware validation tests
-- Configure coverage reporting
-- Achieve 80%+ code coverage
-
-Closes #4
-```
-
-#### 2. `feat/structured-logging`
-**Prioridad**: MEDIA
-
-Tareas:
-- [ ] Instalar y configurar Winston
-- [ ] Crear logger utility con niveles
-- [ ] Reemplazar console.log/error con logger
-- [ ] Configurar log rotation
-- [ ] Agregar request logging middleware
-
-Mensaje de commit:
-```
-feat(observability): implement structured logging with Winston
-
-- Replace console.log with Winston logger
-- Add log levels (error, warn, info, debug)
-- Configure log rotation and file output
-- Add request logging middleware
-- Include contextual metadata in logs
-
-Closes #5
-```
-
-#### 3. `feat/zod-validation-complete`
-**Prioridad**: MEDIA
-
-Tareas:
-- [ ] Validar datos del scraper con BCVRateDataSchema
-- [ ] Agregar validación de configuración al inicio
-- [ ] Validar payloads de WebSocket
-- [ ] Tests de validación
-
-Mensaje de commit:
-```
-feat(validation): complete Zod validation implementation
-
-- Validate scraped data before saving
-- Add configuration validation on startup
-- Validate WebSocket payloads
-- Add validation error tests
-- Ensure all data flows are validated
-
-Closes #6
-```
-
-#### 4. `feat/health-checks`
-**Prioridad**: MEDIA
-
-Tareas:
-- [ ] Endpoint /health (basic)
-- [ ] Endpoint /ready (dependencies check)
-- [ ] Endpoint /metrics (basic stats)
-- [ ] Actualizar Docker healthcheck
-
-Mensaje de commit:
-```
-feat(monitoring): add health check endpoints
-
-- Add /health endpoint (uptime, status)
-- Add /ready endpoint (dependency checks)
-- Add /metrics endpoint (basic stats)
-- Update Docker compose healthcheck
-- Document health check usage
-
-Closes #7
-```
-
----
-
-## 🟢 Fase 3: Optimización
-
-**Base branch**: `phase-2/quality-stability` (o `main`)
-**Target**: `phase-3/optimization`
-**Duración estimada**: 2-3 días
-
-### Comandos:
-
-```bash
-git checkout -b phase-3/optimization main
-
-# Sub-ramas
-git checkout -b feat/redis-cache-decision phase-3/optimization
-git checkout -b feat/integration-tests phase-3/optimization
-git checkout -b feat/graceful-shutdown phase-3/optimization
-git checkout -b feat/api-documentation phase-3/optimization
-```
-
-### Features a implementar:
-
-#### 1. `feat/redis-cache-decision`
-**Prioridad**: MEDIA
-
-**Opción A: Implementar Redis**
-```
-feat(performance): implement Redis caching layer
-
-- Add Redis client and configuration
-- Cache latest BCV rate (TTL: 1h)
-- Cache historical queries
-- Add cache invalidation logic
-- Monitor cache hit rates
-
-Closes #8
-```
-
-**Opción B: Remover Redis**
-```
-refactor: remove unused Redis configuration
-
-- Remove REDIS_URL from environment
-- Remove Redis service from docker-compose
-- Update documentation
-- Simplify deployment
-
-Closes #8
-```
-
-#### 2. `feat/integration-tests`
-**Prioridad**: MEDIA
-
-```
-test: add integration test suite
-
-- Test API endpoints end-to-end
-- Test WebSocket connection and events
-- Test MongoDB integration
-- Test scheduled task execution
-- Add CI/CD integration
-
-Closes #9
-```
-
-#### 3. `feat/graceful-shutdown`
-**Prioridad**: MEDIA
-
-```
-feat(reliability): implement graceful shutdown
-
-- Handle SIGTERM and SIGINT signals
-- Close HTTP server gracefully
-- Disconnect WebSocket clients properly
-- Close MongoDB connections
-- Wait for pending operations
-
-Closes #10
-```
-
-#### 4. `feat/api-documentation`
-**Prioridad**: BAJA
-
-```
-docs: add Swagger/OpenAPI documentation
-
-- Install swagger-ui-express
-- Add OpenAPI 3.0 specification
-- Document all API endpoints
-- Include authentication info
-- Add example requests/responses
-
-Closes #11
-```
-
----
-
-## 🔵 Fase 4: Observabilidad
-
-**Base branch**: `phase-3/optimization` (o `main`)
-**Target**: `phase-4/observability`
-**Duración estimada**: 2-3 días
-
-### Comandos:
-
-```bash
-git checkout -b phase-4/observability main
-
-# Sub-ramas
-git checkout -b feat/prometheus-metrics phase-4/observability
-git checkout -b feat/monitoring-dashboard phase-4/observability
-git checkout -b feat/alerting-system phase-4/observability
-```
-
-### Features a implementar:
-
-#### 1. `feat/prometheus-metrics`
-**Prioridad**: BAJA
-
-```
-feat(observability): add Prometheus metrics
-
-- Install prom-client
-- Add /metrics endpoint
-- Track request count and duration
-- Track scraping success/failure rate
-- Track WebSocket connections
-- Monitor rate limiting hits
-
-Closes #12
-```
-
-#### 2. `feat/monitoring-dashboard`
-**Prioridad**: BAJA
-
-```
-feat(observability): create Grafana dashboard
-
-- Add Grafana to docker-compose
-- Create dashboard for BCV service metrics
-- Add panels for key metrics
-- Configure alerting rules
-- Document dashboard usage
-
-Closes #13
-```
-
-#### 3. `feat/alerting-system`
-**Prioridad**: BAJA
-
-```
-feat(monitoring): implement alerting system
-
-- Configure Prometheus alertmanager
-- Define alert rules (scraping failures, high error rate)
-- Set up notification channels (email, Slack)
-- Document alert management
-- Test alert delivery
-
-Closes #14
-```
-
----
-
-## 🔄 Workflow de Desarrollo
-
-### 1. Crear feature branch
-```bash
-git checkout -b feat/nombre-descriptivo phase-X/nombre-fase
-```
-
-### 2. Desarrollar y commitear
-```bash
-# Hacer cambios
+# Crear rama desde main
+git checkout main
+git pull origin main
+git checkout -b feat/nueva-caracteristica-o-fix-habilitador
+
+# Desarrollar y commitear
 git add .
-git commit -m "tipo(scope): descripción
+git commit -m "feat: descripción de la nueva funcionalidad
 
-Detalles adicionales...
+Implementación detallada del cambio
+- Punto 1
+- Punto 2
+- Punto 3
 
 Closes #issue-number"
 ```
 
-### 3. Push y crear PR
+### 2. Push y Creación de PR
 ```bash
-git push origin feat/nombre-descriptivo
+# Push a origin
+git push origin feat/nueva-caracteristica-o-fix-habilitador
 
-# Crear PR hacia la rama de fase
-# Título: mismo que el mensaje de commit
-# Descripción: detalles de implementación, screenshots, etc.
+# Crear PR a main (no a ramas de fase intermedias)
+# En GitHub/GitLab:
+# - Title: Mismo que el commit
+# - Description: Detalles de implementación
+# - Labels: feature, enhancement, bugfix, etc.
+# - Assignees: Desarrolladores responsables
+# - Reviewers: Código de pares
 ```
 
-### 4. Merge a rama de fase
+### 3. Code Review y Merge
 ```bash
-# Después de review y aprobación
-git checkout phase-X/nombre-fase
-git merge --no-ff feat/nombre-descriptivo
-git push origin phase-X/nombre-fase
-```
-
-### 5. Merge de fase a main
-```bash
-# Una vez completadas todas las features de la fase
+# Después de revisión y aprobación
+# Squash merge o merge sin fast-forward
 git checkout main
-git merge --no-ff phase-X/nombre-fase
-git tag -a vX.Y.Z -m "Release version X.Y.Z - Phase X completed"
-git push origin main --tags
+git pull origin main
+git merge --no-ff feat/nueva-caracteristica-o-fix-habilitador
+git push origin main
+
+# Eliminar rama remota
+git push origin --delete feat/nueva-caracteristica-o-fix-habilitador
+
+# Eliminar rama local
+git branch -d feat/nueva-caracteristica-o-fix-habilitador
 ```
 
 ---
 
-## 📝 Convenciones de Commits
+## 🏷️ Convenciones de Nomenclatura de Ramas
 
-### Tipos de commits:
-- `feat`: Nueva funcionalidad
-- `fix`: Corrección de bugs
+### Tipos de ramas:
+- `feat/` - Nuevas funcionalidades
+- `fix/` - Correcciones de bugs
+- `refactor/` - Cambios de arquitectura/mejoras de código
+- `test/` - Agregar o mejorar tests
+- `docs/` - Cambios en documentación
+- `chore/` - Tareas de mantenimiento
+- `hotfix/` - Correcciones urgentes para producción
+- `perf/` - Mejoras de rendimiento
+
+### Ejemplos:
+```bash
+feat/websocket-rate-broadcast          # Nueva funcionalidad
+fix/ssl-certificate-error              # Corrección de bug
+refactor/solid-architecture            # Refactoring
+test/unit-tests-coverage               # Tests
+docs/update-deployment-guide           # Documentación
+chore/update-dependencies              # Mantenimiento
+hotfix/critical-security-patch         # Fix urgente
+perf/redis-cache-optimization         # Rendimiento
+```
+
+---
+
+## 📝 Convenciones de Commits (Conventional Commits)
+
+### Tipos permitidos:
+- `feat`: Nueva funcionalidad (MINOR en Semantic Versioning)
+- `fix`: Corrección de bug (PATCH en Semantic Versioning)
 - `docs`: Cambios en documentación
-- `style`: Formato, punto y coma faltantes, etc.
-- `refactor`: Refactorización de código
-- `test`: Agregar o modificar tests
-- `chore`: Cambios en build, herramientas, etc.
-- `perf`: Mejoras de rendimiento
-- `ci`: Cambios en CI/CD
+- `style`: Formato, puntos y comas faltantes, etc. (sin cambio de lógica)
+- `refactor`: Refactorización de código (sin cambio de funcionalidad)
+- `perf`: Mejora de rendimiento
+- `test`: Agregar o corregir tests
+- `build`: Cambios en sistema de build o dependencias externas
+- `ci`: Cambios en archivos de CI/CD
+- `chore`: Otros cambios que no modifican src o test files
+- `revert`: Revertir un commit anterior
+- `feat!`, `fix!`: Indican cambios que rompen compatibilidad (MAJOR version)
 
-### Scopes sugeridos:
-- `security`: Cambios relacionados con seguridad
-- `validation`: Validación de datos
-- `api`: Endpoints de API
-- `scraper`: Lógica de scraping
-- `database`: MongoDB, cache
-- `websocket`: WebSocket server
-- `config`: Configuración
-- `docker`: Dockerfiles, compose
-- `monitoring`: Métricas, logs
-- `observability`: Monitoreo, alertas
+### Scopes comunes:
+- `api`: Cambios en API REST
+- `websocket`: Cambios en sistema WebSocket
+- `discord`: Cambios en notificaciones Discord
+- `webhook`: Cambios en notificaciones HTTP
+- `notifications`: Cambios en sistema de notificaciones
+- `state`: Cambios en sistema de estado persistente
+- `health`: Cambios en health checks
+- `auth`: Cambios en autenticación
+- `security`: Cambios de seguridad
+- `tests`: Cambios en tests
+- `deps`: Cambios en dependencias
+- `ci`: Cambios en CI/CD
+- `docs`: Cambios en documentación
 
 ### Formato de mensaje:
 ```
-tipo(scope): descripción corta (max 72 caracteres)
+<type>(<scope>): <subject>
 
-Descripción más detallada del cambio si es necesario.
-Puede incluir múltiples párrafos.
+<body>
 
-- Punto clave 1
-- Punto clave 2
-- Punto clave 3
+<footer>
+```
 
-BREAKING CHANGE: descripción si aplica
+**Ejemplos de commits válidos**:
+```
+feat(api): add rate history endpoint with pagination
+
+Add new /api/rate/history endpoint that supports:
+- Pagination with limit parameter
+- Date range filtering
+- Rate limiting (100 req/15 min)
 
 Closes #123
-Refs #456
+```
+
+```
+fix(webhook): handle failures gracefully with retry logic
+
+Fixed issue where webhook failures caused unhandled promise exceptions.
+Now implements retry logic with exponential backoff for failed webhooks.
+
+Closes #456
+```
+
+```
+refactor(notification-state): implement dual-layer architecture
+
+Replace in-memory notification state with dual-layer system:
+- MongoDB as primary persistent storage
+- Redis as secondary cache layer
+- Automatic fallback if Redis unavailable
+
+BREAKING CHANGE: Notification state format has changed
 ```
 
 ---
 
-## 🏷️ Versionado Semántico
+## 🏷️ Versionado Semántico Automático
 
-Seguir [SemVer](https://semver.org/):
+El proyecto implementa **Conventional Commits + Semantic Release** con integración automática:
 
-- **v0.1.0**: Implementación inicial (commit actual)
-- **v0.2.0**: Fase 1 completada (seguridad crítica)
-- **v0.3.0**: Fase 2 completada (calidad y estabilidad)
-- **v0.4.0**: Fase 3 completada (optimización)
-- **v1.0.0**: Fase 4 completada (observabilidad) - **PRODUCTION READY**
+### Proceso automático:
+1. **Developer commits** usando Conventional Commits format
+2. **Push to main** activa GitHub Actions
+3. **Tests ejecutados** (linting, type checking, unit tests, build)
+4. **Semantic Release analiza** todos los commits desde última versión
+5. **Determina tipo de versión**:
+   - `feat`: Nueva funcionalidad → MINOR (1.0.0 → 1.1.0)
+   - `fix`: Corrección bug → PATCH (1.0.0 → 1.0.1)
+   - `BREAKING CHANGE`: Cambio importante → MAJOR (1.0.0 → 2.0.0)
+   - Otros (`docs`, `style`, `chore`, etc.): No cambian versión
+6. **Actualiza package.json** con nueva versión
+7. **Genera CHANGELOG.md** automáticamente
+8. **Crea tag de Git** (ej: v1.1.0)
+9. **Crea GitHub Release** con changelog
+10. **Construye imagen Docker** con tags semánticos
+11. **Despliega a producción** (si está configurado)
 
-### Crear tags:
+### Tags de Docker generados automáticamente:
+```
+ghcr.io/emilioaray-dev/bcv-service:1.1.0    # Versión exacta
+ghcr.io/emilioaray-dev/bcv-service:1.1     # Minor tag
+ghcr.io/emilioaray-dev/bcv-service:1       # Major tag
+ghcr.io/emilioaray-dev/bcv-service:latest  # Última versión
+```
+
+---
+
+## 🧪 Estrategia de Testing
+
+### Niveles de Testing Implementados:
+1. **Unit Tests**: Vitest con cobertura >66%
+2. **Integration Tests**: Endpoints API y servicios integrados
+3. **Security Tests**: Validación de autenticación y rate limiting
+4. **Performance Tests**: Benchmarks con autocannon
+5. **Load Tests**: Simulación de tráfico real con Artillery
+
+### Scripts de Testing:
 ```bash
-# Después de merge de fase a main
-git tag -a v0.2.0 -m "Release v0.2.0 - Phase 1: Security Critical
+# Todos los tests
+pnpm test
 
-- Secrets management implemented
-- API authentication added
-- Production-ready rate limiting
+# Tests con cobertura
+pnpm test:coverage
 
-See CHANGELOG.md for details"
+# Tests unitarios específicos
+pnpm test:unit
 
-git push origin v0.2.0
+# Tests de integración
+pnpm test:integration
+
+# Benchmarks
+pnpm benchmark
+
+# Load tests
+pnpm load-test:light
+pnpm load-test:medium
+pnpm load-test:stress
 ```
 
 ---
 
-## 📊 Seguimiento de Progreso
+## 🚀 Deployment Automático
 
-### Issues sugeridos en GitHub/GitLab:
+### Proceso de CI/CD Automatizado:
+1. **Pull Request** creado a `main`
+2. **Code Review** y aprobación
+3. **Merge a main** (squash merge o no-fast-forward)
+4. **GitHub Actions**:
+   - `test`: Ejecuta todos los tests
+   - `lint`: Verifica estilo de código
+   - `build`: Compila TypeScript
+   - `security`: Escaneo de vulnerabilidades
+   - Si cualquiera falla → No se versiona
+5. **Semantic Release**:
+   - `analyze`: Analiza commits desde última versión
+   - `version`: Determina nueva versión, actualiza package.json
+   - `changelog`: Genera CHANGELOG.md
+   - `publish`: Crea tag Git, GitHub Release, Docker image
+   - `deploy`: Despliega a producción si está configurado
 
-**Fase 1:**
-- #1 Implementar gestión de secretos
-- #2 Agregar autenticación API
-- #3 Rate limiting para producción
-
-**Fase 2:**
-- #4 Tests unitarios completos
-- #5 Logging estructurado con Winston
-- #6 Validación Zod completa
-- #7 Health check endpoints
-
-**Fase 3:**
-- #8 Decisión e implementación de Redis
-- #9 Tests de integración
-- #10 Graceful shutdown
-- #11 Documentación Swagger
-
-**Fase 4:**
-- #12 Métricas Prometheus
-- #13 Dashboard Grafana
-- #14 Sistema de alertas
-
----
-
-## 🎯 Checklist por Fase
-
-### Antes de merge a main:
-- [ ] Todos los tests pasan
-- [ ] Code coverage cumple objetivo (80%+)
-- [ ] Linter sin errores (biome check)
-- [ ] Documentación actualizada
-- [ ] CHANGELOG.md actualizado
-- [ ] PR review aprobado
-- [ ] CI/CD pasa
-- [ ] Tag de versión creado
+### Resultados del deployment:
+- ✅ Nueva versión en package.json
+- ✅ Tag de Git creado (ej: v2.1.0)
+- ✅ GitHub Release con changelog
+- ✅ Docker image publicada con tags semánticos
+- ✅ Despliegue a producción (si está configurado)
 
 ---
 
-## 📚 Referencias
+## 🔧 Ramas de Soporte para Producción
 
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
+### En caso de hotfixes críticos:
+```bash
+# Crear rama de hotfix desde el tag de producción actual
+git checkout v2.1.0
+git checkout -b hotfix/critical-security-patch
+
+# Implementar fix
+# Commits usando conventional commits
+
+# Push y PR a main
+git push origin hotfix/critical-security-patch
+
+# Después de merge:
+git checkout main
+git pull origin main
+git tag -a v2.1.1 -m "Hotfix v2.1.1 - Critical security patch for XYZ"
+git push origin v2.1.1
+```
+
+### Ramas de mantenimiento de versiones antiguas (si aplica):
+```bash
+# Si se necesita mantener una versión antigua
+git checkout v1.5.0
+git checkout -b support/v1.5.x
+
+# Solo fixes críticos en esta rama
+# No nuevas features
+# Mantenimiento limitado
+```
+
+---
+
+## 📊 Métricas de Calidad del Código
+
+### Actualmente en el proyecto:
+- **Cobertura de tests**: >66% en líneas de código
+- **Cobertura de funciones**: >45% 
+- **Cobertura de ramificaciones**: >50%
+- **Ciclo de desarrollo**: Commits con conventional commits
+- **CI/CD**: Tests automáticos en cada PR y merge
+- **Linter**: Biome con reglas estrictas
+- **Type Safety**: TypeScript strict mode
+- **SOLID Architecture**: Implementada con Inversify DI
+- **Documentación**: Actualizada y completa
+
+### Herramientas de calidad:
+- **Biome**: Formateo y linting de código
+- **TypeScript**: Type checking estricto
+- **Vitest**: Pruebas unitarias e integración
+- **SonarQube**: Análisis estático de código (opcional)
+- **Security audit**: Escaneo de dependencias (pnpm audit)
+
+---
+
+## 👥 Gestión de Equipo
+
+### Roles y Responsabilidades:
+- **Maintainers**: Aprobación de PRs importantes, versionado
+- **Developers**: Desarrollo de features, fixes, tests
+- **Reviewers**: Revisión de código y calidad
+- **DevOps**: CI/CD, deployment, infraestructura
+
+### Proceso de Code Review:
+- Mínimo 1 reviewer por PR (2 para cambios críticos)
+- Revisar calidad de commits (conventional commits)
+- Verificar tests (cobertura, casos límite)
+- Asegurar cumplimiento de estándares de seguridad
+- Confirmar documentación actualizada
+
+---
+
+## 🚨 Casos de Uso Específicos
+
+### Caso 1: Nueva funcionalidad multi-canal de notificaciones
+```bash
+# Rama específica para la funcionalidad
+git checkout main
+git pull origin main
+git checkout -b feat/multi-channel-notifications
+
+# Implementación de Discord, WebHook y WebSocket services
+git add src/services/discord.service.ts
+git add src/services/webhook.service.ts
+git commit -m "feat: implement multi-channel notification system
+
+- Add DiscordService for Discord webhook notifications
+- Add WebhookService for HTTP endpoint notifications with HMAC
+- Integrate with WebSocketService for real-time delivery
+- Implement notification routing logic
+
+Closes #789"
+
+# Implementación de estado persistente
+git add src/services/notification-state.service.ts
+git commit -m "feat: add persistent notification state system
+
+- Implement dual-layer state (MongoDB primary + Redis cache)
+- Prevent duplicate notifications on service restart
+- Track significant changes (threshold ≥0.01)
+- Support for multiple currencies (USD, EUR, CNY, etc.)
+
+Closes #790"
+
+# Push y PR
+git push origin feat/multi-channel-notifications
+```
+
+### Caso 2: Cambio que rompe compatibilidad (Breaking Change)
+```bash
+git checkout main
+git pull origin main
+git checkout -b refactor/api-response-format
+
+# Implementar cambio significativo
+git add src/controllers/rate.controller.ts
+git commit -m "refactor!: change API response format to align with REST standards
+
+BREAKING CHANGE: API responses now return data in 'data' field instead of root level
+
+Before:
+{
+  \"rate\": 36.5,
+  \"date\": \"2025-11-24\"
+}
+
+After:
+{
+  \"success\": true,
+  \"data\": {
+    \"rate\": 36.5,
+    \"date\": \"2025-11-24\"
+  }
+}
+
+Closes #1011"
+```
+
+---
+
+## 📚 Recursos Adicionales
+
+### Documentación relacionada:
+- [CONVENTIONAL_COMMITS.md](../guides/CONVENTIONAL_COMMITS.md) - Guía de commits convencionales
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - Arquitectura del sistema
+- [TESTING.md](TESTING.md) - Estrategia de pruebas
+- [RELEASE.md](RELEASE.md) - Proceso de release
+- [CODE_STYLE.md](CODE_STYLE.md) - Estándares de código
+
+### Herramientas utilizadas:
+- [Conventional Commits Specification](https://www.conventionalcommits.org/)
 - [Semantic Versioning](https://semver.org/)
-- [GitHub Flow](https://guides.github.com/introduction/flow/)
+- [InversifyJS](https://github.com/inversify/InversifyJS)
+- [Vitest](https://vitest.dev/)
+- [Biome](https://biomejs.dev/)
 
 ---
 
-**Última actualización**: 2025-11-11
-**Versión**: 1.0.0
-**Mantenido por**: Equipo BCV Service
+## ✅ Checklist de Desarrollo
+
+Antes de crear un PR, verificar:
+- [ ] Commits siguen conventional commits
+- [ ] Tests pasan (unit + integration)
+- [ ] Cobertura de tests >66%
+- [ ] Linter no reporta errores (pnpm lint)
+- [ ] Build exitoso (pnpm build)
+- [ ] Documentación actualizada
+- [ ] Variables de entorno documentadas en `.env.example`
+- [ ] No hay credenciales en el código (solo en secrets)
+- [ ] Health checks y observabilidad funcionan
+- [ ] Cambios de seguridad probados
+- [ ] Notificaciones funcionan correctamente
+- [ ] WebSocket broadcasting funciona
+- [ ] API Keys funcionan correctamente
+
+---
+
+## 🔁 Iteración Continua
+
+Actualmente el proyecto está en **modo de iteración continua** donde nuevas features y fixes se integran directamente a `main` tras pasar el proceso de CI/CD y code review, aprovechando el sistema de versionado automático con conventional commits.
+
+### Beneficios del modelo actual:
+- ✅ Entrega continua automatizada
+- ✅ Versionado automático basado en commits
+- ✅ Feedback rápido de cambios
+- ✅ Reducción de overhead de gestión de ramas
+- ✅ Despliegues frecuentes y seguros
+
+---
+
+**Última actualización**: 2025-11-24
+**Versión actual**: 2.1.0
+**Estado**: ✅ Todas las fases completadas - Sistema completo y funcional

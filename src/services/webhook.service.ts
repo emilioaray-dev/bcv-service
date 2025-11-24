@@ -31,6 +31,8 @@ import { getCurrencyRate } from '@/services/bcv.service';
 @injectable()
 export class WebhookService implements IWebhookService {
   private readonly webhookConfig: WebhookConfig;
+  private readonly serviceStatusWebhookUrl: string;
+  private readonly deploymentWebhookUrl: string;
 
   constructor(
     @inject(TYPES.MetricsService)
@@ -44,6 +46,11 @@ export class WebhookService implements IWebhookService {
       maxRetries: config.webhookMaxRetries || 3,
     };
 
+    // Specific webhook URLs for different notification types
+    // If not configured, fall back to the generic webhook URL
+    this.serviceStatusWebhookUrl = config.serviceStatusWebhookUrl || config.webhookUrl || '';
+    this.deploymentWebhookUrl = config.deploymentWebhookUrl || config.webhookUrl || '';
+
     if (!this.webhookConfig.enabled) {
       logger.warn(
         'Webhook URL not configured - Webhook notifications disabled'
@@ -51,6 +58,8 @@ export class WebhookService implements IWebhookService {
     } else {
       logger.info('Webhook service configured and enabled', {
         url: this.maskUrl(this.webhookConfig.url),
+        serviceStatusUrl: this.maskUrl(this.serviceStatusWebhookUrl),
+        deploymentUrl: this.maskUrl(this.deploymentWebhookUrl),
         timeout: this.webhookConfig.timeout,
         maxRetries: this.webhookConfig.maxRetries,
       });
@@ -91,12 +100,12 @@ export class WebhookService implements IWebhookService {
     status: HealthCheckResult,
     previousStatus?: string
   ): Promise<WebhookDeliveryResult> {
-    if (!this.isEnabled()) {
-      logger.debug('Service status notification skipped - service not enabled');
+    if (!this.serviceStatusWebhookUrl) {
+      logger.debug('Service status notification skipped - URL not configured');
       return {
         success: false,
         url: 'N/A',
-        error: 'Webhook service not enabled',
+        error: 'Service status webhook URL not configured',
         attempt: 0,
         duration: 0,
       };
@@ -113,7 +122,7 @@ export class WebhookService implements IWebhookService {
       },
     };
 
-    return await this.sendWithRetry(payload);
+    return await this.sendWithRetry(payload, this.serviceStatusWebhookUrl);
   }
 
   async sendDeploymentNotification(
@@ -126,12 +135,12 @@ export class WebhookService implements IWebhookService {
       message?: string;
     }
   ): Promise<WebhookDeliveryResult> {
-    if (!this.isEnabled()) {
-      logger.debug('Deployment notification skipped - service not enabled');
+    if (!this.deploymentWebhookUrl) {
+      logger.debug('Deployment notification skipped - URL not configured');
       return {
         success: false,
         url: 'N/A',
-        error: 'Webhook service not enabled',
+        error: 'Deployment webhook URL not configured',
         attempt: 0,
         duration: 0,
       };
@@ -149,7 +158,7 @@ export class WebhookService implements IWebhookService {
       },
     };
 
-    return await this.sendWithRetry(payload);
+    return await this.sendWithRetry(payload, this.deploymentWebhookUrl);
   }
 
   /**
@@ -194,8 +203,12 @@ export class WebhookService implements IWebhookService {
    * Send webhook with exponential backoff retry strategy
    */
   private async sendWithRetry(
-    payload: WebhookPayload
+    payload: WebhookPayload,
+    targetUrl?: string
   ): Promise<WebhookDeliveryResult> {
+    // Use the provided URL or fall back to the default webhook URL
+    const webhookUrl = targetUrl || this.webhookConfig.url;
+
     let lastError: Error | null = null;
     const startTime = Date.now();
 
@@ -212,11 +225,11 @@ export class WebhookService implements IWebhookService {
           await this.sleep(delay);
         }
 
-        const result = await this.sendWebhook(payload, attempt);
+        const result = await this.sendWebhook(payload, attempt, webhookUrl);
         const duration = Date.now() - startTime;
 
         logger.info('Webhook delivered successfully', {
-          url: this.maskUrl(this.webhookConfig.url),
+          url: this.maskUrl(webhookUrl),
           statusCode: result.statusCode,
           attempt,
           durationMs: duration,
@@ -236,7 +249,7 @@ export class WebhookService implements IWebhookService {
         logger.error('Webhook delivery attempt failed', {
           attempt,
           maxRetries: this.webhookConfig.maxRetries,
-          url: this.maskUrl(this.webhookConfig.url),
+          url: this.maskUrl(webhookUrl),
           error: this.getErrorMessage(error),
           event: payload.event,
         });
@@ -252,7 +265,7 @@ export class WebhookService implements IWebhookService {
 
     logger.error('Webhook delivery failed after all retries', {
       maxRetries: this.webhookConfig.maxRetries,
-      url: this.maskUrl(this.webhookConfig.url),
+      url: this.maskUrl(webhookUrl),
       lastError: lastError?.message,
       totalDurationMs: duration,
       event: payload.event,
@@ -263,7 +276,7 @@ export class WebhookService implements IWebhookService {
 
     return {
       success: false,
-      url: this.webhookConfig.url,
+      url: webhookUrl,
       error: lastError?.message || 'Unknown error',
       attempt: this.webhookConfig.maxRetries,
       duration,
@@ -275,7 +288,8 @@ export class WebhookService implements IWebhookService {
    */
   private async sendWebhook(
     payload: WebhookPayload,
-    attempt: number
+    attempt: number,
+    webhookUrl: string
   ): Promise<WebhookDeliveryResult> {
     const payloadString = JSON.stringify(payload);
     const signature = this.generateSignature(payloadString);
@@ -294,7 +308,7 @@ export class WebhookService implements IWebhookService {
     }
 
     try {
-      const response = await axios.post(this.webhookConfig.url, payload, {
+      const response = await axios.post(webhookUrl, payload, {
         headers,
         timeout: this.webhookConfig.timeout,
         validateStatus: (status) => status >= 200 && status < 300,
@@ -302,7 +316,7 @@ export class WebhookService implements IWebhookService {
 
       return {
         success: true,
-        url: this.webhookConfig.url,
+        url: webhookUrl,
         statusCode: response.status,
         attempt,
         duration: 0, // Will be calculated by caller

@@ -6,12 +6,13 @@ Guía completa para gestionar secretos y credenciales sensibles en BCV Service d
 
 1. [Introducción](#introducción)
 2. [Variables de Entorno vs Secrets](#variables-de-entorno-vs-secrets)
-3. [Docker Secrets](#docker-secrets)
-4. [Kubernetes Secrets](#kubernetes-secrets)
-5. [VPS Deployment](#vps-deployment)
-6. [Mejores Prácticas](#mejores-prácticas)
-7. [Rotación de Secrets](#rotación-de-secrets)
-8. [Troubleshooting](#troubleshooting)
+3. [Secrets del Servicio BCV](#secrets-del-servicio-bcv)
+4. [Docker Secrets](#docker-secrets)
+5. [Kubernetes Secrets](#kubernetes-secrets)
+6. [VPS Deployment](#vps-deployment)
+7. [Mejores Prácticas](#mejores-prácticas)
+8. [Rotación de Secrets](#rotación-de-secrets)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -23,6 +24,47 @@ BCV Service soporta dos métodos de configuración:
 2. **Docker Secrets** (archivos en `/run/secrets/`)
 
 El servicio automáticamente detecta y usa secretos desde archivos si las variables `*_FILE` están configuradas.
+
+### Secret Management en BCV Service
+
+Desde la versión 1.5.0, BCV Service implementa un sistema robusto de gestión de secrets que soporta:
+
+- Variables de entorno como strings planos
+- Variables de entorno que apuntan a archivos de secrets (`*_FILE`)
+- Variables de entorno que apuntan a Docker/Kubernetes secrets
+- Carga de secrets desde sistemas externos (AWS SSM, HashiCorp Vault)
+
+---
+
+## Secrets del Servicio BCV
+
+El servicio BCV utiliza los siguientes secretos y variables de entorno:
+
+### Variables de Entorno Requeridas
+
+- `MONGODB_URI` o `MONGODB_URI_FILE` - Conexión a base de datos MongoDB
+- `API_KEYS` o `API_KEYS_FILE` - API keys para autenticación (array JSON de strings)
+- `NODE_ENV` - Ambiente (development, production, testing)
+- `PORT` - Puerto de escucha del servicio
+- `BCV_WEBSITE_URL` - URL del sitio web del BCV para scraping
+
+### Variables de Entorno Opcionales
+
+- `CRON_SCHEDULE` - Programación de scraping de tasas (default: "0 2,10,18 * * *")
+- `SAVE_TO_DATABASE` - Habilitar/deshabilitar guardado en base de datos (default: true)
+- `LOG_LEVEL` - Nivel de logging (default: info)
+- `DISCORD_WEBHOOK_URL` - URL de webhook para notificaciones de Discord
+- `WEBHOOK_URL` - URL de webhook genérico para notificaciones
+- `WEBHOOK_SECRET` - Secret para firma de peticiones webhook
+- `JWT_SECRET` o `JWT_SECRET_FILE` - Secret para generación de tokens JWT
+- `REDIS_URL` o `REDIS_URL_FILE` - URL de conexión a Redis (si se usa caché)
+
+### Variables de Entorno para Notificaciones
+
+- `DISCORD_WEBHOOK_URL` - URL del webhook de Discord para notificaciones
+- `WEBHOOK_URL` - URL del webhook genérico para notificaciones
+- `WEBHOOK_SECRET` - Secret para autenticación de webhook
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` - Configuración SMTP (si se usan notificaciones por email)
 
 ---
 
@@ -83,10 +125,16 @@ API_KEYS_FILE=/run/secrets/api_keys
 mkdir -p secrets
 
 # MongoDB URI
-echo "mongodb://admin:SecurePassword123!@mongo:27017/bcv?authSource=admin" > secrets/mongodb_uri.txt
+echo "mongodb://admin:SecurePassword123!@mongo:27017/bcv" > secrets/mongodb_uri.txt
 
 # API Keys (JSON array)
 echo '["live-key-abc123xyz", "backup-key-def456uvw"]' > secrets/api_keys.txt
+
+# Webhook Secret (opcional)
+echo "your-webhook-secret-here" > secrets/webhook_secret.txt
+
+# JWT Secret (opcional, si se usan tokens JWT)
+echo "your-jwt-secret-here" > secrets/jwt_secret.txt
 
 # Establecer permisos restrictivos
 chmod 600 secrets/*
@@ -109,14 +157,23 @@ services:
       - PORT=3000
       - SAVE_TO_DATABASE=true
       - LOG_LEVEL=info
+      - BCV_WEBSITE_URL=https://www.bcv.org.ve
+      - CRON_SCHEDULE=0 2,10,18 * * *
       # Variables _FILE para leer desde secrets
       - MONGODB_URI_FILE=/run/secrets/mongodb_uri
       - API_KEYS_FILE=/run/secrets/api_keys
+      - WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
     secrets:
       - mongodb_uri
       - api_keys
+      - webhook_secret
+      - jwt_secret
     depends_on:
       - mongo
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
 
   mongo:
     image: mongo:7
@@ -126,16 +183,26 @@ services:
     secrets:
       - mongo_root_username
       - mongo_root_password
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
 
 secrets:
   mongodb_uri:
     file: ./secrets/mongodb_uri.txt
   api_keys:
     file: ./secrets/api_keys.txt
+  webhook_secret:
+    file: ./secrets/webhook_secret.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
   mongo_root_username:
     file: ./secrets/mongo_root_username.txt
   mongo_root_password:
     file: ./secrets/mongo_root_password.txt
+
+volumes:
+  mongo_data:
 ```
 
 #### 3. Verificar Secrets en Container
@@ -188,6 +255,8 @@ docker service logs bcv-stack_bcv-service
 kubectl create secret generic bcv-secrets \
   --from-file=mongodb-uri=./secrets/mongodb_uri.txt \
   --from-file=api-keys=./secrets/api_keys.txt \
+  --from-file=webhook-secret=./secrets/webhook_secret.txt \
+  --from-file=jwt-secret=./secrets/jwt_secret.txt \
   -n bcv-service
 
 # Verificar
@@ -202,6 +271,8 @@ kubectl describe secret bcv-secrets -n bcv-service
 kubectl create secret generic bcv-secrets \
   --from-literal=mongodb-uri='mongodb://admin:pass@mongo:27017/bcv' \
   --from-literal=api-keys='["key-1", "key-2"]' \
+  --from-literal=webhook-secret='your-webhook-secret-here' \
+  --from-literal=jwt-secret='your-jwt-secret-here' \
   -n bcv-service
 ```
 
@@ -219,6 +290,8 @@ stringData:
   # stringData codifica automáticamente en base64
   mongodb-uri: "mongodb://admin:SecurePassword123@mongo:27017/bcv?authSource=admin"
   api-keys: '["key-abc123", "key-def456"]'
+  webhook-secret: 'your-webhook-secret-here'
+  jwt-secret: 'your-jwt-secret-here'
 ```
 
 ```bash
@@ -257,6 +330,29 @@ spec:
             secretKeyRef:
               name: bcv-secrets
               key: api-keys
+        - name: WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: bcv-secrets
+              key: webhook-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: bcv-secrets
+              key: jwt-secret
+        # Variables de configuración adicionales
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: BCV_WEBSITE_URL
+          value: "https://www.bcv.org.ve"
+        - name: CRON_SCHEDULE
+          value: "0 2,10,18 * * *"
+        - name: SAVE_TO_DATABASE
+          value: "true"
+        - name: LOG_LEVEL
+          value: "info"
 ```
 
 **Opción 2: Como Archivos Montados**
@@ -279,10 +375,29 @@ spec:
           value: /run/secrets/mongodb-uri
         - name: API_KEYS_FILE
           value: /run/secrets/api-keys
+        - name: WEBHOOK_SECRET_FILE
+          value: /run/secrets/webhook-secret
+        - name: JWT_SECRET_FILE
+          value: /run/secrets/jwt-secret
+        # Variables de configuración adicionales
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: BCV_WEBSITE_URL
+          value: "https://www.bcv.org.ve"
+        - name: CRON_SCHEDULE
+          value: "0 2,10,18 * * *"
+        - name: SAVE_TO_DATABASE
+          value: "true"
+        - name: LOG_LEVEL
+          value: "info"
         volumeMounts:
         - name: secrets
           mountPath: /run/secrets
           readOnly: true
+        - name: bcv-config
+          mountPath: /app/config
       volumes:
       - name: secrets
         secret:
@@ -292,6 +407,13 @@ spec:
             path: mongodb-uri
           - key: api-keys
             path: api-keys
+          - key: webhook-secret
+            path: webhook-secret
+          - key: jwt-secret
+            path: jwt-secret
+      - name: bcv-config
+        configMap:
+          name: bcv-config
 ```
 
 ### External Secrets Operator (Avanzado)
@@ -363,9 +485,12 @@ NODE_ENV=production
 PORT=3000
 SAVE_TO_DATABASE=true
 MONGODB_URI=mongodb://bcv_user:SecurePassword123!@localhost:27017/bcv?authSource=admin
+BCV_WEBSITE_URL=https://www.bcv.org.ve
+CRON_SCHEDULE=0 2,10,18 * * *
 LOG_LEVEL=info
-CRON_SCHEDULE=*/30 * * * *
 API_KEYS=["live-key-abc123", "backup-key-def456"]
+WEBHOOK_SECRET=your-webhook-secret-here
+JWT_SECRET=your-jwt-secret-here
 
 # Establecer permisos restrictivos
 chmod 600 .env
@@ -393,7 +518,9 @@ export VAULT_TOKEN='dev-token'
 # Guardar secrets
 vault kv put secret/bcv-service \
   mongodb_uri='mongodb://admin:pass@localhost:27017/bcv' \
-  api_keys='["key-1", "key-2"]'
+  api_keys='["key-1", "key-2"]' \
+  webhook_secret='your-webhook-secret-here' \
+  jwt_secret='your-jwt-secret-here'
 
 # Leer secrets
 vault kv get secret/bcv-service
@@ -406,6 +533,8 @@ const vault = require('node-vault')({ endpoint: 'http://127.0.0.1:8200', token: 
 const secrets = await vault.read('secret/data/bcv-service');
 process.env.MONGODB_URI = secrets.data.data.mongodb_uri;
 process.env.API_KEYS = secrets.data.data.api_keys;
+process.env.WEBHOOK_SECRET = secrets.data.data.webhook_secret;
+process.env.JWT_SECRET = secrets.data.data.jwt_secret;
 ```
 
 ### Opción 3: AWS Systems Manager Parameter Store
@@ -426,6 +555,16 @@ aws ssm put-parameter \
 aws ssm put-parameter \
   --name "/bcv-service/production/api-keys" \
   --value '["key-1", "key-2"]' \
+  --type SecureString
+
+aws ssm put-parameter \
+  --name "/bcv-service/production/webhook-secret" \
+  --value "your-webhook-secret-here" \
+  --type SecureString
+
+aws ssm put-parameter \
+  --name "/bcv-service/production/jwt-secret" \
+  --value "your-jwt-secret-here" \
   --type SecureString
 
 # Leer parámetros en aplicación
@@ -479,11 +618,15 @@ secrets/
 #!/bin/bash
 
 # 1. Generar nueva API key
-NEW_KEY=$(openssl rand -hex 32)
+NEW_API_KEY=$(openssl rand -hex 32)
+NEW_WEBHOOK_SECRET=$(openssl rand -hex 32)
+NEW_JWT_SECRET=$(openssl rand -hex 32)
 
 # 2. Actualizar en secret manager
 kubectl create secret generic bcv-secrets-new \
-  --from-literal=api-keys="[\"$NEW_KEY\", \"$OLD_KEY\"]" \
+  --from-literal=api-keys="[\"$NEW_API_KEY\", \"$OLD_API_KEY\"]" \
+  --from-literal=webhook-secret="$NEW_WEBHOOK_SECRET" \
+  --from-literal=jwt-secret="$NEW_JWT_SECRET" \
   -n bcv-service --dry-run=client -o yaml | kubectl apply -f -
 
 # 3. Rolling restart
@@ -492,9 +635,11 @@ kubectl rollout restart deployment/bcv-service -n bcv-service
 # 4. Esperar a que esté healthy
 kubectl rollout status deployment/bcv-service -n bcv-service
 
-# 5. Remover old key (después de validar)
+# 5. Remover old values (después de validar)
 kubectl create secret generic bcv-secrets \
-  --from-literal=api-keys="[\"$NEW_KEY\"]" \
+  --from-literal=api-keys="[\"$NEW_API_KEY\"]" \
+  --from-literal=webhook-secret="$NEW_WEBHOOK_SECRET" \
+  --from-literal=jwt-secret="$NEW_JWT_SECRET" \
   -n bcv-service --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -587,6 +732,8 @@ echo "mongodb://bcv_user:NewSecurePassword456!@mongo:27017/bcv?authSource=admin"
 # Kubernetes:
 kubectl create secret generic bcv-secrets \
   --from-literal=mongodb-uri='mongodb://bcv_user:NewSecurePassword456!@mongo:27017/bcv?authSource=admin' \
+  --from-literal=webhook-secret='your-webhook-secret-here' \
+  --from-literal=jwt-secret='your-jwt-secret-here' \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # 4. Rolling restart
@@ -595,26 +742,34 @@ docker-compose restart bcv-service
 kubectl rollout restart deployment/bcv-service -n bcv-service
 ```
 
-### API Keys Rotation
+### API Keys, Webhook Secret y JWT Secret Rotation
 
-**Estrategia**: Mantener 2 keys durante transición
+**Estrategia**: Mantener 2 keys durante transición para cada tipo de secreto
 
 ```bash
-# Estado actual: ["old-key"]
+# Estado actual: API Keys ["old-key"], Webhook Secret "old-webhook-secret", JWT Secret "old-jwt-secret"
 
-# 1. Agregar nueva key (mantener old)
-NEW_KEY=$(openssl rand -hex 32)
-echo "[\"old-key\", \"$NEW_KEY\"]" > secrets/api_keys.txt
+# 1. Generar nuevos secrets
+NEW_API_KEY=$(openssl rand -hex 32)
+NEW_WEBHOOK_SECRET=$(openssl rand -hex 32)
+NEW_JWT_SECRET=$(openssl rand -hex 32)
 
-# 2. Restart service
+# 2. Actualizar archivos de secrets (Docker Compose)
+echo "[\"old-key\", \"$NEW_API_KEY\"]" > secrets/api_keys.txt
+echo "$NEW_WEBHOOK_SECRET" > secrets/webhook_secret.txt
+echo "$NEW_JWT_SECRET" > secrets/jwt_secret.txt
+
+# 3. Restart service
 docker-compose restart bcv-service
 
-# 3. Notificar a clientes para migrar a NEW_KEY
+# 4. Notificar a clientes para migrar a nuevos secrets si es necesario
 
-# 4. Después de período de gracia, remover old-key
-echo "[\"$NEW_KEY\"]" > secrets/api_keys.txt
+# 5. Después de período de gracia, remover old-secrets
+echo "[\"$NEW_API_KEY\"]" > secrets/api_keys.txt
+echo "$NEW_WEBHOOK_SECRET" > secrets/webhook_secret.txt
+echo "$NEW_JWT_SECRET" > secrets/jwt_secret.txt
 
-# 5. Restart nuevamente
+# 6. Restart nuevamente
 docker-compose restart bcv-service
 ```
 
@@ -634,11 +789,22 @@ kubectl exec -it <pod-name> -n bcv-service -- ls -la /run/secrets/
 
 # Verificar contenido
 docker-compose exec bcv-service cat /run/secrets/mongodb_uri
+docker-compose exec bcv-service cat /run/secrets/api_keys
+docker-compose exec bcv-service cat /run/secrets/webhook_secret
+docker-compose exec bcv-service cat /run/secrets/jwt_secret
+
 kubectl exec -it <pod-name> -n bcv-service -- cat /run/secrets/mongodb-uri
+kubectl exec -it <pod-name> -n bcv-service -- cat /run/secrets/api-keys
+kubectl exec -it <pod-name> -n bcv-service -- cat /run/secrets/webhook-secret
+kubectl exec -it <pod-name> -n bcv-service -- cat /run/secrets/jwt-secret
 
 # Verificar variables de entorno
 docker-compose exec bcv-service env | grep _FILE
 kubectl exec -it <pod-name> -n bcv-service -- env | grep _FILE
+
+# Verificar que todas las variables estén disponibles
+docker-compose exec bcv-service env | grep -E "(MONGODB_URI|API_KEYS|WEBHOOK_SECRET|JWT_SECRET)"
+kubectl exec -it <pod-name> -n bcv-service -- env | grep -E "(MONGODB_URI|API_KEYS|WEBHOOK_SECRET|JWT_SECRET)"
 ```
 
 ### Permisos incorrectos
@@ -674,12 +840,14 @@ kubectl rollout restart deployment/bcv-service -n bcv-service
 - [ ] `.gitignore` configurado correctamente
 - [ ] Permisos de archivos restrictivos (600 o 400)
 - [ ] Diferentes secrets por ambiente
-- [ ] Rotación de secrets programada
+- [ ] Rotación de secrets programada (API Keys, Webhook Secret, JWT Secret)
 - [ ] Auditoría de acceso a secrets habilitada
 - [ ] Encriptación en reposo habilitada (producción)
 - [ ] Least privilege access configurado
 - [ ] Backup de secrets en ubicación segura
 - [ ] Proceso de recuperación de secrets documentado
+- [ ] Verificación de presencia de secrets críticos (MONGODB_URI, API_KEYS, WEBHOOK_SECRET, JWT_SECRET)
+- [ ] Validación de formato de secrets (JSON para API_KEYS, longitudes mínimas para secrets)
 
 ---
 

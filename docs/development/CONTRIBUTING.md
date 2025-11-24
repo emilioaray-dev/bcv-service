@@ -12,6 +12,7 @@ Thank you for your interest in contributing to BCV Service! This document provid
 6. [Coding Standards](#coding-standards)
 7. [Testing Requirements](#testing-requirements)
 8. [Documentation](#documentation)
+9. [Architecture Guidelines](#architecture-guidelines)
 
 ---
 
@@ -19,7 +20,7 @@ Thank you for your interest in contributing to BCV Service! This document provid
 
 ### Our Pledge
 
-We are committed to providing a welcoming and inspiring community for all. Please be respectful and constructive in your interactions.
+We are committed to providing a welcoming and inspiring community for all. Please be respectful and constructive in your interactions while contributing to this project.
 
 ### Expected Behavior
 
@@ -28,6 +29,9 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 - Provide constructive feedback
 - Focus on what is best for the community
 - Show empathy towards other community members
+- Follow SOLID principles and clean code practices
+- Use dependency injection with Inversify
+- Maintain security-first mindset
 
 ### Unacceptable Behavior
 
@@ -36,6 +40,9 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 - Public or private harassment
 - Publishing others' private information
 - Other conduct which could reasonably be considered inappropriate
+- Introducing security vulnerabilities
+- Hard-coding dependencies instead of using DI
+- Violating architectural principles (SOLID)
 
 ---
 
@@ -48,7 +55,9 @@ Before you begin, ensure you have:
 - Node.js 24 LTS installed
 - pnpm installed (`npm install -g pnpm`)
 - MongoDB running locally (optional, set `SAVE_TO_DATABASE=false` for development without DB)
+- Redis running locally (optional, for dual-layer notification state system)
 - Git configured with your name and email
+- Docker and Docker Compose for containerized development (recommended)
 
 ### Fork and Clone
 
@@ -58,7 +67,7 @@ git clone https://github.com/YOUR_USERNAME/bcv-service.git
 cd bcv-service
 
 # Add upstream remote
-git remote add upstream https://github.com/original/bcv-service.git
+git remote add upstream https://github.com/emilioaray-dev/bcv-service.git
 
 # Verify remotes
 git remote -v
@@ -73,14 +82,14 @@ pnpm install
 # Copy environment variables
 cp .env.example .env
 
-# Edit .env as needed
+# Edit .env as needed for development
 vim .env
 ```
 
 ### Run Development Server
 
 ```bash
-# Start in development mode
+# Start in development mode (with watch)
 pnpm run dev
 
 # Or build and run
@@ -92,6 +101,25 @@ pnpm test
 
 # Run tests with coverage
 pnpm run test:coverage
+
+# Run benchmark tests
+pnpm run benchmark
+
+# Run load tests
+pnpm run load-test:light
+```
+
+### Development with Docker
+
+```bash
+# Start all services with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f bcv-service
+
+# Stop services
+docker-compose down
 ```
 
 ---
@@ -106,23 +134,27 @@ Use descriptive branch names following this pattern:
 <type>/<description>
 
 Examples:
-feat/add-user-authentication
-fix/mongodb-connection-error
-docs/update-readme
+feat/add-notification-state-persistence
+feat/implement-discord-notifications  
+feat/upgrade-to-solid-architecture
+fix/ssl-certificate-error
+docs/update-architecture-documentation
 refactor/extract-bcv-service
-test/add-websocket-tests
+test/add-integration-tests-for-websocket
 chore/update-dependencies
+perf/add-redis-cache-layer
 ```
 
 Types:
-- `feat`: New feature
+- `feat`: New feature or functionality
 - `fix`: Bug fix
 - `docs`: Documentation changes
-- `refactor`: Code refactoring
+- `refactor`: Code refactoring without functional changes
 - `test`: Adding or updating tests
 - `chore`: Maintenance tasks
 - `perf`: Performance improvements
 - `ci`: CI/CD changes
+- `build`: Build system changes
 
 ### Development Process
 
@@ -133,15 +165,16 @@ Types:
 
 2. **Make your changes**:
    - Write code following our [coding standards](#coding-standards)
+   - Implement with SOLID principles and Inversify DI
    - Add tests for new functionality
    - Update documentation as needed
 
 3. **Test your changes**:
    ```bash
-   # Run tests
+   # Run all tests
    pnpm test
 
-   # Check coverage
+   # Check coverage (should be >66%)
    pnpm run test:coverage
 
    # Run linter
@@ -149,6 +182,9 @@ Types:
 
    # Format code
    pnpm run format
+
+   # Build project
+   pnpm run build
    ```
 
 4. **Commit your changes**:
@@ -156,8 +192,15 @@ Types:
    # Stage changes
    git add .
 
-   # Commit with semantic message
-   git commit -m "feat: add user authentication endpoint"
+   # Commit with conventional commit message
+   git commit -m "feat(notification-service): implement persistent notification state system
+
+   - Add dual-layer architecture with MongoDB (primary) + Redis (cache)
+   - Prevent duplicate notifications when service restarts
+   - Implement significant change detection (threshold ≥0.01)
+   - Support multi-currency notifications (USD, EUR, CNY, etc.)
+
+   Closes #8"
    ```
 
 5. **Keep your branch up to date**:
@@ -173,7 +216,19 @@ Types:
    git rebase --continue
    ```
 
-6. **Push your branch**:
+6. **Run final checks**:
+   ```bash
+   # Ensure all tests pass
+   pnpm test
+
+   # Ensure build succeeds
+   pnpm build
+
+   # Format code one final time
+   pnpm run format
+   ```
+
+7. **Push your branch**:
    ```bash
    git push origin feat/your-feature-name
    ```
@@ -182,16 +237,16 @@ Types:
 
 ## Commit Guidelines
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/) specification.
+We follow [Conventional Commits](https://www.conventionalcommits.org/) specification with automated semantic versioning.
 
 ### Commit Message Format
 
 ```
-<type>(<scope>): <subject>
+<type>(<scope>): <short summary>
 
-<body>
+<optional body>
 
-<footer>
+<optional footer>
 ```
 
 ### Types
@@ -207,74 +262,108 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) specifica
 - `ci`: Changes to CI configuration
 - `chore`: Other changes that don't modify src or test files
 - `revert`: Reverts a previous commit
+- `merge`: Merging branches (rarely used)
+- `release`: Version releases (auto-generated)
 
 ### Scope (Optional)
 
 The scope should specify the place of the commit change:
 
-- `api`: REST API changes
-- `websocket`: WebSocket changes
-- `services`: Service layer changes
+- `bcv`: BCV service scraping
+- `notification-state`: Notification state persistence
+- `discord`: Discord notifications
+- `webhook`: Webhook notifications
+- `websocket`: WebSocket service
+- `health`: Health checks
+- `metrics`: Prometheus metrics
+- `auth`: Authentication
+- `security`: Security features
 - `config`: Configuration changes
-- `docs`: Documentation
 - `deps`: Dependencies
 - `tests`: Test-related changes
+- `redis`: Redis cache/service
+- `mongo`: MongoDB service
+- `inversify`: Dependency injection
+- `architecture`: Architectural changes (SOLID, etc.)
 
 ### Examples
 
 ```bash
-# Feature
-feat(api): add rate limiting to API endpoints
+# Feature with breaking change (use ! for breaking changes)
+feat(api)!: change response format for rate endpoints
 
-Implement express-rate-limit middleware to prevent abuse.
-Configured to allow 100 requests per 15 minutes per IP.
-
-Closes #123
-
-# Bug fix
-fix(websocket): prevent memory leak on client disconnect
-
-Properly cleanup event listeners when WebSocket client disconnects.
-
-Fixes #456
-
-# Documentation
-docs: update deployment guide with Kubernetes instructions
-
-Add comprehensive Kubernetes deployment section including:
-- Deployment manifests
-- Service configuration
-- Ingress setup
-- Secrets management
-
-# Breaking change
-feat(api)!: change response format for /api/rate endpoint
-
-BREAKING CHANGE: The response format has changed from array to object.
-Migration guide available in MIGRATION.md
+BREAKING CHANGE: API responses now return data in 'data' field instead of root level
 
 Before:
 {
-  "rates": [{currency: "USD", value: 36.5}]
+  "rate": 36.5,
+  "date": "2025-11-24"
 }
 
 After:
 {
+  "success": true,
   "data": {
-    "USD": 36.5
+    "rate": 36.5,
+    "date": "2025-11-24"
   }
 }
+
+Closes #15
+
+# Regular feature
+feat(notification-state): implement dual-layer notification state system
+
+- Add MongoDB as primary persistent storage
+- Add Redis as fast cache layer
+- Use read-through pattern with MongoDB fallback
+- Implement automatic synchronization between layers
+- Prevent duplicate notifications after service restart
+
+Closes #8
+
+# Bug fix
+fix(bcv): resolve SSL certificate validation error
+
+Fixed issue where BCV scraping was failing due to SSL cert chain problems.
+Now using custom HTTPS agent with rejectUnauthorized=false for BCV domain only.
+
+Fixes #1
+
+# Documentation
+docs: update architecture documentation with SOLID implementation
+
+Add detailed explanation of SOLID principles implementation:
+- Single Responsibility in BCVService
+- Open/Closed principle with interfaces
+- Liskov Substitution with Inversify
+- Interface Segregation in service contracts
+- Dependency Inversion with IoC container
+
+Refs #12
+
+# Refactoring
+refactor(architecture): implement SOLID principles with Inversify
+
+- Apply Single Responsibility to all services
+- Use Inversify for Dependency Injection
+- Create interfaces for all core services
+- Implement factories for service creation
+- Add container configuration for IoC
+
+Closes #3
 ```
 
 ### Commit Message Rules
 
-- Use imperative mood ("add" not "added" or "adds")
-- Don't capitalize first letter
+- Use imperative mood ("add", "fix", "update" not "added", "fixed", "updated")
+- Don't capitalize first letter of subject line
 - No period at the end of subject line
-- Limit subject line to 50 characters
-- Wrap body at 72 characters
+- Limit subject line to 72 characters (configured in biome)
+- Wrap body at 100 characters
 - Separate subject from body with blank line
 - Use body to explain what and why, not how
+- Include issue references (Closes #123, Fixes #456)
 
 ---
 
@@ -282,14 +371,18 @@ After:
 
 ### Before Creating PR
 
-- [ ] Code follows project coding standards
+- [ ] Code follows project coding standards and SOLID principles
 - [ ] All tests pass (`pnpm test`)
+- [ ] Code coverage maintained (≥66%)
 - [ ] Code is properly formatted (`pnpm run format`)
 - [ ] Linter passes (`pnpm run lint`)
 - [ ] New tests added for new functionality
 - [ ] Documentation updated if needed
 - [ ] Commit messages follow conventional commits
 - [ ] Branch is up to date with main
+- [ ] Security considerations addressed
+- [ ] Dependency injection properly implemented
+- [ ] Architecture patterns followed (SOLID, Inversify)
 
 ### Creating PR
 
@@ -304,9 +397,10 @@ After:
 Use the same format as commit messages:
 
 ```
-feat(api): add rate limiting to API endpoints
-fix(websocket): prevent memory leak on client disconnect
-docs: update deployment guide
+feat(notification-state): implement dual-layer notification state system
+fix(bcv): resolve SSL certificate validation error
+docs: update architecture documentation with SOLID implementation
+refactor(architecture): apply SOLID principles with Inversify
 ```
 
 ### PR Description Template
@@ -314,7 +408,7 @@ docs: update deployment guide
 ```markdown
 ## Description
 
-Brief description of changes and motivation.
+Brief description of changes and motivation. Include information about SOLID principles applied, architecture patterns used, and any breaking changes.
 
 ## Type of Change
 
@@ -322,27 +416,45 @@ Brief description of changes and motivation.
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
-- [ ] Refactoring (no functional changes)
+- [ ] Refactoring (no functional changes but improves architecture)
 - [ ] Performance improvement
 - [ ] Test update
+- [ ] Security enhancement
+- [ ] SOLID architecture implementation
 
 ## Changes Made
 
-- Change 1
-- Change 2
-- Change 3
+- Change 1: Applied SOLID principles to BCVService
+- Change 2: Implemented Inversify DI for dependency injection
+- Change 3: Added dual-layer notification state system (MongoDB + Redis)
+- Change 4: Enhanced security with Helmet and rate limiting
+
+## Architectural Impact
+
+- SOLID principles applied to improve maintainability
+- Dependency inversion with Inversify container
+- Dual-layer persistence for notification state
+- Multi-channel notification system implemented
+
+## Security Considerations
+
+- [ ] No hardcoded credentials
+- [ ] Dependency injection prevents tight coupling
+- [ ] Input validation with Zod schemas
+- [ ] Rate limiting implemented
+- [ ] Authentication with API keys
 
 ## Testing
 
-Describe tests added/updated and how to test the changes.
+Describe tests added/updated and how to test the changes. Include information about unit tests, integration tests, and any specific test scenarios.
 
 ## Screenshots (if applicable)
 
-Add screenshots for UI changes.
+Add screenshots for UI changes or API responses.
 
 ## Checklist
 
-- [ ] My code follows the project's coding standards
+- [ ] My code follows the project's coding standards and SOLID principles
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code in hard-to-understand areas
 - [ ] I have updated the documentation accordingly
@@ -350,20 +462,28 @@ Add screenshots for UI changes.
 - [ ] I have added tests that prove my fix is effective or my feature works
 - [ ] New and existing unit tests pass locally
 - [ ] Any dependent changes have been merged and published
+- [ ] Dependency injection properly implemented with Inversify
+- [ ] SOLID principles correctly applied
+- [ ] Security considerations addressed
+- [ ] Architecture patterns followed (SOLID, etc.)
 
 ## Related Issues
 
-Closes #123
-Fixes #456
+Closes #8  # Notification state persistence
+Fixes #1   # SSL certificate error
+Relates to #3  # SOLID architecture implementation
 ```
 
 ### Review Process
 
-1. **Automated Checks**: CI/CD runs tests, linting, and build
-2. **Code Review**: At least one maintainer must approve
-3. **Address Feedback**: Make requested changes
-4. **Re-request Review**: After addressing feedback
-5. **Merge**: Maintainer will merge once approved
+1. **Automated Checks**: CI/CD runs tests, linting, build, and security scans
+2. **Architecture Review**: Check SOLID principles, DI usage, and architectural decisions
+3. **Code Quality**: Review code style, performance, and maintainability
+4. **Security Review**: Check for vulnerabilities and security best practices
+5. **Code Review**: At least one maintainer must approve
+6. **Address Feedback**: Make requested changes
+7. **Re-request Review**: After addressing feedback
+8. **Merge**: Maintainer will merge once approved (semantic release handles versioning)
 
 ### After Merge
 
@@ -378,7 +498,7 @@ git branch -d feat/your-feature-name
 # Delete remote branch
 git push origin --delete feat/your-feature-name
 
-# Update local main
+# Update local main and run semantic release
 git checkout main
 git pull upstream main
 ```
@@ -389,25 +509,47 @@ git pull upstream main
 
 ### TypeScript
 
-- Use TypeScript strict mode
-- Define interfaces for all data structures
-- Avoid `any` type, use `unknown` if necessary
+- Use TypeScript strict mode (`"strict": true` in tsconfig.json)
+- Define interfaces for all data structures and service contracts
+- Never use `any` type, use `unknown` if necessary
 - Use type inference when obvious
+- Implement SOLID principles throughout the codebase
+- Use Inversify for dependency injection
 
 ```typescript
-// Good
-interface RateData {
-  date: Date;
-  rates: CurrencyRate[];
+// ✅ Good: SOLID and DI implementation
+import { injectable, inject } from 'inversify';
+import { TYPES } from '@/config/types';
+import type { IBCVService } from '@/interfaces/IBCVService';
+import type { INotificationStateService } from '@/interfaces/INotificationStateService';
+
+@injectable()
+export class RateService {
+  constructor(
+    @inject(TYPES.BCVService) private bcvService: IBCVService,
+    @inject(TYPES.NotificationStateService) 
+    private notificationStateService: INotificationStateService
+  ) {}
+
+  async processRates(): Promise<void> {
+    const rates = await this.bcvService.getRates();
+    if (rates) {
+      const hasChange = 
+        await this.notificationStateService.hasSignificantChangeAndNotify(rates);
+      if (hasChange) {
+        // Handle notifications through configured channels
+      }
+    }
+  }
 }
 
-function processRate(data: RateData): void {
-  // Implementation
-}
-
-// Bad
-function processRate(data: any) {
-  // Implementation
+// ❌ Bad: Tight coupling and no SOLID principles
+class RateService {
+  private bcvService = new BCVService(); // Hard-coded dependency!
+  
+  async processRates(): Promise<void> {
+    // Implementation without proper separation of concerns
+  }
 }
 ```
 
@@ -415,24 +557,34 @@ function processRate(data: any) {
 
 All code must follow SOLID principles:
 
-- **S**ingle Responsibility
-- **O**pen/Closed
-- **L**iskov Substitution
-- **I**nterface Segregation
-- **D**ependency Inversion
+- **S**ingle Responsibility: Each class/method has ONE reason to change
+- **O**pen/Closed: Open for extension, closed for modification
+- **L**iskov Substitution: Derived classes must be substitutable for base classes
+- **I**nterface Segregation: Clients shouldn't be forced to depend on interfaces they don't use
+- **D**ependency Inversion: Depend on abstractions, not concretions
 
-### Dependency Injection
+### Dependency Injection with Inversify
 
 Use Inversify for dependency injection:
 
 ```typescript
+// ✅ Good: Using Inversify with interfaces
 @injectable()
-export class MyService {
+export class NotificationStateService implements INotificationStateService {
   constructor(
-    @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.Config) private config: IConfig
+    @inject(TYPES.CacheService) private cacheService: ICacheService,
+    @inject(TYPES.RedisService) private redisService: IRedisService
   ) {}
+
+  async hasSignificantChangeAndNotify(rateData: RateData): Promise<boolean> {
+    // Implementation using injected dependencies
+  }
 }
+
+// Container configuration
+container.bind<INotificationStateService>(TYPES.NotificationStateService)
+  .to(NotificationStateService)
+  .inSingletonScope();
 ```
 
 ### Code Style
@@ -445,6 +597,9 @@ pnpm run lint
 
 # Format code
 pnpm run format
+
+# Check formatting
+pnpm run check
 ```
 
 See [CODE_STYLE.md](./CODE_STYLE.md) for detailed style guidelines.
@@ -455,10 +610,11 @@ See [CODE_STYLE.md](./CODE_STYLE.md) for detailed style guidelines.
 
 ### Coverage Requirements
 
-- Minimum 50% line coverage
-- Minimum 45% function coverage
+- Minimum 66% line coverage (current target based on project)
+- Minimum 60% function coverage
 - All new features must have tests
 - All bug fixes must have regression tests
+- Critical paths should have 100% coverage
 
 ### Writing Tests
 
@@ -466,25 +622,38 @@ Use Vitest for testing:
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { NotificationStateService } from '@/services/notification-state.service';
+import type { ICacheService } from '@/interfaces/ICacheService';
 
-describe('BCVService', () => {
-  let service: BCVService;
+describe('NotificationStateService', () => {
+  let notificationStateService: NotificationStateService;
+  let mockCacheService: ICacheService;
 
   beforeEach(() => {
-    service = new BCVService();
+    mockCacheService = {
+      getLatestRate: vi.fn(),
+      saveRate: vi.fn(),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    
+    notificationStateService = new NotificationStateService(mockCacheService);
   });
 
-  it('should fetch rates successfully', async () => {
-    const rates = await service.getRates();
-    expect(rates).toBeDefined();
-    expect(Array.isArray(rates)).toBe(true);
+  it('should detect significant changes correctly', async () => {
+    const previousRate = { rate: 36.0, date: '2025-11-24', rates: [] };
+    const currentRate = { rate: 36.01, date: '2025-11-24', rates: [] }; // +0.01 difference
+    
+    const hasChange = await notificationStateService.hasSignificantChange(previousRate, currentRate);
+    expect(hasChange).toBe(true);
   });
 
-  it('should handle errors gracefully', async () => {
-    // Mock failure
-    vi.spyOn(axios, 'get').mockRejectedValue(new Error('Network error'));
-
-    await expect(service.getRates()).rejects.toThrow('Network error');
+  it('should not detect insignificant changes', async () => {
+    const previousRate = { rate: 36.0, date: '2025-11-24', rates: [] };
+    const currentRate = { rate: 36.005, date: '2025-11-24', rates: [] }; // +0.005 difference
+    
+    const hasChange = await notificationStateService.hasSignificantChange(previousRate, currentRate);
+    expect(hasChange).toBe(false);
   });
 });
 ```
@@ -493,12 +662,27 @@ describe('BCVService', () => {
 
 ```
 test/
-├── unit/           # Unit tests
+├── unit/                 # Unit tests for individual services/components
 │   ├── services/
+│   │   ├── bcv.service.test.ts
+│   │   ├── mongo.service.test.ts
+│   │   ├── redis.service.test.ts
+│   │   ├── notification-state.service.test.ts
+│   │   └── ...
 │   ├── controllers/
+│   │   ├── rate.controller.test.ts
+│   │   ├── health.controller.test.ts
+│   │   └── ...
 │   └── utils/
-├── integration/    # Integration tests (future)
-└── e2e/            # End-to-end tests (future)
+│       ├── logger.test.ts
+│       └── ...
+├── integration/          # Integration tests (future expansion)
+│   ├── api/
+│   ├── services/
+│   └── ...
+└── performance/          # Performance and load tests
+    ├── benchmark.test.ts
+    └── ...
 ```
 
 See [TESTING.md](./TESTING.md) for detailed testing guidelines.
@@ -512,15 +696,30 @@ See [TESTING.md](./TESTING.md) for detailed testing guidelines.
 - Add JSDoc comments for public APIs
 - Document complex logic
 - Keep comments up to date
+- Document SOLID principles application and architectural decisions
 
 ```typescript
 /**
- * Fetches exchange rates from BCV website
+ * Implements persistent notification state system with dual-layer architecture
  *
- * @returns Promise resolving to array of currency rates
- * @throws {Error} If scraping fails after all retries
+ * This service uses MongoDB as primary persistent storage and Redis as a cache layer
+ * for fast read/write operations with automatic fallback to MongoDB if Redis is unavailable.
+ * The service prevents duplicate notifications when the service restarts by maintaining
+ * the last notified rate state in persistent storage. Only sends notifications when
+ * there's a significant absolute difference (≥0.01) in any currency.
+ *
+ * @implements {INotificationStateService}
+ * @dependency {ICacheService} For persistent storage in MongoDB
+ * @dependency {IRedisService} For fast cache operations
+ * 
+ * @example
+ * const hasChange = await notificationStateService.hasSignificantChangeAndNotify(rateData);
+ * if (hasChange) {
+ *   // Send notifications through configured channels
+ * }
  */
-async getRates(): Promise<CurrencyRate[]> {
+@injectable()
+export class NotificationStateService implements INotificationStateService {
   // Implementation
 }
 ```
@@ -528,28 +727,72 @@ async getRates(): Promise<CurrencyRate[]> {
 ### README Updates
 
 Update README.md when:
-- Adding new features
-- Changing API endpoints
-- Modifying configuration
-- Updating dependencies
+- Adding new features or architectural changes
+- Changing API endpoints or response formats
+- Modifying configuration requirements
+- Updating dependencies or system requirements
+- Adding new notification channels or architectural patterns
+- Implementing SOLID principles or major refactoring
 
 ### Architecture Documentation
 
 Update architecture docs (`docs/architecture/`) when:
-- Making architectural decisions
-- Changing system design
-- Adding new services
-- Modifying integrations
+- Making architectural decisions (create ADR)
+- Changing system design or patterns
+- Adding new services or architectural components
+- Implementing SOLID principles or design patterns
+- Modifying integrations or architectural layers
 
 Create ADR (Architectural Decision Record) for significant decisions.
 
 ---
 
+## Architecture Guidelines
+
+### SOLID Implementation
+
+All contributions must follow SOLID principles:
+
+1. **Single Responsibility Principle (SRP)**: Each class should have only one reason to change
+2. **Open/Closed Principle (OCP)**: Entities should be open for extension, closed for modification
+3. **Liskov Substitution Principle (LSP)**: Objects should be replaceable with instances of their subtypes
+4. **Interface Segregation Principle (ISP)**: Clients should not be forced to depend on interfaces they don't use
+5. **Dependency Inversion Principle (DIP)**: Depend on abstractions, not concretions
+
+### Inversify Integration
+
+All services should use Inversify for dependency injection:
+
+- Define interfaces in `src/interfaces/`
+- Implement services with `@injectable()`
+- Inject dependencies with `@inject(TYPES.Dependency)`
+- Configure bindings in `src/config/inversify.config.ts`
+
+### Security Considerations
+
+- Never commit credentials directly to code
+- Use environment variables or Docker secrets for sensitive data
+- Validate all inputs with Zod schemas
+- Implement proper error handling without exposing internal details
+- Use Helmet.js for security headers
+- Apply rate limiting to prevent abuse
+
+### Performance Guidelines
+
+- Use Redis cache for frequently accessed data
+- Implement efficient database queries with proper indexing
+- Use dual-layer architecture for critical state persistence
+- Optimize WebSocket message broadcasting
+- Monitor and profile performance with Prometheus metrics
+- Implement efficient retry mechanisms with exponential backoff
+
+---
+
 ## Questions or Issues?
 
-- **Issues**: Open an issue on GitHub
-- **Discussions**: Use GitHub Discussions
-- **Security**: Email security@project.com
+- **Issues**: Open an issue on GitHub for bugs or feature requests
+- **Discussions**: Use GitHub Discussions for questions and ideas
+- **Architecture**: For architectural discussions, create an ADR in `docs/architecture/ADRs.md`
 
 ---
 
@@ -563,7 +806,22 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 Contributors will be recognized in:
 - GitHub contributors page
-- CONTRIBUTORS.md file
-- Release notes
+- Contributors section in README
+- Release notes for significant contributions
+- Architecture decision records for architectural contributions
 
-Thank you for contributing! 🎉
+Thank you for contributing to make BCV Service better! 🎉
+
+## Additional Resources
+
+- [Architecture Decision Records](./architecture/ADRs.md) - Decisions affecting architecture
+- [Code Style Guide](./development/CODE_STYLE.md) - Coding standards and conventions
+- [Testing Guidelines](./development/TESTING.md) - Comprehensive testing strategy
+- [Security Guidelines](./security/SECURITY.md) - Security best practices
+- [Architecture Documentation](./architecture/ARCHITECTURE.md) - System architecture overview
+
+---
+
+**Last Updated**: 2025-11-24  
+**Project Version**: 2.1.0  
+**Status**: Active Development with SOLID Architecture & Dual-Layer Notification System

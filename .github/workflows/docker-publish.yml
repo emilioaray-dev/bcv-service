@@ -319,6 +319,8 @@ jobs:
             export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
             export WEBHOOK_URL="${{ secrets.WEBHOOK_URL }}"
             export DISCORD_WEBHOOK_URL="${{ secrets.DISCORD_WEBHOOK_URL }}"
+            export SERVICE_STATUS_WEBHOOK_URL="${{ secrets.SERVICE_STATUS_WEBHOOK_URL }}"
+            export DEPLOYMENT_WEBHOOK_URL="${{ secrets.DEPLOYMENT_WEBHOOK_URL }}"
             export SWAGGER_PROD_URL="${{ secrets.SWAGGER_PROD_URL }}"
             echo "✅ Secretos configurados correctamente"
 

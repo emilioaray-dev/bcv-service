@@ -5,13 +5,14 @@ Guía completa para configurar monitoreo, métricas, alertas y observabilidad de
 ## Tabla de Contenidos
 
 1. [Stack de Monitoreo](#stack-de-monitoreo)
-2. [Prometheus Setup](#prometheus-setup)
-3. [Grafana Dashboards](#grafana-dashboards)
-4. [Alerting](#alerting)
-5. [Logs Centralizados](#logs-centralizados)
-6. [APM y Tracing](#apm-y-tracing)
-7. [Uptime Monitoring](#uptime-monitoring)
-8. [Troubleshooting](#troubleshooting)
+2. [Métricas Disponibles](#métricas-disponibles)
+3. [Prometheus Setup](#prometheus-setup)
+4. [Grafana Dashboards](#grafana-dashboards)
+5. [Alerting](#alerting)
+6. [Logs Centralizados](#logs-centralizados)
+7. [APM y Tracing](#apm-y-tracing)
+8. [Uptime Monitoring](#uptime-monitoring)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -41,6 +42,38 @@ Guía completa para configurar monitoreo, métricas, alertas y observabilidad de
 │  └─────────────┘                                    │
 └─────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Métricas Disponibles
+
+El servicio BCV expone las siguientes métricas Prometheus en el endpoint `/metrics`:
+
+### Métricas de Aplicación
+- `bcv_latest_rate{currency}` - Tasa de cambio más reciente por moneda (USD, EUR, etc.)
+- `bcv_scrape_total` - Contador total de intentos de scraping
+- `bcv_scrape_success_total` - Contador de scrapes exitosos
+- `bcv_scrape_failure_total` - Contador de scrapes fallidos
+- `bcv_rate_changes_total{currency}` - Contador de cambios en la tasa de cambio por moneda
+- `bcv_websocket_connections` - Número actual de conexiones WebSocket activas
+- `bcv_database_operations_total{operation, status}` - Contador de operaciones de base de datos
+
+### Métricas Estándar de Node.js
+- `nodejs_eventloop_lag_seconds` - Retraso del event loop
+- `nodejs_heap_size_total_bytes` - Tamaño total del heap
+- `nodejs_heap_used_bytes` - Memoria heap utilizada
+- `nodejs_external_memory_bytes` - Memoria externa utilizada
+- `nodejs_active_handles_total` - Contador de handles activos
+- `nodejs_active_requests_total` - Contador de requests activos
+- `process_cpu_user_seconds_total` - Tiempo de CPU en segundos
+- `process_resident_memory_bytes` - Memoria residente del proceso
+- `process_start_time_seconds` - Timestamp de inicio del proceso
+
+### Métricas de HTTP
+- `http_requests_total{method, route, status_code}` - Contador total de requests HTTP
+- `http_request_duration_seconds_bucket` - Histograma de duración de requests
+- `http_request_duration_seconds_sum` - Suma de duración de requests
+- `http_request_duration_seconds_count` - Contador de requests medidos
 
 ---
 
@@ -208,7 +241,7 @@ groups:
 
       # Low WebSocket Connections
       - alert: NoWebSocketClients
-        expr: websocket_clients_connected == 0
+        expr: bcv_websocket_connections == 0
         for: 30m
         labels:
           severity: info
@@ -235,6 +268,16 @@ groups:
         annotations:
           summary: "MongoDB is down"
           description: "MongoDB has been unreachable for more than 2 minutes."
+
+      # BCV Rate Changes
+      - alert: BCVRateChange
+        expr: increase(bcv_rate_changes_total[1h]) > 5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "High number of exchange rate changes"
+          description: "There have been more than 5 rate changes in the last hour"
 ```
 
 ---
@@ -319,7 +362,7 @@ providers:
         "type": "graph",
         "targets": [
           {
-            "expr": "websocket_clients_connected",
+            "expr": "bcv_websocket_connections",
             "legendFormat": "Connections"
           }
         ]
@@ -345,6 +388,36 @@ providers:
           {
             "expr": "bcv_latest_rate{currency=\"USD\"}",
             "legendFormat": "USD Rate"
+          }
+        ]
+      },
+      {
+        "title": "Latest Rate (EUR)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "bcv_latest_rate{currency=\"EUR\"}",
+            "legendFormat": "EUR Rate"
+          }
+        ]
+      },
+      {
+        "title": "All Currency Rates",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "bcv_latest_rate",
+            "legendFormat": "{{ currency }}"
+          }
+        ]
+      },
+      {
+        "title": "Rate Changes",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(bcv_rate_changes_total[5m])",
+            "legendFormat": "{{ currency }}"
           }
         ]
       },
@@ -584,8 +657,8 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Winston logs
-  - job_name: bcv-winston
+  # Winston logs from BCV Service
+  - job_name: bcv-service-logs
     static_configs:
       - targets:
           - localhost
@@ -593,16 +666,23 @@ scrape_configs:
           job: bcv-service
           __path__: /app/logs/*.log
     pipeline_stages:
-      - json:
-          expressions:
-            level: level
-            message: message
-            timestamp: timestamp
-      - labels:
-          level:
-      - timestamp:
-          source: timestamp
-          format: RFC3339
+      - match:
+          selector: '{job="bcv-service"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  message: message
+                  service: service
+                  timestamp: timestamp
+            - labels:
+                level:
+                service:
+            - timestamp:
+                source: timestamp
+                format: RFC3339
+            - output:
+                source: message
 
   # System logs
   - job_name: system
@@ -645,6 +725,15 @@ rate({job="bcv-service"}[5m])
 
 # Count de errores
 count_over_time({job="bcv-service"} |= "error" [5m])
+
+# Logs de scraping de BCV
+{job="bcv-service"} |= "scraping"
+
+# Logs de WebSocket
+{job="bcv-service"} |= "websocket"
+
+# Logs de cambio de tasa
+{job="bcv-service"} |= "rate change"
 ```
 
 ---
@@ -662,7 +751,7 @@ pnpm add @opentelemetry/api \
   @opentelemetry/exporter-trace-otlp-http
 ```
 
-```javascript
+```typescript
 // src/tracing.ts
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -731,6 +820,8 @@ scrape_configs:
     static_configs:
       - targets:
           - https://your-domain.com/health
+        labels:
+          monitor: "external"
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -746,13 +837,14 @@ scrape_configs:
 - **Pingdom**: Monitoreo desde múltiples locaciones
 - **StatusCake**: Free tier disponible
 - **Better Uptime**: Moderno, con status page
+- **BCV Service Health Check Endpoint**: Asegúrate de usar `/healthz` para verificación de liveness
 
 ```bash
 # Ejemplo: UptimeRobot API
 curl -X POST https://api.uptimerobot.com/v2/newMonitor \
   -d 'api_key=YOUR_API_KEY' \
   -d 'friendly_name=BCV Service' \
-  -d 'url=https://your-domain.com/health' \
+  -d 'url=https://your-domain.com/healthz' \
   -d 'type=1' \
   -d 'interval=300'
 ```
@@ -768,7 +860,7 @@ curl -X POST https://api.uptimerobot.com/v2/newMonitor \
 rate(http_requests_total{job="bcv-service"}[5m])
 
 # Error rate percentage
-(rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) * 100
+(rate(http_requests_total{job="bcv-service", status=~"5.."}[5m]) / rate(http_requests_total{job="bcv-service"}[5m])) * 100
 
 # Latency percentiles
 histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))  # p50
@@ -785,7 +877,13 @@ rate(bcv_scrape_success_total[10m]) / (rate(bcv_scrape_success_total[10m]) + rat
 deriv(process_resident_memory_bytes{job="bcv-service"}[1h])
 
 # Top endpoints by request count
-topk(5, sum by (route) (rate(http_requests_total[5m])))
+topk(5, sum by (route) (rate(http_requests_total{job="bcv-service"}[5m])))
+
+# BCV rate changes
+rate(bcv_rate_changes_total{currency="USD"}[1h])
+
+# WebSocket connections
+bcv_websocket_connections
 ```
 
 ---
@@ -799,7 +897,7 @@ topk(5, sum by (route) (rate(http_requests_total[5m])))
 # http://localhost:9090/targets
 
 # Verificar connectivity
-docker-compose exec prometheus wget -O- http://bcv-service:3000/metrics
+curl http://bcv-service:3000/metrics
 
 # Ver logs
 docker-compose logs prometheus
@@ -831,16 +929,28 @@ curl -H "Content-Type: application/json" -d '[{"labels":{"alertname":"Test"}}]' 
 docker-compose logs alertmanager
 ```
 
+### Verificación de métricas BCV
+
+```bash
+# Verificar métricas específicas de BCV
+curl http://localhost:3000/metrics | grep bcv
+
+# Verificar que las métricas estén disponibles
+curl -G "http://localhost:9090/api/v1/query" \
+  --data-urlencode "query=bcv_latest_rate"
+```
+
 ---
 
 ## Checklist de Monitoreo
 
-- [ ] Prometheus scrapeando métricas
-- [ ] Grafana dashboards configurados
-- [ ] Alertas críticas configuradas
+- [ ] Prometheus scrapeando métricas del servicio BCV
+- [ ] Métricas personalizadas de BCV visibles (tasa de cambio, scraping, etc.)
+- [ ] Grafana dashboards configurados y mostrando datos
+- [ ] Alertas críticas configuradas (servicio caído, errores, scraping fallido)
 - [ ] Notificaciones funcionando (Slack/PagerDuty)
 - [ ] Logs centralizados (Loki o similar)
-- [ ] Uptime monitoring externo
+- [ ] Uptime monitoring externo configurado
 - [ ] Backup de configuraciones de monitoreo
 - [ ] Documentación de runbooks para alertas
 - [ ] SLIs y SLOs definidos
@@ -856,3 +966,4 @@ docker-compose logs alertmanager
 - [Loki Documentation](https://grafana.com/docs/loki/)
 - [OpenTelemetry](https://opentelemetry.io/)
 - [Google SRE Books](https://sre.google/books/)
+- [BCV Service Metrics Implementation](../architecture/MEJORAS.md)

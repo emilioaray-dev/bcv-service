@@ -9,22 +9,21 @@ Docker Secrets proporciona:
 - **Separación**: Secretos separados del código y configuración
 - **Rotación**: Fácil actualización sin rebuild de imágenes
 - **Auditoría**: Control de acceso granular
+- **Soporte para múltiples secretos**: MongoDB, API keys, Discord webhooks, etc.
 
-## 📋 Archivos Creados
+## 📋 Archivos y Configuraciones
 
 ```
 bcv-service/
-├── docker-compose.yml           # Docker Compose unificado (con/sin Secrets)
-├── scripts/
-│   └── generate-secrets.sh      # Script de generación
-├── secrets/
+├── docker-compose.yml           # Docker Compose con soporte para secrets
+├── docker-compose.production.yml # Docker Compose para producción
+├── secrets/                     # Directorio para archivos de secretos (no en git)
 │   ├── .gitkeep                 # Mantiene el directorio en git
-│   ├── mongodb_uri.txt          # Secreto MongoDB (NO en git)
-│   └── api_keys.txt             # API Keys (NO en git)
 ├── src/config/
-│   └── secrets.ts               # Utilidad para leer secretos
+│   ├── secrets.ts              # Utilidad para leer secretos
+│   └── index.ts                # Configuración central de variables
 └── src/middleware/
-    └── auth.middleware.ts       # Middleware de autenticación
+    └── auth.middleware.ts      # Middleware de autenticación API Key
 ```
 
 ## 🚀 Paso 1: Rotar Credenciales de MongoDB
@@ -36,12 +35,12 @@ bcv-service/
 mongosh admin -u admin -p admin123
 
 # Crear nuevo usuario con credenciales seguras
-use bcvdb
+use bcv
 db.createUser({
   user: "bcv_user_new",
-  pwd: "TU_PASSWORD_SEGURO_GENERADO",  // Usa el script generate-secrets.sh
+  pwd: "TU_PASSWORD_SEGURO_GENERADO",
   roles: [
-    { role: "readWrite", db: "bcvdb" }
+    { role: "readWrite", db: "bcv" }
   ]
 })
 
@@ -49,81 +48,157 @@ db.createUser({
 exit
 
 # Probar conexión
-mongosh "mongodb://bcv_user_new:TU_PASSWORD@localhost:27017/bcvdb?authSource=bcvdb"
+mongosh "mongodb://bcv_user_new:TU_PASSWORD@localhost:27017/bcv?authSource=admin"
 
 # Una vez verificado, eliminar el usuario antiguo
 mongosh admin -u admin -p admin123
-use bcvdb
+use bcv
 db.dropUser("bcv_user")
 exit
 ```
 
-## 🔐 Paso 2: Generar Archivos de Secretos
+## 🔐 Paso 2: Configurar Variables de Entorno con Secrets
+
+### Variables disponibles para secrets:
 
 ```bash
-# Ejecutar script de generación
-./scripts/generate-secrets.sh
+# MongoDB
+MONGODB_URI_FILE=/run/secrets/mongodb_uri
+
+# API Keys
+API_KEYS_FILE=/run/secrets/api_keys
+
+# Discord Webhook
+DISCORD_WEBHOOK_URL_FILE=/run/secrets/discord_webhook_url
+
+# Webhook General
+WEBHOOK_URL_FILE=/run/secrets/webhook_url
+
+# Webhook Secret
+WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
+
+# Redis (si se usa)
+REDIS_PASSWORD_FILE=/run/secrets/redis_password
 ```
 
-El script te preguntará:
-1. **MongoDB**: Usuario, password, host, puerto, base de datos
-2. **API Keys**: Si quieres generar automáticamente (recomendado) o ingresar manualmente
+### Crear archivos de secrets manualmente:
 
-Creará:
-- `secrets/mongodb_uri.txt` - Conexión a MongoDB:
+```bash
+# Crear directorio de secrets
+mkdir -p secrets
+
+# Crear archivo para MongoDB URI
+echo "mongodb://bcv_user_new:TU_PASSWORD@host:port/bcv?authSource=admin" > secrets/mongodb_uri
+
+# Crear archivo para API Keys (una por línea o separadas por coma)
+echo "key1,key2,key3" > secrets/api_keys
+
+# Crear archivo para Discord Webhook (si aplica)
+echo "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL" > secrets/discord_webhook_url
+
+# Crear archivo para Webhook URL (si aplica)
+echo "https://your-webhook-endpoint.com/webhook" > secrets/webhook_url
+
+# Crear archivo para Webhook Secret (si aplica)
+echo "your-super-secret-key" > secrets/webhook_secret
 ```
-mongodb://bcv_user_new:PASSWORD@host:port/bcvdb?authSource=bcvdb
-```
 
-- `secrets/api_keys.txt` - API keys (una por línea):
-```
-AbCd1234EfGh5678IjKl9012MnOp
-QrSt3456UvWx7890YzAb1234CdEf
-```
+## 🐳 Paso 3: Configurar Docker Compose con Secrets
 
-**IMPORTANTE**: Guarda estas API keys en un gestor de contraseñas. Las necesitarás para configurar tus clientes.
+### docker-compose.production.yml (ejemplo con secrets):
 
-## 🐳 Paso 3: Configurar Docker Compose
-
-Edita `docker-compose.yml`:
-
-### Para usar Docker Secrets (Producción):
-
-1. **Descomenta** las líneas de secrets en `docker-compose.yml`:
 ```yaml
-environment:
-  - MONGODB_URI_FILE=/run/secrets/mongodb_uri  # Descomenta esto
+version: '3.8'
 
-# Descomenta esta sección
-secrets:
-  - mongodb_uri
+services:
+  bcv-service:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - SAVE_TO_DATABASE=true
+      - BCV_WEBSITE_URL=https://www.bcv.org.ve/
+      - CRON_SCHEDULE=0 2,10,18 * * *
+      - LOG_LEVEL=info
+      - CACHE_ENABLED=true
+      # Secrets
+      - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+      - API_KEYS_FILE=/run/secrets/api_keys
+      - DISCORD_WEBHOOK_URL_FILE=/run/secrets/discord_webhook_url
+      - WEBHOOK_URL_FILE=/run/secrets/webhook_url
+      - WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
+    secrets:
+      - mongodb_uri
+      - api_keys
+      - discord_webhook_url
+      - webhook_url
+      - webhook_secret
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
-# Al final del archivo, descomenta:
 secrets:
   mongodb_uri:
-    file: ./secrets/mongodb_uri.txt
+    file: ./secrets/mongodb_uri
+  api_keys:
+    file: ./secrets/api_keys
+  discord_webhook_url:
+    file: ./secrets/discord_webhook_url
+  webhook_url:
+    file: ./secrets/webhook_url
+  webhook_secret:
+    file: ./secrets/webhook_secret
 ```
 
-2. **Comenta** la variable `MONGODB_URI` directa
+### docker-compose.yml (desarrollo sin secrets):
 
-### Para desarrollo sin secrets:
+```yaml
+version: '3.8'
 
-Déjalo como está (usa `MONGODB_URI` directamente o `.env` con `pnpm dev`)
+services:
+  bcv-service:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - SAVE_TO_DATABASE=true
+      - BCV_WEBSITE_URL=https://www.bcv.org.ve/
+      - CRON_SCHEDULE=0 2,10,18 * * *
+      - LOG_LEVEL=debug
+      - MONGODB_URI=mongodb://bcv_user:bcv4r4y4r4y@192.168.11.185:27017/bcv?authSource=admin
+      - API_KEYS=your-dev-api-key
+      - CACHE_ENABLED=false
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+```
 
-## 🐳 Paso 4: Iniciar el Servicio
+## 🐳 Paso 4: Iniciar el Servicio con Secrets
 
 ```bash
-# Iniciar con Docker Compose
-docker-compose up -d
+# Iniciar en producción con secrets (usa docker-compose.production.yml)
+docker-compose -f docker-compose.production.yml up -d
 
 # Ver logs
-docker-compose logs -f bcv-service
+docker-compose -f docker-compose.production.yml logs -f bcv-service
 
 # Detener
-docker-compose down
+docker-compose -f docker-compose.production.yml down
 ```
 
-### Desarrollo Local (sin Docker):
+### Desarrollo Local (sin Docker Secrets):
 
 Sigue usando tu `.env` como siempre:
 ```bash
@@ -136,81 +211,135 @@ El código detecta automáticamente si estás usando Secrets o `.env`.
 
 ```bash
 # Ver logs del contenedor
-docker-compose logs bcv-service
+docker-compose -f docker-compose.production.yml logs bcv-service
 
 # Si usas secrets, deberías ver:
 # 🔐 Modo: Docker Secrets activado
 # ✓ Secreto cargado desde archivo: MONGODB_URI_FILE
-# Servidor BCV corriendo en puerto 3000
+# Servidor BCV iniciado
 
-# Si usas .env o MONGODB_URI directa, verás:
+# Si usas .env o variables directas, verás:
 # ⚙️  Modo: Variables de entorno estándar
-# Servidor BCV corriendo en puerto 3000
+# Servidor BCV iniciado
 ```
+
+## 🔐 API Key Authentication
+
+### Variables para API Keys:
+
+- `API_KEYS`: Una o múltiples keys separadas por coma
+- `API_KEYS_FILE`: Ruta a archivo con API keys (cuando se usa Docker Secrets)
+
+### Headers esperados:
+
+Clientes deben incluir el header `X-API-Key`:
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:3000/api/rate/latest
+```
+
+### Soporte para múltiples keys:
+- Las keys se pueden separar por coma: `key1,key2,key3`
+- O en un archivo de secrets (una por línea o separadas por coma)
+
+## 🔔 Sistema de Notificaciones con Secrets
+
+### Discord Integration:
+- `DISCORD_WEBHOOK_URL_FILE`: Ruta al secreto con la URL de Discord webhook
+
+### Webhook General:
+- `WEBHOOK_URL_FILE`: Ruta al secreto con URL de webhook general
+- `WEBHOOK_SECRET_FILE`: Ruta al secreto con clave para firma HMAC
+
+### Variables de Webhooks Específicos (opcional):
+- `SERVICE_STATUS_WEBHOOK_URL_FILE`: Webhook para eventos de estado
+- `DEPLOYMENT_WEBHOOK_URL_FILE`: Webhook para eventos de deployment
 
 ## 🔄 Cómo Rotar Secretos
 
 ```bash
-# 1. Generar nuevas credenciales en MongoDB
-# 2. Actualizar archivo de secreto
-./scripts/generate-secrets.sh
+# 1. Actualizar archivos de secretos
+echo "nuevo-valor" > secrets/mongodb_uri
+echo "nueva-key1,nueva-key2" > secrets/api_keys
 
-# 3. Reiniciar servicio (Docker recargará el secreto)
-docker-compose restart bcv-service
+# 2. Reiniciar servicio (Docker recargará los secretos)
+docker-compose -f docker-compose.production.yml restart bcv-service
 
-# 4. Verificar en logs
-docker-compose logs -f bcv-service
+# 3. Verificar en logs
+docker-compose -f docker-compose.production.yml logs -f bcv-service
 ```
 
-## 📁 Estructura de Secretos
+## 📁 Estructura de Configuración de Secrets
 
-### docker-compose.yml
-```yaml
-services:
-  bcv-service:
-    environment:
-      # Descomenta para usar secrets
-      # - MONGODB_URI_FILE=/run/secrets/mongodb_uri
-
-      # Comenta si usas secrets
-      - MONGODB_URI=mongodb://user:pass@host:port/db
-
-    # Descomenta si usas secrets
-    # secrets:
-    #   - mongodb_uri
-
-# Descomenta si usas secrets
-# secrets:
-#   mongodb_uri:
-#     file: ./secrets/mongodb_uri.txt
-```
-
-### Código (src/config/index.ts)
+### Código (src/config/secrets.ts)
 ```typescript
-import { readSecret } from './secrets';
+import fs from 'fs';
+import log from '../utils/logger';
 
-mongoUri: readSecret(
-  'MONGODB_URI',           // Variable de entorno tradicional
-  'MONGODB_URI_FILE',      // Variable que apunta al archivo de secreto
-  'default value'          // Fallback
-)
+// Función para leer un secreto desde archivo o variable de entorno
+export function readSecret(
+  envVar: string,
+  fileVar: string,
+  defaultValue: string
+): string {
+  // Prioridad: 1. Archivo de secreto, 2. Variable de entorno, 3. Valor por defecto
+  
+  if (process.env[fileVar]) {
+    try {
+      return fs.readFileSync(process.env[fileVar]!, 'utf8').trim();
+    } catch (error) {
+      log.warn(`Error leyendo archivo de secreto: ${process.env[fileVar]}`, { error });
+    }
+  }
+  
+  return process.env[envVar] || defaultValue;
+}
+
+// Función para leer una lista de valores desde archivo o variable de entorno
+export function readSecretList(
+  envVar: string,
+  fileVar: string,
+  defaultValue: string[]
+): string[] {
+  const secretValue = readSecret(envVar, fileVar, '');
+  
+  if (secretValue) {
+    return secretValue.split(',').map(key => key.trim()).filter(key => key.length > 0);
+  }
+  
+  return defaultValue;
+}
 ```
 
 ## 🔐 Seguridad Best Practices
 
 ### ✅ Haz Esto:
-- Usa `generate-secrets.sh` para passwords seguros
+- Usa passwords generados con alta entropía
 - Rota credenciales cada 90 días
 - Usa permisos 600 en archivos de secretos
-- Documenta en gestor de passwords (1Password, Bitwarden)
+- Documenta en gestor de passwords
 - Usa usuarios diferentes por ambiente (dev/staging/prod)
+- Limita el alcance de los usuarios (solo lectura/escritura en bases de datos necesarias)
+- Usa secrets para todas las credenciales sensibles
 
 ### ❌ NUNCA Hagas Esto:
-- `git add secrets/*.txt`
+- `git add secrets/`
 - Compartir secretos por email/slack
 - Usar mismas credenciales en dev y prod
 - Hardcodear credenciales en código
 - Commitear archivos con credenciales
+- Usar credenciales con permisos excesivos
+
+## 🏗️ Arquitectura de Seguridad
+
+### Inversify Integration:
+- Los secrets se inyectan a través de la configuración central
+- El contenedor IoC resuelve las dependencias con credenciales seguras
+- Las interfaces no exponen credenciales directamente
+
+### Middleware Security:
+- Autenticación API Key antes de procesar requests
+- Rate limiting para protección contra abuso
+- Headers de seguridad con Helmet
 
 ## 🛡️ Niveles de Seguridad
 
@@ -218,56 +347,26 @@ mongoUri: readSecret(
 ```
 ✓ Fácil de usar
 ✓ Rápido para desarrollo
-⚠️ Fácil de commitear accidentalmente
-⚠️ No encriptado
+⚠️ Riesgo de ser commiteado accidentalmente
+⚠️ No encriptado en disco
 ```
 
 ### Nivel 2: Docker Secrets (Producción) ✅
 ```
-✓ Encriptado en reposo
+✓ Encriptado (en Docker Swarm con external secrets)
 ✓ Separado del código
 ✓ Fácil rotación
 ✓ Auditable
 ⚠️ Requiere Docker Swarm para encriptación completa
 ```
 
-### Nivel 3: Vault/Cloud Secrets (Enterprise) 🏆
+### Nivel 3: Cloud Secrets (AWS Secrets Manager, Azure Key Vault, etc.) 🏆
 ```
-✓ Encriptación total
+✓ Encriptación completa en reposo y en tránsito
 ✓ Rotación automática
 ✓ Auditoría completa
 ✓ Control de acceso granular
-⚠️ Más complejo de configurar
-```
-
-## 📊 Migración desde .env
-
-### Antes (Variable de entorno directa):
-```yaml
-# docker-compose.yml
-environment:
-  - MONGODB_URI=mongodb://user:pass@host:port/db
-```
-
-### Después (Docker Secrets):
-```bash
-# 1. Generar archivo de secreto: secrets/mongodb_uri.txt
-./scripts/generate-secrets.sh
-```
-
-```yaml
-# 2. Actualizar docker-compose.yml
-environment:
-  # - MONGODB_URI=mongodb://user:pass@host:port/db  # Comenta esto
-  - MONGODB_URI_FILE=/run/secrets/mongodb_uri  # Descomenta esto
-
-secrets:
-  - mongodb_uri
-
-# Al final del archivo
-secrets:
-  mongodb_uri:
-    file: ./secrets/mongodb_uri.txt
+⚠️ Complemento adicional (no requerido para esta implementación)
 ```
 
 ## 🔧 Troubleshooting
@@ -277,155 +376,106 @@ secrets:
 # Verificar que el archivo existe
 ls -la secrets/
 
-# Verificar permisos
-chmod 600 secrets/*.txt
+# Verificar permisos (600 para archivos sensibles)
+chmod 600 secrets/*
 
-# Verificar contenido (sin espacios extra)
-cat secrets/mongodb_uri.txt | wc -l  # Debe ser 1 línea
+# Verificar contenido (sin espacios extra al final)
+cat secrets/mongodb_uri | wc -l  # Debe ser 1 línea
 ```
 
 ### Error: "MongoServerError: Authentication failed"
 ```bash
 # Verificar credenciales en MongoDB
-mongosh "$(cat secrets/mongodb_uri.txt)"
+mongosh "$(cat secrets/mongodb_uri)"
 
-# Si falla, regenerar secreto
-./scripts/generate-secrets.sh
+# Si falla, verificar formato del URI
+# mongodb://user:pass@host:port/db?authSource=admin
 ```
 
-### El servicio usa .env en lugar de secrets
+### El servicio no detecta secrets
 ```bash
-# Verificar variable de entorno
-docker-compose exec bcv-service env | grep MONGODB
+# Verificar variables de entorno
+docker-compose exec bcv-service env | grep -E "(FILE|SECRET)"
 
-# Si usas secrets, debe mostrar:
-# MONGODB_URI_FILE=/run/secrets/mongodb_uri
-
-# Si no usas secrets, mostrará:
-# MONGODB_URI=mongodb://...
+# Si usas secrets, debe mostrar variables _FILE
+# Si no usas secrets, mostrará variables directas
 ```
 
-## 🔑 Autenticación con API Keys
-
-### ¿Cómo funciona?
-
-El servicio BCV requiere que los clientes incluyan un header `X-API-Key` en cada petición:
-
+### API Keys no funcionan
 ```bash
-# Ejemplo con curl
-curl -H "X-API-Key: tu-api-key-aqui" http://localhost:3000/api/rate
+# Verificar que las API keys se leen correctamente
+# en los logs debería aparecer "Modo: Docker Secrets activado" o similar
+# o "Modo: Variables de entorno estándar"
 
-# Ejemplo con fetch (JavaScript)
-fetch('http://localhost:3000/api/rate', {
-  headers: {
-    'X-API-Key': 'tu-api-key-aqui'
-  }
-})
+# Probar con curl
+curl -H "X-API-Key: tu-api-key" http://localhost:3000/api/rate/latest
 ```
 
-### Respuestas de Autenticación
+## 🔄 Migración desde .env
 
-**✅ API Key válida (200 OK)**:
-```json
-{
-  "rate": 45.67,
-  "date": "2025-11-11",
-  "rates": [...]
-}
-```
-
-**❌ API Key faltante (401 Unauthorized)**:
-```json
-{
-  "error": "Unauthorized",
-  "message": "API key es requerida. Incluye el header X-API-Key en tu petición.",
-  "code": "MISSING_API_KEY"
-}
-```
-
-**❌ API Key inválida (403 Forbidden)**:
-```json
-{
-  "error": "Forbidden",
-  "message": "API key inválida.",
-  "code": "INVALID_API_KEY"
-}
-```
-
-### Modo Desarrollo (Sin Autenticación)
-
-Si **NO** configuras ninguna API key, el servicio funcionará **sin autenticación**:
-- Útil para desarrollo local
-- No recomendado para producción
-- Aparecerá un warning en los logs
-
-### Configuración en Clientes
-
-#### Opción 1: Variable de Entorno (Desarrollo)
-
-```bash
-# .env en tu cliente
-API_KEYS=key1,key2,key3
-```
-
-#### Opción 2: Docker Secrets (Producción)
-
+### Antes (Variables de entorno directas):
 ```yaml
 # docker-compose.yml
-services:
-  mi-app:
-    environment:
-      - API_KEY=tu-api-key-aqui
+environment:
+  - MONGODB_URI=mongodb://user:pass@host:port/db
+  - API_KEYS=key1,key2
 ```
 
-### Rotar API Keys
-
+### Después (Docker Secrets):
 ```bash
-# 1. Generar nuevas API keys
-./scripts/generate-secrets.sh
-
-# 2. Actualizar clientes con al menos UNA nueva key
-#    (mantén una key vieja temporalmente para compatibilidad)
-
-# 3. Reiniciar servicio BCV
-docker-compose restart bcv-service
-
-# 4. Verificar que los clientes funcionan con la nueva key
-
-# 5. Actualizar todos los clientes a las nuevas keys
-
-# 6. Regenerar secrets SIN las keys viejas
-./scripts/generate-secrets.sh
-
-# 7. Reiniciar servicio de nuevo
-docker-compose restart bcv-service
+# 1. Crear archivos de secrets
+echo "mongodb://user:pass@host:port/db" > secrets/mongodb_uri
+echo "key1,key2" > secrets/api_keys
 ```
 
-### Múltiples API Keys
+```yaml
+# 2. Actualizar docker-compose.yml
+environment:
+  # - MONGODB_URI=mongodb://user:pass@host:port/db  # Comenta esto
+  # - API_KEYS=key1,key2                          # Comenta esto
+  - MONGODB_URI_FILE=/run/secrets/mongodb_uri      # Descomenta esto
+  - API_KEYS_FILE=/run/secrets/api_keys           # Descomenta esto
 
-Puedes tener múltiples API keys activas simultáneamente:
-- Una key por cliente/servicio
-- Facilita auditoría (saber qué servicio hace qué peticiones)
-- Permite rotar keys individualmente
+secrets:
+  - mongodb_uri
+  - api_keys
+
+# Al final del archivo
+secrets:
+  mongodb_uri:
+    file: ./secrets/mongodb_uri
+  api_keys:
+    file: ./secrets/api_keys
+```
 
 ## 📚 Referencias
 
 - [Docker Secrets Documentation](https://docs.docker.com/engine/swarm/secrets/)
+- [Docker Compose Secrets](https://docs.docker.com/compose/use-secrets/)
 - [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
 - [OWASP API Security](https://owasp.org/www-project-api-security/)
 - [12 Factor App - Config](https://12factor.net/config)
+- [Prometheus Security Guide](https://prometheus.io/docs/operating/security/)
 
-## ⏭️ Próximos Pasos
+## 🎯 Características Completas
 
-1. **Implementado ✅**: Docker Secrets básico
-2. **Implementado ✅**: API Key authentication
-3. **Pendiente Fase 2**: Structured logging con Winston
-4. **Pendiente Fase 2**: Testing (unit tests, integration tests)
-5. **Pendiente Fase 3**: Health checks y métricas
-6. **Pendiente Fase 4**: Vault integration (opcional)
+La implementación actual incluye:
+- ✅ Docker Secrets para MongoDB URI
+- ✅ Docker Secrets para API Keys
+- ✅ Docker Secrets para Discord Webhook
+- ✅ Docker Secrets para Webhooks HTTP
+- ✅ Docker Secrets para Webhook Secret
+- ✅ Lectura de secrets con fallback a variables de entorno
+- ✅ Soporte para múltiples API keys
+- ✅ Logging estructurado sobre modo de configuración (secrets vs env)
+- ✅ Validación de secrets antes del uso
+- ✅ Seguridad de API con rate limiting
+- ✅ Soporte para Redis secrets (si se usa Redis)
+
+El sistema está completamente funcional y listo para producción con las mejores prácticas de seguridad implementadas.
 
 ---
 
-**Última actualización**: 2025-11-11
-**Versión**: 1.0.0
-**Feature Branch**: feat/secrets-management
+**Última actualización**: 2025-11-24
+**Versión**: 2.1.0
+**Estado**: ✅ Completamente implementado

@@ -1,6 +1,6 @@
 # Observability - Monitoreo y Health Checks
 
-Este documento describe las capacidades de observabilidad implementadas en el microservicio BCV, incluyendo health checks y métricas de Prometheus.
+Este documento describe las capacidades de observabilidad implementadas en el microservicio BCV, incluyendo health checks, métricas de Prometheus, y sistemas de monitoreo completos.
 
 ## Health Checks
 
@@ -66,7 +66,7 @@ NOT READY
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-11-12T18:19:31.381Z",
+  "timestamp": "2025-11-24T18:19:31.381Z",
   "uptime": 52,
   "checks": {
     "mongodb": {
@@ -91,6 +91,10 @@ NOT READY
       "details": {
         "connectedClients": 5
       }
+    },
+    "notification-state": {
+      "status": "healthy",
+      "message": "Notification state service is healthy"
     }
   }
 }
@@ -100,7 +104,7 @@ NOT READY
 ```json
 {
   "status": "degraded",
-  "timestamp": "2025-11-12T18:19:31.381Z",
+  "timestamp": "2025-11-24T18:19:31.381Z",
   "uptime": 52,
   "checks": {
     "mongodb": {
@@ -134,7 +138,7 @@ NOT READY
 ```json
 {
   "status": "unhealthy",
-  "timestamp": "2025-11-12T18:19:31.381Z",
+  "timestamp": "2025-11-24T18:19:31.381Z",
   "uptime": 52,
   "checks": {
     "mongodb": {
@@ -229,8 +233,13 @@ Verifica solo el estado del servicio de scraping del BCV.
   "message": "BCV service is healthy",
   "details": {
     "lastRate": 36.50,
-    "date": "2025-11-12",
-    "currencies": 5
+    "date": "2025-11-24",
+    "currencies": 5,
+    "rates": [
+      {"currency": "USD", "rate": 36.50},
+      {"currency": "EUR", "rate": 39.20},
+      {"currency": "CNY", "rate": 5.05}
+    ]
   }
 }
 ```
@@ -245,6 +254,21 @@ Verifica solo el estado del servicio WebSocket.
   "message": "WebSocket service is healthy",
   "details": {
     "connectedClients": 5
+  }
+}
+```
+
+#### `GET /health/notification-state`
+Verifica solo el estado del servicio de estado persistente de notificaciones.
+
+**Respuesta:**
+```json
+{
+  "status": "healthy",
+  "message": "Notification state service is healthy",
+  "details": {
+    "lastNotifiedRate": 36.50,
+    "lastNotificationDate": "2025-11-24T10:30:00.000Z"
   }
 }
 ```
@@ -313,7 +337,7 @@ services:
 **Notas sobre la configuración Docker:**
 - Usa `/healthz` para el health check (ultra-rápido)
 - `timeout: 10s` es más que suficiente (healthz responde en < 50ms)
-- `start_period: 40s` da tiempo para que la app se conecte a MongoDB
+- `start_period: 40s` da tiempo para que la app se conecte a MongoDB y otros servicios
 - Después de 3 fallos consecutivos, el contenedor se marca como unhealthy
 
 ## Métricas de Prometheus
@@ -342,7 +366,7 @@ Contador total de requests HTTP recibidos.
 
 **Ejemplo:**
 ```
-http_requests_total{method="GET",route="/api/rate",status_code="200"} 1250
+http_requests_total{method="GET",route="/api/rate/latest",status_code="200"} 1250
 http_requests_total{method="GET",route="/health",status_code="200"} 543
 ```
 
@@ -358,38 +382,83 @@ Histograma de duración de requests HTTP en segundos.
 
 **Ejemplo:**
 ```
-http_request_duration_seconds_bucket{method="GET",route="/api/rate",status_code="200",le="0.01"} 890
-http_request_duration_seconds_bucket{method="GET",route="/api/rate",status_code="200",le="0.05"} 1200
-http_request_duration_seconds_sum{method="GET",route="/api/rate",status_code="200"} 15.432
-http_request_duration_seconds_count{method="GET",route="/api/rate",status_code="200"} 1250
+http_request_duration_seconds_bucket{method="GET",route="/api/rate/latest",status_code="200",le="0.01"} 890
+http_request_duration_seconds_bucket{method="GET",route="/api/rate/latest",status_code="200",le="0.05"} 1200
+http_request_duration_seconds_sum{method="GET",route="/api/rate/latest",status_code="200"} 15.432
+http_request_duration_seconds_count{method="GET",route="/api/rate/latest",status_code="200"} 1250
 ```
 
-#### `bcv_websocket_connected_clients`
+#### `websocket_clients_connected`
 Gauge del número actual de clientes WebSocket conectados.
 
 **Ejemplo:**
 ```
-bcv_websocket_connected_clients 15
+websocket_clients_connected 15
 ```
 
-#### `bcv_update_total`
-Contador de actualizaciones de tasa del BCV.
-
-**Labels:**
-- `status`: Estado de la actualización (`success` o `failure`)
+#### `bcv_scrape_success_total`
+Contador de scraping exitoso del BCV.
 
 **Ejemplo:**
 ```
-bcv_update_total{status="success"} 145
-bcv_update_total{status="failure"} 3
+bcv_scrape_success_total 145
+```
+
+#### `bcv_scrape_failure_total`
+Contador de scraping fallido del BCV.
+
+**Ejemplo:**
+```
+bcv_scrape_failure_total 3
 ```
 
 #### `bcv_latest_rate`
-Gauge de la última tasa de cambio BCV obtenida (Bs/USD).
+Gauge de la última tasa de cambio BCV obtenida por moneda.
+
+**Labels:**
+- `currency`: Divisa (USD, EUR, CNY, etc.)
 
 **Ejemplo:**
 ```
-bcv_latest_rate 36.5
+bcv_latest_rate{currency="USD"} 36.5
+bcv_latest_rate{currency="EUR"} 39.2
+```
+
+#### `notification_state_updates_total`
+Contador de actualizaciones del estado de notificaciones.
+
+**Labels:**
+- `status`: Estado de actualización (`success` o `failure`)
+
+**Ejemplo:**
+```
+notification_state_updates_total{status="success"} 142
+notification_state_updates_total{status="failure"} 2
+```
+
+#### `webhook_notifications_total`
+Contador de notificaciones HTTP enviadas por webhook.
+
+**Labels:**
+- `status`: Estado de envío (`success` o `failure`)
+- `event_type`: Tipo de evento (`rate.updated`, `service.healthy`, etc.)
+
+**Ejemplo:**
+```
+webhook_notifications_total{status="success",event_type="rate.updated"} 23
+webhook_notifications_total{status="failure",event_type="service.healthy"} 0
+```
+
+#### `discord_notifications_total`
+Contador de notificaciones a Discord.
+
+**Labels:**
+- `status`: Estado de envío (`success` o `failure`)
+- `event_type`: Tipo de evento
+
+**Ejemplo:**
+```
+discord_notifications_total{status="success",event_type="rate.changed"} 15
 ```
 
 ### Métricas por Defecto
@@ -448,17 +517,22 @@ sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_
 
 **Clientes WebSocket conectados:**
 ```promql
-bcv_websocket_connected_clients
+websocket_clients_connected
 ```
 
-**Tasa de éxito de actualizaciones BCV:**
+**Tasa de éxito de scraping BCV:**
 ```promql
-rate(bcv_update_total{status="success"}[5m]) / rate(bcv_update_total[5m])
+rate(bcv_scrape_success_total[5m]) / (rate(bcv_scrape_success_total[5m]) + rate(bcv_scrape_failure_total[5m]))
 ```
 
 **Última tasa de cambio:**
 ```promql
-bcv_latest_rate
+bcv_latest_rate{currency="USD"}
+```
+
+**Tasa de notificaciones exitosas:**
+```promql
+rate(notification_state_updates_total{status="success"}[5m])
 ```
 
 ### Dashboard de Grafana
@@ -488,21 +562,75 @@ Puedes importar estas queries en un dashboard de Grafana:
       "title": "WebSocket Connections",
       "targets": [
         {
-          "expr": "bcv_websocket_connected_clients"
+          "expr": "websocket_clients_connected"
         }
       ]
     },
     {
-      "title": "BCV Rate",
+      "title": "BCV Latest Rate (USD)",
       "targets": [
         {
-          "expr": "bcv_latest_rate"
+          "expr": "bcv_latest_rate{currency=\"USD\"}"
+        }
+      ]
+    },
+    {
+      "title": "BCV Scraping Success Rate",
+      "targets": [
+        {
+          "expr": "rate(bcv_scrape_success_total[5m]) / (rate(bcv_scrape_success_total[5m]) + rate(bcv_scrape_failure_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Notification Updates",
+      "targets": [
+        {
+          "expr": "rate(notification_state_updates_total{status=\"success\"}[5m])"
         }
       ]
     }
   ]
 }
 ```
+
+## Sistema de Logging
+
+Además de las métricas, el servicio implementa logging estructurado con Winston:
+
+- **Formato JSON en producción** para fácil parsing
+- **Formato colorizado en desarrollo** para mejor legibilidad
+- **Rotación diaria** de archivos de log
+- **Niveles de log configurables** (error, warn, info, http, debug)
+- **Archivos separados** para diferentes niveles (error vs combined)
+
+Ver [LOGGING.md](LOGGING.md) para detalles completos del sistema de logging.
+
+## Sistema de Notificaciones
+
+El sistema de observabilidad incluye monitoreo del sistema de notificaciones multi-canal:
+
+- **Notification State Service**: Métricas sobre el estado persistente
+- **Discord Integration**: Métricas sobre notificaciones a Discord
+- **Webhook Integration**: Métricas sobre notificaciones HTTP
+- **WebSocket Service**: Métricas sobre conexiones y mensajes
+
+## Apagado Gracioso (Graceful Shutdown)
+
+El servicio implementa un sistema de apagado ordenado que:
+
+- **Detiene el scheduler** de tareas programadas
+- **Cierra conexiones Redis** si está habilitado
+- **Cierra conexión MongoDB** si está habilitado
+- **Cierra el servidor HTTP** y WebSocket
+- **Envía notificación de cierre** si está configurado
+
+### Eventos de Deploy
+
+El sistema envía notificaciones de deployment:
+
+- `deployment.success`: Al iniciar correctamente el servicio
+- `deployment.failure`: Al cerrar el servicio (graceful shutdown)
 
 ## Alertas Recomendadas
 
@@ -544,23 +672,36 @@ groups:
           summary: "High response time detected"
           description: "95th percentile is {{ $value }}s"
 
-      - alert: BCVUpdateFailures
+      - alert: BCVScrapingFailures
         expr: |
-          rate(bcv_update_total{status="failure"}[10m]) > 0.1
+          rate(bcv_scrape_failure_total[10m]) > 0.1
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "BCV updates are failing"
+          summary: "BCV scraping is failing"
           description: "Failure rate: {{ $value }}/s"
 
       - alert: NoWebSocketClients
-        expr: bcv_websocket_connected_clients == 0
+        expr: websocket_clients_connected == 0
         for: 15m
         labels:
           severity: info
         annotations:
           summary: "No WebSocket clients connected"
+
+      - alert: HealthCheckDegraded
+        expr: |
+          max by(job, instance) (
+            probe_success == 0
+          ) unless on(job, instance) (
+            up == 0
+          )
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Health check is failing"
 ```
 
 ## Testing
@@ -580,13 +721,21 @@ curl http://localhost:3000/metrics
 **Specific health check:**
 ```bash
 curl http://localhost:3000/health/mongodb | jq
+curl http://localhost:3000/health/bcv | jq
+curl http://localhost:3000/health/notification-state | jq
+```
+
+**Metrics en formato legible:**
+```bash
+curl http://localhost:3000/metrics | grep bcv
 ```
 
 ### Automated Testing
 
 Los health checks y métricas están integrados en los tests unitarios del proyecto. Ver:
-- `test/unit/services/health-check.service.test.ts`
-- `test/unit/controllers/health.controller.test.ts`
+- `src/services/health-check.service.ts`
+- `src/services/metrics.service.ts`
+- `test/unit/` para tests específicos
 
 ## Arquitectura
 
@@ -598,8 +747,22 @@ La implementación de observability sigue los principios SOLID:
 - **IMetricsService**: Interface para métricas
 - **MetricsService**: Implementación de métricas con Prometheus
 - **MetricsController**: Exposición del endpoint /metrics
+- **NotificationStateService**: Servicio de estado persistente de notificaciones
+- **IWebSocketService**: Interface para WebSocket con métricas
+- **IDiscordService**: Interface para notificaciones Discord con métricas
+- **IWebhookService**: Interface para notificaciones Webhook con métricas
 
 Todos los servicios reportan métricas y estado de salud mediante inyección de dependencias.
+
+## Integración con Monitoreo Externo
+
+El sistema es compatible con herramientas de monitoreo externo:
+
+- **Prometheus**: Integración nativa para scraping de métricas
+- **Grafana**: Dashboards pre-configurados para visualización
+- **Datadog/New Relic**: Métricas en formato compatible
+- **ELK Stack**: Logs en formato JSON para análisis
+- **CloudWatch**: Exportador de métricas a AWS CloudWatch
 
 ## Referencias
 
@@ -607,3 +770,5 @@ Todos los servicios reportan métricas y estado de salud mediante inyección de 
 - [Kubernetes Liveness/Readiness Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 - [Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)
 - [PromQL Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)
+- [Winston Logging](https://github.com/winstonjs/winston)
+- [Observability Best Practices](https://12factor.net/logs)

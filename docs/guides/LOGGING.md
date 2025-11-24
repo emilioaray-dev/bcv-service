@@ -31,17 +31,18 @@ Winston soporta los siguientes niveles de log (de mayor a menor severidad):
 Errores que requieren atención inmediata. El servicio puede estar degradado.
 
 **Cuándo usar:**
-- Fallos en conexiones críticas (MongoDB, APIs externas)
+- Fallos en conexiones críticas (MongoDB, Redis, APIs externas)
 - Excepciones no controladas
 - Pérdida de datos o inconsistencias
 - Operaciones fallidas después de todos los reintentos
+- Errores en tareas programadas
 
 **Ejemplo:**
 ```typescript
-log.error('Falló obtener tasa del BCV después de todos los intentos', {
-  maxRetries: this.maxRetries,
-  lastError: lastError?.message,
-  stack: lastError?.stack
+log.error('Error conectando a MongoDB', {
+  error: error instanceof Error ? error.message : 'Unknown error',
+  stack: error instanceof Error ? error.stack : undefined,
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -49,14 +50,20 @@ log.error('Falló obtener tasa del BCV después de todos los intentos', {
 Situaciones inusuales que no impiden el funcionamiento pero requieren atención.
 
 **Cuándo usar:**
-- Configuración subóptima o faltante
-- Uso de valores por defecto
-- Reintentos de operaciones fallidas
-- API keys no configuradas en desarrollo
+- API keys no autorizadas
+- Intentos de acceso no autorizado
+- Valores fuera de rango esperado
+- Recursos con bajo espacio o rendimiento
+- Configuración incompleta
 
 **Ejemplo:**
 ```typescript
-log.warn('No hay API keys configuradas. Modo desarrollo: autenticación desactivada');
+log.warn('Intento de acceso no autorizado', {
+  ip: req.ip,
+  userAgent: req.get('User-Agent'),
+  path: req.path,
+  timestamp: new Date().toISOString()
+});
 ```
 
 ### `info` - Nivel 2 (Default)
@@ -65,16 +72,18 @@ Eventos importantes del ciclo de vida de la aplicación.
 **Cuándo usar:**
 - Inicio/cierre del servidor
 - Conexiones exitosas a bases de datos
-- Operaciones programadas (cron jobs)
+- Operaciones programadas (cron jobs) ejecutadas
 - Cambios de estado importantes
 - Clientes WebSocket conectados/desconectados
+- Notificaciones enviadas
 
 **Ejemplo:**
 ```typescript
 log.info('Servidor BCV iniciado', {
-  port,
+  port: config.port,
   schedule: config.cronSchedule,
-  environment: config.nodeEnv
+  environment: config.nodeEnv,
+  architecture: 'SOLID with Inversify'
 });
 ```
 
@@ -92,7 +101,9 @@ Logs de requests HTTP y operaciones de red.
 log.http('Request recibido', {
   method: req.method,
   path: req.path,
-  ip: req.ip
+  ip: req.ip,
+  userAgent: req.get('User-Agent'),
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -103,13 +114,16 @@ Información detallada para debugging durante desarrollo.
 - Valores de variables en momentos clave
 - Flujo de ejecución detallado
 - Operaciones de bajo nivel
-- Creación de índices de base de datos
-- Broadcast de eventos WebSocket
+- Procesamiento de datos
+- Consultas a bases de datos
 
 **Ejemplo:**
 ```typescript
-log.debug('Índices de MongoDB creados', {
-  indexes: ['date', 'createdAt', 'date+source (unique)']
+log.debug('Cambio significativo detectado', {
+  currentRate: currentRate,
+  previousRate: previousRate,
+  change: change,
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -129,31 +143,37 @@ log.info('Operación completada');
 
 // Con metadata estructurada (RECOMENDADO)
 log.info('Tasa actualizada', {
-  rate: newRate.rate,
-  date: newRate.date,
-  detailedRates: newRate.rates
+  date: rateData.date,
+  rates: rateData.rates,
+  timestamp: new Date().toISOString()
 });
 
 // Con error completo
 log.error('Error conectando a MongoDB', {
   error: error.message,
-  stack: error.stack
+  stack: error.stack,
+  timestamp: new Date().toISOString()
 });
 ```
 
 ### Ejemplos por Categoría
 
-#### Inicio de Operaciones
+#### Inicio de Aplicación
 ```typescript
-log.info('Ejecutando tarea programada para actualizar tasa de cambio');
+log.info('Servidor BCV iniciado', {
+  port: config.port,
+  schedule: config.cronSchedule,
+  environment: config.nodeEnv,
+  architecture: 'SOLID with Inversify'
+});
 ```
 
 #### Resultados Exitosos
 ```typescript
-log.info('Tasa actualizada', {
-  rate: newRate.rate,
-  date: newRate.date,
-  detailedRates: newRate.rates
+log.info('Tasas actualizadas exitosamente', {
+  date: rateData.date,
+  rates: rateData.rates,
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -162,17 +182,34 @@ log.info('Tasa actualizada', {
 log.error('Intento de obtener tasa del BCV falló', {
   attempt: attempt + 1,
   maxRetries: this.maxRetries,
-  error: this.getErrorMessage(error)
+  error: this.getErrorMessage(error),
+  timestamp: new Date().toISOString()
 });
 ```
 
 #### Información de Debug
 ```typescript
-log.debug('Actualización de tasa transmitida por WebSocket', {
-  eventType: rateUpdate.eventType,
-  rate: rateUpdate.rate,
-  clientsSent: sentCount,
-  totalClients: this.clients.size
+log.debug('Notificación de cambio de tasa enviada a Discord', {
+  rateUpdate: rateData,
+  timestamp: new Date().toISOString()
+});
+```
+
+#### WebSocket
+```typescript
+log.info('Cliente WebSocket conectado', {
+  totalClients: this.clients.size,
+  timestamp: new Date().toISOString()
+});
+```
+
+#### Notificaciones
+```typescript
+log.info('Notificación de cambio de tasa enviada por Webhook', {
+  statusCode: webhookResult.statusCode,
+  attempt: webhookResult.attempt,
+  duration: webhookResult.duration,
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -187,9 +224,44 @@ El nivel de logging se configura con la variable `LOG_LEVEL`:
 LOG_LEVEL=info  # Opciones: error | warn | info | http | debug
 ```
 
+### Configuración Completa
+
+```typescript
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
+
+const logger = winston.createLogger({
+  level: config.logLevel,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      ),
+    }),
+    new DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      level: 'error',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '14d', // 14 días de retención
+    }),
+    new DailyRotateFile({
+      filename: 'logs/combined-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '7d', // 7 días de retención
+    }),
+  ],
+});
+```
+
 ### Niveles Recomendados por Entorno
 
-- **Producción**: `info` o `warn`
+- **Producción**: `info`
   - Minimiza overhead de I/O
   - Solo logs esenciales
   - Mejor performance
@@ -209,9 +281,8 @@ LOG_LEVEL=info  # Opciones: error | warn | info | http | debug
 
 ```
 logs/
-├── error-2025-11-12.log      # Solo errores
-├── combined-2025-11-12.log   # Todos los logs (info, warn, error)
-└── http-2025-11-12.log       # Solo requests HTTP
+├── error-2025-11-24.log      # Solo errores
+└── combined-2025-11-24.log   # Todos los logs (info, warn, error)
 ```
 
 ### Rotación Automática
@@ -220,29 +291,28 @@ Los logs se rotan automáticamente:
 
 - **Frecuencia**: Diaria (a medianoche)
 - **Nombre**: Incluye fecha (YYYY-MM-DD)
-- **Tamaño máximo por archivo**: 20 MB
+- **Tamaño máximo por archivo**: Controlado por sistema operativo
 - **Retención**:
   - Logs de error: 14 días
   - Logs combinados: 7 días
-  - Logs HTTP: 7 días
 
 ### Formato por Entorno
 
 #### Desarrollo (Consola)
 ```
-2025-11-12 10:30:45 [info]: Servidor BCV iniciado
-2025-11-12 10:30:47 [error]: Error conectando a MongoDB
+info: Servidor BCV iniciado {"port":3000,"schedule":"0 2,10,18 * * *","environment":"development"}
+error: Error conectando a MongoDB {"error":"Connection timeout","timestamp":"2025-11-24T10:30:45.123Z"}
 ```
 
 #### Producción (JSON)
 ```json
 {
-  "timestamp": "2025-11-12 10:30:45",
   "level": "info",
   "message": "Servidor BCV iniciado",
   "port": 3000,
   "schedule": "0 2,10,18 * * *",
-  "environment": "production"
+  "environment": "production",
+  "timestamp": "2025-11-24T10:30:45.123Z"
 }
 ```
 
@@ -254,28 +324,37 @@ Los logs se rotan automáticamente:
 ```typescript
 // ✅ BIEN - Datos estructurados y parseables
 log.info('Tasa actualizada', {
-  rate: newRate.rate,
-  date: newRate.date,
-  source: 'bcv'
+  date: rateData.date,
+  rates: rateData.rates,
+  timestamp: new Date().toISOString()
 });
 ```
 
 **2. Incluir contexto relevante**
 ```typescript
 // ✅ BIEN - Incluye contexto para debugging
-log.error('Error en tarea programada', {
+log.error('Error conectando a MongoDB', {
   error: error.message,
   stack: error.stack,
-  attemptNumber: attempt
+  timestamp: new Date().toISOString()
 });
 ```
 
 **3. Usar el nivel apropiado**
 ```typescript
 // ✅ BIEN - Nivel correcto según severidad
-log.warn('Usando valor por defecto para configuración');
-log.error('Conexión a MongoDB perdida');
-log.debug('Procesando item', { itemId: id });
+log.warn('API key no autorizada', { ip: req.ip });
+log.error('Conexión a MongoDB perdida', { timestamp: new Date().toISOString() });
+log.debug('Procesando tasa', { currency: 'USD', rate: 36.15 });
+```
+
+**4. Incluir timestamps**
+```typescript
+// ✅ BIEN - Siempre incluir timestamp
+log.info('Evento ocurrido', {
+  data: eventData,
+  timestamp: new Date().toISOString()
+});
 ```
 
 ### ❌ Evitar
@@ -296,9 +375,9 @@ log.error('Error');
 
 // ✅ BIEN
 log.error('Error obteniendo tasa del BCV', {
-  url: bcvUrl,
+  url: config.bcvWebsiteUrl,
   error: error.message,
-  stack: error.stack
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -308,20 +387,25 @@ log.error('Error obteniendo tasa del BCV', {
 console.log('Servidor iniciado');
 
 // ✅ BIEN
-log.info('Servidor BCV iniciado', { port, environment });
+log.info('Servidor BCV iniciado', { 
+  port: config.port, 
+  environment: config.nodeEnv,
+  timestamp: new Date().toISOString()
+});
 ```
 
 **4. Logging excesivo en producción**
 ```typescript
 // ❌ MAL - Demasiado verbose para producción
-log.debug('Iniciando loop');
-log.debug('Item procesado', { index: i });
-log.debug('Loop completado');
+log.debug('Procesando item');
+log.debug('Item procesado');
+log.debug('Siguiente item');
 
 // ✅ BIEN - Consolidar información
 log.info('Procesamiento completado', {
   itemsProcessed: count,
-  duration: endTime - startTime
+  duration: durationMs,
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -329,13 +413,14 @@ log.info('Procesamiento completado', {
 ```typescript
 // ❌ MAL - Expone credenciales
 log.info('Conectando a MongoDB', {
-  uri: 'mongodb://user:password@host:27017/db'  // ⚠️ PELIGRO
+  uri: process.env.MONGODB_URI  // ⚠️ PELIGRO
 });
 
 // ✅ BIEN - Sanitizar información sensible
 log.info('Conectando a MongoDB', {
-  host: 'mongo.example.com',
-  database: 'bcv_service'
+  host: 'mongodb.example.com',
+  database: 'bcv',
+  timestamp: new Date().toISOString()
 });
 ```
 
@@ -345,46 +430,43 @@ log.info('Conectando a MongoDB', {
 
 ```bash
 # Todos los logs
-tail -f logs/combined-2025-11-12.log
+tail -f logs/combined-2025-11-24.log
 
 # Solo errores
-tail -f logs/error-2025-11-12.log
-
-# Solo HTTP
-tail -f logs/http-2025-11-12.log
+tail -f logs/error-2025-11-24.log
 ```
 
 ### Buscar por nivel
 
 ```bash
 # Errores del día
-grep '"level":"error"' logs/combined-2025-11-12.log
+grep '"level":"error"' logs/combined-2025-11-24.log
 
 # Warnings del día
-grep '"level":"warn"' logs/combined-2025-11-12.log
+grep '"level":"warn"' logs/combined-2025-11-24.log
 ```
 
 ### Buscar por mensaje
 
 ```bash
 # Logs relacionados con MongoDB
-grep -i "mongodb" logs/combined-2025-11-12.log
+grep -i "mongodb" logs/combined-2025-11-24.log
 
 # Logs relacionados con tasa de cambio
-grep -i "tasa" logs/combined-2025-11-12.log
+grep -i "rate" logs/combined-2025-11-24.log
 ```
 
 ### Analizar JSON (con jq)
 
 ```bash
 # Extraer solo mensajes de error
-cat logs/combined-2025-11-12.log | jq 'select(.level=="error") | .message'
+cat logs/combined-2025-11-24.log | jq 'select(.level=="error") | .message'
 
 # Contar errores por tipo
-cat logs/combined-2025-11-12.log | jq -r 'select(.level=="error") | .message' | sort | uniq -c
+cat logs/combined-2025-11-24.log | jq -r 'select(.level=="error") | .message' | sort | uniq -c
 
 # Ver errores con timestamp
-cat logs/error-2025-11-12.log | jq -r '[.timestamp, .message, .error] | @tsv'
+cat logs/error-2025-11-24.log | jq -r '[.timestamp, .message, .error] | @tsv'
 ```
 
 ### Ver logs de los últimos N días
@@ -405,11 +487,10 @@ El formato JSON de producción es compatible con sistemas de logging empresarial
 
 ```json
 {
-  "timestamp": "2025-11-12 10:30:45",
   "level": "error",
   "message": "Error conectando a MongoDB",
   "error": "Connection timeout",
-  "stack": "Error: Connection timeout\n    at..."
+  "timestamp": "2025-11-24T10:30:45.123Z"
 }
 ```
 
@@ -418,6 +499,37 @@ Estos logs pueden ser:
 - Consultados con queries complejas
 - Visualizados en dashboards
 - Usados para alertas
+
+## Sistema de Logging en Componentes Específicos
+
+### BCV Service
+- Registra scraping de tasas exitoso o fallido
+- Registra reintentos de conexión
+- Registra cambios significativos detectados
+
+### NotificationStateService
+- Registra cambios en el estado persistente de notificaciones
+- Registra detección de cambios significativos
+- Registra actualizaciones de estado de notificaciones
+
+### DiscordService
+- Registra envío exitoso o fallido de notificaciones a Discord
+- Registra errores de conexión a Webhook de Discord
+
+### WebhookService
+- Registra envío de notificaciones HTTP
+- Registra respuestas de endpoints
+- Registra tiempos de respuesta
+
+### WebSocketService
+- Registra conexiones y desconexiones de clientes
+- Registra envío de mensajes a clientes
+- Registra métricas de clientes conectados
+
+### SchedulerService
+- Registra ejecución de tareas programadas
+- Registra errores en tareas programadas
+- Registra estado de scheduler
 
 ## Troubleshooting
 
@@ -435,7 +547,7 @@ Estos logs pueden ser:
 ### Logs no rotados
 
 - Verificar que `winston-daily-rotate-file` está instalado
-- Comprobar configuración de `maxFiles` y `maxSize`
+- Comprobar configuración de `maxFiles`
 
 ## Referencias
 

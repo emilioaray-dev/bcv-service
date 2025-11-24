@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from 'node:http';
 import type { RateUpdateEvent } from '@/models/rate';
+import type { IMetricsService } from '@/services/metrics.service';
 import { describe, expect, it } from 'vitest';
 
 // Mock ws library completely
@@ -66,7 +67,7 @@ describe('WebSocketService', () => {
       const mockMetricsService = createMockMetricsService();
 
       expect(
-        () => new WebSocketService(mockServer, mockMetricsService as any)
+        () => new WebSocketService(mockServer, mockMetricsService)
       ).not.toThrow();
     });
 

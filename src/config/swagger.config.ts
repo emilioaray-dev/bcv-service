@@ -62,6 +62,28 @@ export const swaggerOptions: OAS3Options = {
         },
       },
       schemas: {
+        Denomination: {
+          type: 'object',
+          description: 'Información sobre denominación monetaria venezolana (solo en datos históricos antiguos)',
+          properties: {
+            code: {
+              type: 'string',
+              description: 'Código de denominación',
+              example: 'BS_S',
+            },
+            name: {
+              type: 'string',
+              description: 'Nombre de la denominación',
+              example: 'Bolívar Soberano',
+            },
+            note: {
+              type: 'string',
+              description: 'Nota sobre vigencia de la denominación',
+              example: 'Moneda vigente desde 20-ago-2018 hasta 30-sep-2021',
+            },
+          },
+          required: ['code', 'name', 'note'],
+        },
         CurrencyRate: {
           type: 'object',
           properties: {
@@ -81,6 +103,12 @@ export const swaggerOptions: OAS3Options = {
               type: 'string',
               description: 'Nombre completo de la moneda',
               example: 'Dólar',
+            },
+            normalized_bs: {
+              type: 'number',
+              format: 'double',
+              description: 'Valor normalizado a Bolívares Digitales (solo en datos históricos de 2020)',
+              example: 0.1208604093,
             },
           },
           required: ['currency', 'rate', 'name'],
@@ -149,6 +177,21 @@ export const swaggerOptions: OAS3Options = {
               format: 'date-time',
               description: 'Fecha y hora de creación del registro',
               example: '2025-11-22T01:00:01.469Z',
+            },
+            denomination: {
+              $ref: '#/components/schemas/Denomination',
+              description: 'Información de denominación monetaria (solo en datos históricos de 2020)',
+            },
+            isFilled: {
+              type: 'boolean',
+              description: 'Indica si este registro fue generado por forward fill para llenar un gap (fin de semana/feriado)',
+              example: false,
+            },
+            filledFrom: {
+              type: 'string',
+              format: 'date',
+              description: 'Fecha del registro original usado para llenar este gap (solo presente cuando isFilled=true)',
+              example: '2020-01-03',
             },
           },
           required: ['_id', 'id', 'date', 'rates', 'source', 'createdAt'],
@@ -599,6 +642,165 @@ export const swaggerOptions: OAS3Options = {
             },
             '403': {
               $ref: '#/components/responses/ForbiddenError',
+            },
+            '429': {
+              $ref: '#/components/responses/TooManyRequests',
+            },
+            '503': {
+              $ref: '#/components/responses/ServiceUnavailable',
+            },
+          },
+        },
+      },
+      '/api/rate/history/range': {
+        get: {
+          tags: ['Rates'],
+          summary: 'Obtener tasas por rango de fechas',
+          description: 'Retorna tasas de cambio para un rango de fechas específico. Útil para consultas históricas desde 2020. Opcionalmente puede llenar gaps (fines de semana y feriados) usando forward fill.',
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'startDate',
+              in: 'query',
+              description: 'Fecha de inicio en formato YYYY-MM-DD',
+              required: true,
+              schema: {
+                type: 'string',
+                format: 'date',
+                example: '2020-01-01',
+              },
+            },
+            {
+              name: 'endDate',
+              in: 'query',
+              description: 'Fecha de fin en formato YYYY-MM-DD',
+              required: true,
+              schema: {
+                type: 'string',
+                format: 'date',
+                example: '2020-12-31',
+              },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              description: 'Número máximo de registros a retornar',
+              required: false,
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                maximum: 1000,
+                default: 100,
+              },
+            },
+            {
+              name: 'fillGaps',
+              in: 'query',
+              description: 'Llenar fechas faltantes (fines de semana y feriados) con última tasa conocida (forward fill)',
+              required: false,
+              schema: {
+                type: 'boolean',
+                default: false,
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Tasas obtenidas exitosamente',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          $ref: '#/components/schemas/RateData',
+                        },
+                      },
+                      count: {
+                        type: 'number',
+                        example: 100,
+                      },
+                      range: {
+                        type: 'object',
+                        properties: {
+                          start: { type: 'string', example: '2020-01-01' },
+                          end: { type: 'string', example: '2020-12-31' },
+                          limit: { type: 'number', example: 100 },
+                          fillGaps: { type: 'boolean', example: false },
+                        },
+                      },
+                    },
+                  },
+                  example: {
+                    success: true,
+                    data: [
+                      {
+                        _id: '6923539ff90eb23b20108871',
+                        id: '2020-04-16-bcv',
+                        createdAt: '2025-11-23T18:34:07.887Z',
+                        date: '2020-04-16',
+                        rates: [
+                          {
+                            currency: 'USD',
+                            rate: 120860.4093,
+                            name: 'Dólar',
+                            normalized_bs: 0.1208604093,
+                          },
+                          {
+                            currency: 'EUR',
+                            rate: 131911.88512639,
+                            name: 'Euro',
+                            normalized_bs: 0.13191188512639,
+                          },
+                        ],
+                        source: 'bcv',
+                        denomination: {
+                          code: 'BS_S',
+                          name: 'Bolívar Soberano',
+                          note: 'Moneda vigente desde 20-ago-2018 hasta 30-sep-2021',
+                        },
+                        isFilled: false,
+                      },
+                    ],
+                    count: 1,
+                    range: {
+                      start: '2020-01-01',
+                      end: '2020-12-31',
+                      limit: 100,
+                      fillGaps: false,
+                    },
+                  },
+                },
+              },
+            },
+            '400': {
+              description: 'Parámetros inválidos',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: {
+                        type: 'string',
+                        example: 'La fecha final debe ser posterior o igual a la fecha de inicio',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '401': {
+              $ref: '#/components/responses/UnauthorizedError',
+            },
+            '403': {
+              $ref: '#/components/responses/ForbiddenError',
+            },
+            '404': {
+              $ref: '#/components/responses/NotFoundError',
             },
             '429': {
               $ref: '#/components/responses/TooManyRequests',
