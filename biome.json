@@ -50,7 +50,9 @@
       ".git/**",
       ".vscode/**",
       "*.log",
-      "test-bcv-scraping.ts"
+      "test-bcv-scraping.ts",
+      "backups/**",
+      "scripts/**"
     ]
   }
 }

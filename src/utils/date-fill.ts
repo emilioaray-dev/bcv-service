@@ -55,14 +55,15 @@ export function fillDateGaps(
   const end = new Date(endDate);
 
   let lastKnownRate: Rate | null = null;
-  let currentDate = new Date(start);
+  const currentDate = new Date(start);
 
   while (currentDate <= end) {
     const dateStr = currentDate.toISOString().split('T')[0];
 
     if (rateMap.has(dateStr)) {
       // Real data exists for this date
-      const rate = rateMap.get(dateStr)!;
+      const rate = rateMap.get(dateStr);
+      if (!rate) continue;
       lastKnownRate = rate;
       result.push({
         ...rate,
@@ -94,7 +95,10 @@ export function fillDateGaps(
  * @param endDate - End date (YYYY-MM-DD)
  * @returns Array of date strings
  */
-export function generateDateRange(startDate: string, endDate: string): string[] {
+export function generateDateRange(
+  startDate: string,
+  endDate: string
+): string[] {
   const dates: string[] = [];
   const start = new Date(startDate);
   const end = new Date(endDate);

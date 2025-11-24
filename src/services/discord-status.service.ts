@@ -3,8 +3,8 @@ import { injectable } from 'inversify';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 
-import type { HealthCheckResult } from '@/interfaces/IHealthCheckService';
 import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
+import type { HealthCheckResult } from '@/interfaces/IHealthCheckService';
 
 /**
  * DiscordStatusService - Servicio para enviar notificaciones de estado del servicio a Discord
@@ -33,7 +33,7 @@ export class DiscordStatusService implements IDiscordStatusService {
   }
 
   async sendStatusNotification(
-    event: 'service.healthy' | 'service.unhealthy' | 'service.degraded',
+    _event: 'service.healthy' | 'service.unhealthy' | 'service.degraded',
     status: HealthCheckResult,
     previousStatus?: string
   ): Promise<void> {
