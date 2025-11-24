@@ -14,27 +14,13 @@
     "denomination"
   ],
   "fieldTypes": {
-    "_id": [
-      "object"
-    ],
-    "id": [
-      "string"
-    ],
-    "createdAt": [
-      "string"
-    ],
-    "date": [
-      "string"
-    ],
-    "rates": [
-      "array"
-    ],
-    "source": [
-      "string"
-    ],
-    "denomination": [
-      "object"
-    ]
+    "_id": ["object"],
+    "id": ["string"],
+    "createdAt": ["string"],
+    "date": ["string"],
+    "rates": ["array"],
+    "source": ["string"],
+    "denomination": ["object"]
   },
   "sampleRecords": {
     "earliest": {
@@ -288,9 +274,7 @@
       }
     ]
   },
-  "uniqueSources": [
-    "bcv"
-  ],
+  "uniqueSources": ["bcv"],
   "recordsByYear": {
     "2020": 185,
     "2021": 239,

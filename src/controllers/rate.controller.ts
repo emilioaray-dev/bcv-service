@@ -5,8 +5,8 @@ import type { IRedisService } from '@/interfaces/IRedisService';
 import { CacheKeys } from '@/interfaces/IRedisService';
 import {
   validateDateParam,
-  validateHistoryQuery,
   validateDateRangeQuery,
+  validateHistoryQuery,
 } from '@/middleware/validation.middleware';
 import type { ICacheService } from '@/services/cache.interface';
 import { fillDateGaps } from '@/utils/date-fill';
@@ -208,7 +208,10 @@ export class RateController {
     }
   }
 
-  private async getRatesByDateRange(req: Request, res: Response): Promise<void> {
+  private async getRatesByDateRange(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     const startTime = Date.now();
     try {
       if (!config.saveToDatabase) {
@@ -265,7 +268,12 @@ export class RateController {
           });
           return;
         }
-        log.debug('Cache miss: history by date range', { startDate, endDate, limit, fillGaps: shouldFillGaps });
+        log.debug('Cache miss: history by date range', {
+          startDate,
+          endDate,
+          limit,
+          fillGaps: shouldFillGaps,
+        });
       }
 
       // Cache miss o Redis deshabilitado - consultar MongoDB
@@ -286,11 +294,15 @@ export class RateController {
       // Apply gap filling if requested
       const finalRates = shouldFillGaps
         ? fillDateGaps(rates, startDate as string, endDate as string)
-        : rates.map(rate => ({ ...rate, isFilled: false }));
+        : rates.map((rate) => ({ ...rate, isFilled: false }));
 
       // Guardar en cache para próximas consultas
       if (config.redis.enabled) {
-        await this.redisService.set(cacheKey, finalRates, config.cacheTTL.history);
+        await this.redisService.set(
+          cacheKey,
+          finalRates,
+          config.cacheTTL.history
+        );
       }
 
       const duration = Date.now() - startTime;

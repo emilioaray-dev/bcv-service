@@ -48,8 +48,10 @@ export class WebhookService implements IWebhookService {
 
     // Specific webhook URLs for different notification types
     // If not configured, fall back to the generic webhook URL
-    this.serviceStatusWebhookUrl = config.serviceStatusWebhookUrl || config.webhookUrl || '';
-    this.deploymentWebhookUrl = config.deploymentWebhookUrl || config.webhookUrl || '';
+    this.serviceStatusWebhookUrl =
+      config.serviceStatusWebhookUrl || config.webhookUrl || '';
+    this.deploymentWebhookUrl =
+      config.deploymentWebhookUrl || config.webhookUrl || '';
 
     if (!this.webhookConfig.enabled) {
       logger.warn(

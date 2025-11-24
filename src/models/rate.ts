@@ -3,9 +3,9 @@
  * Solo presente en registros históricos antiguos (2020)
  */
 export interface Denomination {
-  code: string;      // Ej: "BS_S" (Bolívar Soberano)
-  name: string;      // Ej: "Bolívar Soberano"
-  note: string;      // Ej: "Moneda vigente desde 20-ago-2018 hasta 30-sep-2021"
+  code: string; // Ej: "BS_S" (Bolívar Soberano)
+  name: string; // Ej: "Bolívar Soberano"
+  note: string; // Ej: "Moneda vigente desde 20-ago-2018 hasta 30-sep-2021"
 }
 
 export interface CurrencyRate {

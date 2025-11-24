@@ -215,8 +215,8 @@ export class MongoService implements ICacheService {
       .find({
         date: {
           $gte: startDate,
-          $lte: endDate
-        }
+          $lte: endDate,
+        },
       })
       .sort({ date: 1, createdAt: 1 }) // Sort by date first, then creation time
       .limit(normalizedLimit)

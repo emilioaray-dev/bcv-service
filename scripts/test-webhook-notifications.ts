@@ -24,8 +24,8 @@ import 'reflect-metadata';
 import { Server as HttpServer } from 'node:http';
 import { createContainer } from '../src/config/inversify.config';
 import { TYPES } from '../src/config/types';
-import type { IDiscordStatusService } from '../src/interfaces/IDiscordStatusService';
 import type { IDiscordDeploymentService } from '../src/interfaces/IDiscordDeploymentService';
+import type { IDiscordStatusService } from '../src/interfaces/IDiscordStatusService';
 
 async function testServiceStatusNotification(
   discordStatusService: IDiscordStatusService
@@ -70,7 +70,10 @@ async function testServiceStatusNotification(
 
     console.log('✅ Notificación de estado del servicio enviada exitosamente');
   } catch (error) {
-    console.error('❌ Error al enviar notificación de estado del servicio:', error);
+    console.error(
+      '❌ Error al enviar notificación de estado del servicio:',
+      error
+    );
   }
 }
 
@@ -130,9 +133,13 @@ async function main() {
       await testDeploymentNotification(discordDeploymentService);
     }
 
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(
+      '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    );
     console.log('✅ Pruebas completadas');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log(
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+    );
   } catch (error) {
     console.error('\n❌ Error en la ejecución del script:', error);
     process.exit(1);

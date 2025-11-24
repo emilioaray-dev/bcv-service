@@ -64,7 +64,8 @@ export const swaggerOptions: OAS3Options = {
       schemas: {
         Denomination: {
           type: 'object',
-          description: 'Información sobre denominación monetaria venezolana (solo en datos históricos antiguos)',
+          description:
+            'Información sobre denominación monetaria venezolana (solo en datos históricos antiguos)',
           properties: {
             code: {
               type: 'string',
@@ -107,7 +108,8 @@ export const swaggerOptions: OAS3Options = {
             normalized_bs: {
               type: 'number',
               format: 'double',
-              description: 'Valor normalizado a Bolívares Digitales (solo en datos históricos de 2020)',
+              description:
+                'Valor normalizado a Bolívares Digitales (solo en datos históricos de 2020)',
               example: 0.1208604093,
             },
           },
@@ -180,17 +182,20 @@ export const swaggerOptions: OAS3Options = {
             },
             denomination: {
               $ref: '#/components/schemas/Denomination',
-              description: 'Información de denominación monetaria (solo en datos históricos de 2020)',
+              description:
+                'Información de denominación monetaria (solo en datos históricos de 2020)',
             },
             isFilled: {
               type: 'boolean',
-              description: 'Indica si este registro fue generado por forward fill para llenar un gap (fin de semana/feriado)',
+              description:
+                'Indica si este registro fue generado por forward fill para llenar un gap (fin de semana/feriado)',
               example: false,
             },
             filledFrom: {
               type: 'string',
               format: 'date',
-              description: 'Fecha del registro original usado para llenar este gap (solo presente cuando isFilled=true)',
+              description:
+                'Fecha del registro original usado para llenar este gap (solo presente cuando isFilled=true)',
               example: '2020-01-03',
             },
           },
@@ -656,7 +661,8 @@ export const swaggerOptions: OAS3Options = {
         get: {
           tags: ['Rates'],
           summary: 'Obtener tasas por rango de fechas',
-          description: 'Retorna tasas de cambio para un rango de fechas específico. Útil para consultas históricas desde 2020. Opcionalmente puede llenar gaps (fines de semana y feriados) usando forward fill.',
+          description:
+            'Retorna tasas de cambio para un rango de fechas específico. Útil para consultas históricas desde 2020. Opcionalmente puede llenar gaps (fines de semana y feriados) usando forward fill.',
           security: [{ ApiKeyAuth: [] }],
           parameters: [
             {
@@ -696,7 +702,8 @@ export const swaggerOptions: OAS3Options = {
             {
               name: 'fillGaps',
               in: 'query',
-              description: 'Llenar fechas faltantes (fines de semana y feriados) con última tasa conocida (forward fill)',
+              description:
+                'Llenar fechas faltantes (fines de semana y feriados) con última tasa conocida (forward fill)',
               required: false,
               schema: {
                 type: 'boolean',
@@ -786,7 +793,8 @@ export const swaggerOptions: OAS3Options = {
                       success: { type: 'boolean', example: false },
                       error: {
                         type: 'string',
-                        example: 'La fecha final debe ser posterior o igual a la fecha de inicio',
+                        example:
+                          'La fecha final debe ser posterior o igual a la fecha de inicio',
                       },
                     },
                   },

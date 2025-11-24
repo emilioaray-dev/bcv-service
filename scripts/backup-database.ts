@@ -1,7 +1,7 @@
-import { config as loadEnv } from 'dotenv';
-import { MongoClient } from 'mongodb';
-import * as fs from 'fs/promises';
 import * as path from 'path';
+import { config as loadEnv } from 'dotenv';
+import * as fs from 'fs/promises';
+import { MongoClient } from 'mongodb';
 
 // Cargar variables de entorno
 loadEnv();
@@ -140,9 +140,7 @@ function analyzeData(records: unknown[]): DataAnalysis {
         analysis.fieldTypes[field] = new Set<string>();
       }
 
-      const fieldType = Array.isArray(rec[field])
-        ? 'array'
-        : typeof rec[field];
+      const fieldType = Array.isArray(rec[field]) ? 'array' : typeof rec[field];
       analysis.fieldTypes[field].add(fieldType);
     });
 
@@ -173,8 +171,9 @@ function analyzeData(records: unknown[]): DataAnalysis {
   });
 
   // Tomar 5 muestras aleatorias
-  const sampleIndices = Array.from({ length: Math.min(5, records.length) }, () =>
-    Math.floor(Math.random() * records.length)
+  const sampleIndices = Array.from(
+    { length: Math.min(5, records.length) },
+    () => Math.floor(Math.random() * records.length)
   );
   analysis.sampleRecords.random = sampleIndices.map((i) => records[i]);
 

@@ -1,8 +1,8 @@
 import { RateController } from '@/controllers/rate.controller';
-import type { ICacheService } from '@/services/cache.interface';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { Rate } from '@/models/rate';
-import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest';
+import type { ICacheService } from '@/services/cache.interface';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({

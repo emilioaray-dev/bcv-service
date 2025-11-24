@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { fillDateGaps, generateDateRange } from '@/utils/date-fill';
 import type { Rate } from '@/models/rate';
+import { fillDateGaps, generateDateRange } from '@/utils/date-fill';
+import { describe, expect, it } from 'vitest';
 
 describe('Date Fill Utilities', () => {
   describe('generateDateRange', () => {
@@ -145,11 +145,7 @@ describe('Date Fill Utilities', () => {
         },
       };
 
-      const result = fillDateGaps(
-        [historicalRate],
-        '2020-01-03',
-        '2020-01-05'
-      );
+      const result = fillDateGaps([historicalRate], '2020-01-03', '2020-01-05');
 
       expect(result).toHaveLength(3);
 

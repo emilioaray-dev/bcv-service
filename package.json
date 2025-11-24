@@ -26,14 +26,8 @@
     "commit": "git-cz",
     "commitlint": "commitlint --edit"
   },
-  "keywords": [
-    "bcv",
-    "tasa-cambio",
-    "venezuela",
-    "typescript",
-    "nodejs"
-  ],
-  "author": "RCV-APP",
+  "keywords": ["bcv", "tasa-cambio", "venezuela", "typescript", "nodejs"],
+  "author": "BCV-APP",
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",

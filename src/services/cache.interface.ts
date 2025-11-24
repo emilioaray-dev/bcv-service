@@ -9,7 +9,11 @@ export interface ICacheService {
   getLatestRate(): Promise<Rate | null>;
   getRateByDate(date: string): Promise<Rate | null>;
   getRateHistory(limit?: number): Promise<Rate[]>;
-  getRatesByDateRange(startDate: string, endDate: string, limit?: number): Promise<Rate[]>;
+  getRatesByDateRange(
+    startDate: string,
+    endDate: string,
+    limit?: number
+  ): Promise<Rate[]>;
   getAllRates(): Promise<Rate[]>;
   getNotificationState(id: string): Promise<NotificationState | null>;
   saveNotificationState(id: string, state: NotificationState): Promise<void>;

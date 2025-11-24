@@ -6,9 +6,9 @@ import { Container } from 'inversify';
 
 // Services
 import { BCVService } from '@/services/bcv.service';
-import { DiscordService } from '@/services/discord.service';
-import { DiscordStatusService } from '@/services/discord-status.service';
 import { DiscordDeploymentService } from '@/services/discord-deployment.service';
+import { DiscordStatusService } from '@/services/discord-status.service';
+import { DiscordService } from '@/services/discord.service';
 import { HealthCheckService } from '@/services/health-check.service';
 import { MetricsService } from '@/services/metrics.service';
 import { MongoService } from '@/services/mongo.service';
@@ -20,8 +20,8 @@ import { WebSocketService } from '@/services/websocket.service';
 
 // Interfaces
 import type { IBCVService } from '@/interfaces/IBCVService';
-import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
 import type { IDiscordDeploymentService } from '@/interfaces/IDiscordDeploymentService';
+import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
 import type { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { INotificationStateService } from '@/interfaces/INotificationStateService';

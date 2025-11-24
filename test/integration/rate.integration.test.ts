@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
 import type { Rate } from '@/models/rate';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({
@@ -38,7 +38,8 @@ describe('Rate API Integration Tests', () => {
 
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const daysDiff = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+        const daysDiff =
+          Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
 
         expect(daysDiff).toBeGreaterThan(730);
       });
@@ -49,7 +50,8 @@ describe('Rate API Integration Tests', () => {
 
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const daysDiff = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+        const daysDiff =
+          Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
 
         expect(daysDiff).toBeLessThanOrEqual(730);
       });
@@ -179,7 +181,8 @@ describe('Rate API Integration Tests', () => {
           const startDate = new Date(start);
           const endDate = new Date(end);
           const daysDiff = Math.round(
-            Math.abs(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            Math.abs(endDate.getTime() - startDate.getTime()) /
+              (1000 * 60 * 60 * 24)
           );
 
           expect(daysDiff).toBe(expectedDays);
