@@ -1,339 +1,291 @@
-# Release Process
+# Proceso de Release Automático
 
-Guía del proceso de release para BCV Service. Define cómo crear y publicar nuevas versiones del proyecto.
+Guía del proceso de release automatizado para BCV Service. Define cómo se crean y publican nuevas versiones del proyecto con Conventional Commits y Semantic Release.
 
 ## Tabla de Contenidos
 
-1. [Versioning](#versioning)
-2. [Release Types](#release-types)
-3. [Release Workflow](#release-workflow)
-4. [Changelog](#changelog)
-5. [Git Tags](#git-tags)
-6. [Docker Images](#docker-images)
-7. [Rollback](#rollback)
+1. [Versionamiento Automático](#versionamiento-automático)
+2. [Tipos de Release](#tipos-de-release)
+3. [Workflow de Release Automático](#workflow-de-release-automático)
+4. [Changelog Automático](#changelog-automático)
+5. [Git Tags Automáticos](#git-tags-automáticos)
+6. [Imágenes Docker Automáticas](#imágenes-docker-automáticas)
+7. [Rollback y Despliegue Manual](#rollback-y-despliegue-manual)
 
 ---
 
-## Versioning
+## Versionamiento Automático
 
-### Semantic Versioning
+### Semantic Versioning con Conventional Commits
 
-Seguimos [Semantic Versioning 2.0.0](https://semver.org/):
+El proyecto implementa **versionamiento semántico automatizado** usando **Conventional Commits** y **semantic-release**. El tipo de commit determina automáticamente el tipo de versión:
 
 ```
 MAJOR.MINOR.PATCH
 
-Example: 2.3.1
+Example: 2.1.0
 ```
 
 **MAJOR** (2.x.x):
-- Breaking changes
-- Incompatible API changes
-- Major architectural changes
+- Commits con `BREAKING CHANGE` en el footer
+- Cambios incompatibles con versiones anteriores
+- Cambios arquitectónicos importantes (como implementación de SOLID con Inversify)
 
-**MINOR** (x.3.x):
-- New features (backwards compatible)
-- New functionality
-- Deprecations
+**MINOR** (x.1.x):
+- Commits con tipo `feat:` (nuevas funcionalidades)
+- Cambios hacia atrás compatibles
+- Nuevas características como sistema de notificaciones persistente
 
-**PATCH** (x.x.1):
-- Bug fixes
-- Security patches
-- Performance improvements
+**PATCH** (x.x.0):
+- Commits con tipo `fix:` (correcciones de bugs)
+- Mejoras de seguridad
+- Mejoras de rendimiento
+- Cambios de refactorización
 
-### Version Examples
+### Ejemplos de Commits y Versionado
 
 ```bash
-# Patch: Bug fix
-1.2.3 → 1.2.4
+# PATCH: Corrección de bug
+git commit -m "fix(bcvservice): resolve SSL certificate validation error
 
-# Minor: New feature
-1.2.4 → 1.3.0
+Fixed issue where BCV scraping was failing due to SSL cert chain problems.
+Now using custom HTTPS agent with rejectUnauthorized=false for BCV domain only."
 
-# Major: Breaking change
-1.3.0 → 2.0.0
+# Resultado: 1.0.0 → 1.0.1
 
-# Pre-release versions
-2.0.0-alpha.1
-2.0.0-beta.1
-2.0.0-rc.1
+# MINOR: Nueva funcionalidad
+git commit -m "feat(notification-state): implement persistent notification state system
+
+- Add dual-layer architecture with MongoDB (primary) + Redis (cache)
+- Prevent duplicate notifications on service restart
+- Implement significant change detection (threshold ≥0.01)
+- Support all available currencies (USD, EUR, CNY, etc.)
+
+Closes #8"
+
+# Resultado: 1.0.1 → 1.1.0
+
+# MAJOR: Breaking change
+git commit -m "feat!: change API authentication to stricter model
+
+BREAKING CHANGE: All API endpoints now require X-API-Key header authentication.
+Previously, some endpoints were accessible without authentication.
+
+Before:
+GET /api/rate/latest (public)
+
+After:
+GET /api/rate/latest (requires X-API-Key header)"
+
+# Resultado: 1.1.0 → 2.0.0
 ```
 
-### Version in package.json
+### Versionado Actual
+
+La versión actual del servicio es **2.1.0**, reflejando:
+- **MAJOR 2**: Cambios arquitectónicos importantes (SOLID + Inversify + sistema de notificaciones persistente)
+- **MINOR 1**: Nuevas funcionalidades (multi-channel notifications, Redis cache, etc.)
+- **PATCH 0**: Arreglo de bugs menores y mejoras
+
+---
+
+## Tipos de Release Automatizado
+
+### Patch Release Automático (x.x.1)
+
+**Activado por**: Commits de tipo `fix:`, `refactor:`, `perf:`, `docs(README):` y algunos `chore:`
+
+**Ejemplos**:
+```bash
+fix(bcv): resolve timeout error in scraping
+perf(mongo): optimize database queries
+docs: update deployment guide
+refactor(architecture): improve error handling
+```
+
+**Resultado**: 2.0.0 → 2.0.1
+
+### Minor Release Automático (x.1.0)
+
+**Activado por**: Commits de tipo `feat:` y `BREAKING CHANGE` (en el footer)
+
+**Ejemplos**:
+```bash
+feat(notification-state): implement persistent notification state system
+feat(webhook): add HTTP webhook notifications with HMAC signature
+feat(discord): add rate change notifications to Discord
+
+# Con breaking change
+feat!: change response format to include metadata
+
+BREAKING CHANGE: Response format changed from root-level to data field
+```
+
+**Resultado**: 2.0.1 → 2.1.0
+
+### Major Release Automático (1.0.0)
+
+**Activado por**: Commits con `BREAKING CHANGE` en el footer
+
+**Ejemplos**:
+```bash
+feat!: change API response structure
+
+BREAKING CHANGE: API responses now return data in 'data' field instead of root level
+```
+
+**Resultado**: 1.1.1 → 2.0.0
+
+---
+
+## Workflow de Release Automático
+
+### Proceso CI/CD Automatizado
+
+El proceso de release es completamente automatizado mediante GitHub Actions:
+
+#### 1. Push a main (o merge de PR a main)
+
+```bash
+# Desarrollador hace push o merge PR
+git add .
+git commit -m "feat(notification-state): implement persistent notification state system"
+git push origin main
+```
+
+#### 2. Análisis de Commits
+
+GitHub Actions ejecuta semantic-release que analiza todos los commits desde la última versión:
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
+```
+
+#### 3. Determinación de Tipo de Release
+
+Semantic Release analiza el tipo de commits en el rango:
+- Si alguno es `BREAKING CHANGE` → Major release
+- Si hay `feat:` → Minor release  
+- Si hay `fix:`, `refactor:`, etc. → Patch release
+- Si solo hay `docs:`, `chore:`, etc. → No versiona
+
+#### 4. Actualización Automática de package.json
 
 ```json
 {
   "name": "bcv-service",
-  "version": "1.2.3",
-  "description": "Microservicio BCV Tasa de Cambio"
+  "version": "2.1.0",  // ← Actualizado automáticamente
+  "description": "Microservicio BCV Tasa de Cambio",
+  "main": "dist/index.js"
 }
 ```
 
----
+#### 5. Generación Automática de CHANGELOG.md
 
-## Release Types
-
-### Patch Release (1.2.x)
-
-**When**: Bug fixes, security patches, minor improvements
-
-**Changes**:
-- Fix bugs
-- Security updates
-- Performance improvements
-- Documentation updates
-
-**Frequency**: As needed (weekly or when critical)
-
-**Example**:
-```bash
-# Fix: Memory leak in WebSocket service
-1.2.3 → 1.2.4
-```
-
-### Minor Release (1.x.0)
-
-**When**: New features, backwards compatible changes
-
-**Changes**:
-- New features
-- Enhancements to existing features
-- New API endpoints (non-breaking)
-- Deprecations (with migration path)
-
-**Frequency**: Monthly or when features are ready
-
-**Example**:
-```bash
-# Feature: Add Redis caching layer
-1.2.4 → 1.3.0
-```
-
-### Major Release (x.0.0)
-
-**When**: Breaking changes, major refactoring
-
-**Changes**:
-- Breaking API changes
-- Removal of deprecated features
-- Major architectural changes
-- Database schema changes
-
-**Frequency**: Rarely (6-12 months)
-
-**Example**:
-```bash
-# Breaking: Change API response format
-1.3.0 → 2.0.0
-```
-
----
-
-## Release Workflow
-
-### Pre-Release Checklist
-
-Antes de crear un release:
-
-- [ ] Todos los tests pasan (`pnpm test`)
-- [ ] Coverage cumple thresholds
-- [ ] No hay linter errors (`pnpm run lint`)
-- [ ] Código formateado (`pnpm run format`)
-- [ ] Build exitoso (`pnpm run build`)
-- [ ] Documentación actualizada
-- [ ] CHANGELOG.md actualizado
-- [ ] Version bump en package.json
-
-### Step-by-Step Process
-
-#### 1. Create Release Branch
-
-```bash
-# Create release branch from main
-git checkout main
-git pull origin main
-git checkout -b release/v1.3.0
-```
-
-#### 2. Update Version
-
-```bash
-# Bump version in package.json
-npm version minor  # or major, patch
-
-# This will:
-# - Update version in package.json
-# - Create git commit
-# - Create git tag
-
-# Or manually:
-vim package.json  # Change version to 1.3.0
-git add package.json
-git commit -m "chore: bump version to 1.3.0"
-```
-
-#### 3. Update CHANGELOG
-
-```bash
-vim CHANGELOG.md
-```
+Semantic Release actualiza el CHANGELOG.md con todos los commits del rango:
 
 ```markdown
-# Changelog
+# [2.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.0...v2.1.0) (2025-11-24)
 
-All notable changes to this project will be documented in this file.
+### Features
 
-## [1.3.0] - 2025-01-12
+* **notification-state**: implement persistent notification state system ([abc1234](https://github.com/emilioaray-dev/bcv-service/commit/abc1234))
+* **webhook**: add HTTP webhook notifications with HMAC signature ([def5678](https://github.com/emilioaray-dev/bcv-service/commit/def5678))
+* **discord**: add rate change notifications to Discord ([ghi9012](https://github.com/emilioaray-dev/bcv-service/commit/ghi9012))
 
-### Added
-- Redis caching layer for rate data
-- New `/api/rate/cache` endpoint to manage cache
-- Prometheus metrics for cache hit/miss ratio
+### Bug Fixes
 
-### Changed
-- Improved WebSocket reconnection logic
-- Updated MongoDB driver to v6.0
+* **bcv**: resolve SSL certificate validation error ([jkl3456](https://github.com/emilioaray-dev/bcv-service/commit/jkl3456))
 
-### Fixed
-- Memory leak in WebSocket service
-- Race condition in scheduler service
+### Refactors
 
-### Security
-- Updated dependencies with security vulnerabilities
-
-## [1.2.4] - 2025-01-05
-
-### Fixed
-- MongoDB connection timeout issues
-- Incorrect date parsing for Spanish months
-
-...
+* **architecture**: implement SOLID principles with Inversify DI ([mno7890](https://github.com/emilioaray-dev/bcv-service/commit/mno7890))
 ```
 
-#### 4. Run Full Test Suite
+#### 6. Creación Automática de Git Tag
 
 ```bash
-# Run all tests
-pnpm test
-
-# Check coverage
-pnpm run test:coverage
-
-# Lint
-pnpm run lint
-
-# Build
-pnpm run build
-
-# Verify build works
-node dist/index.js
+# Semantic release crea automáticamente el tag
+git tag -a v2.1.0 -m "Release v2.1.0"
+git push origin v2.1.0
 ```
 
-#### 5. Create Pull Request
+#### 7. Creación Automática de GitHub Release
+
+GitHub Actions crea automáticamente un release en GitHub con:
+- Título: v2.1.0
+- Descripción: Contenido del CHANGELOG para esa versión
+- Assets: (opcional, archivos binarios si aplica)
+
+#### 8. Build y Push de Imágenes Docker
 
 ```bash
-# Push release branch
-git push origin release/v1.3.0
+# Build con tags semánticos múltiples
+docker build -t ghcr.io/emilioaray-dev/bcv-service:2.1.0 .
+docker build -t ghcr.io/emilioaray-dev/bcv-service:2.1 .
+docker build -t ghcr.io/emilioaray-dev/bcv-service:2 .
+docker build -t ghcr.io/emilioaray-dev/bcv-service:latest .
 
-# Create PR to main
-# Title: "Release v1.3.0"
-# Description: Copy changelog content
+# Push a GitHub Container Registry
+docker push ghcr.io/emilioaray-dev/bcv-service:2.1.0
+docker push ghcr.io/emilioaray-dev/bcv-service:2.1
+docker push ghcr.io/emilioaray-dev/bcv-service:2
+docker push ghcr.io/emilioaray-dev/bcv-service:latest
 ```
 
-#### 6. Review and Merge
-
-- Code review by maintainer
-- All CI checks pass
-- Approval from team lead
-- Squash and merge to main
-
-#### 7. Tag Release
+#### 9. Despliegue Automático (si está configurado)
 
 ```bash
-# Switch to main
-git checkout main
-git pull origin main
-
-# Create tag
-git tag -a v1.3.0 -m "Release v1.3.0
-
-### Added
-- Redis caching layer
-- Cache management endpoint
-
-### Changed
-- Improved WebSocket reconnection
-
-### Fixed
-- Memory leak in WebSocket service
-"
-
-# Push tag
-git push origin v1.3.0
+# Despliegue a servidor de producción (si está configurado)
+ssh user@server "cd /path/to/bcv-service && docker-compose pull && docker-compose up -d"
 ```
-
-#### 8. Create GitHub Release
-
-```bash
-# Using GitHub CLI
-gh release create v1.3.0 \
-  --title "v1.3.0" \
-  --notes-file CHANGELOG_v1.3.0.md \
-  --latest
-
-# Or manually on GitHub:
-# 1. Go to Releases
-# 2. Click "Draft a new release"
-# 3. Select tag v1.3.0
-# 4. Title: "v1.3.0"
-# 5. Description: Copy changelog
-# 6. Publish release
-```
-
-#### 9. Build and Push Docker Image
-
-```bash
-# Build image
-docker build -t bcv-service:1.3.0 .
-docker tag bcv-service:1.3.0 bcv-service:latest
-
-# Push to registry
-docker push your-registry/bcv-service:1.3.0
-docker push your-registry/bcv-service:latest
-```
-
-#### 10. Deploy to Production
-
-```bash
-# Update production deployment
-kubectl set image deployment/bcv-service \
-  bcv-service=your-registry/bcv-service:1.3.0 \
-  -n production
-
-# Watch rollout
-kubectl rollout status deployment/bcv-service -n production
-
-# Verify deployment
-kubectl get pods -n production
-curl https://api.production.com/health
-```
-
-#### 11. Post-Release
-
-- [ ] Monitor logs and metrics
-- [ ] Verify no errors in production
-- [ ] Update documentation site
-- [ ] Announce release (Slack, email)
-- [ ] Close related issues
-- [ ] Create milestone for next release
 
 ---
 
-## Changelog
+## Changelog Automático
 
-### CHANGELOG.md Format
+### Formato de CHANGELOG.md
 
-Seguir [Keep a Changelog](https://keepachangelog.com/):
+El archivo CHANGELOG.md se actualiza automáticamente con el formato estándar de keep-a-changelog:
 
 ```markdown
 # Changelog
@@ -343,335 +295,357 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v2.0.0...v2.1.0) (2025-11-24)
 
-### Added
-- New features in development
+### Features
 
-### Changed
-- Changes in existing functionality
+* **notification-state**: implement persistent notification state system ([#8](https://github.com/emilioaray-dev/bcv-service/issues/8))
+* **webhook**: add HTTP webhook notifications with HMAC signature
+* **discord**: add rate change notifications to Discord
+* **redis**: implement Redis as cache layer for notification state
 
-### Deprecated
-- Features that will be removed
+### Bug Fixes
 
-### Removed
-- Removed features
+* **bcv**: resolve SSL certificate validation error
+* **health**: fix MongoDB health check timeout
 
-### Fixed
-- Bug fixes
+### Performance Improvements
 
-### Security
-- Security fixes
+* **notification-state**: implement dual-layer architecture (MongoDB + Redis)
+* **scraping**: improve HTTP timeout handling
 
-## [1.3.0] - 2025-01-12
+### Refactors
 
-### Added
-- Redis caching layer (#123)
-- Cache management API endpoint (#124)
+* **architecture**: apply SOLID principles with Inversify DI
+* **notifications**: implement multi-channel notification system
 
-### Changed
-- Improved WebSocket reconnection logic (#125)
+## [2.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.1.1...v2.0.0) (2025-11-17)
 
-### Fixed
-- Memory leak in WebSocket service (#126)
+### ⚠ BREAKING CHANGES
 
-## [1.2.4] - 2025-01-05
+* **api**: All endpoints now require X-API-Key header authentication
+* **response**: API responses now return data in 'data' field
 
-### Fixed
-- MongoDB connection timeout (#120)
-- Date parsing for Spanish locale (#121)
+### Features
 
-## [1.2.3] - 2024-12-28
+* **auth**: add API key authentication for all endpoints
+* **security**: implement rate limiting and security headers
+* **observability**: add Prometheus metrics and health checks
 
-...
+### BREAKING CHANGES
+
+* **api**: All API endpoints now require X-API-Key header
+* **response**: Response format changed to include success flag
 ```
 
-### Changelog Sections
+### Secciones del Changelog
 
-- **Added**: New features
-- **Changed**: Changes in existing functionality
-- **Deprecated**: Soon-to-be removed features
-- **Removed**: Removed features
-- **Fixed**: Bug fixes
-- **Security**: Security fixes
-
-### Link to Issues
-
-```markdown
-### Fixed
-- Memory leak in WebSocket service (#126)
-- MongoDB connection timeout (#120)
-```
+- **Features**: Commits con tipo `feat:`
+- **Bug Fixes**: Commits con tipo `fix:`
+- **Performance Improvements**: Commits con tipo `perf:`
+- **Refactors**: Commits con tipo `refactor:`
+- **BREAKING CHANGES**: Commits con `BREAKING CHANGE` en footer
 
 ---
 
-## Git Tags
+## Git Tags Automáticos
 
-### Annotated Tags
+### Etiquetas Semánticas
+
+Semantic Release crea automáticamente tags con el formato `vX.Y.Z`:
 
 ```bash
-# Create annotated tag (recommended)
-git tag -a v1.3.0 -m "Release v1.3.0"
+# Tags creados automáticamente
+v2.1.0  # Último release
+v2.0.0  # Versión anterior (con breaking changes)
+v1.2.3  # Versión anterior más antigua
+```
 
-# View tag
-git show v1.3.0
+### Acceso a Versiones Específicas
 
-# List all tags
+```bash
+# Ver tags
 git tag -l
 
-# Push tag
-git push origin v1.3.0
+# Checkout de versión específica
+git checkout v2.1.0
 
-# Push all tags
-git push origin --tags
+# Ver commits de una versión
+git log --oneline v2.0.0..v2.1.0
 ```
 
-### Tag Naming
+### Anotaciones en Tags
 
-- `v1.3.0`: Production release
-- `v1.3.0-rc.1`: Release candidate
-- `v1.3.0-beta.1`: Beta release
-- `v1.3.0-alpha.1`: Alpha release
-
-### Delete Tag
+Cada tag incluye información detallada del release:
 
 ```bash
-# Delete local tag
-git tag -d v1.3.0
+git show v2.1.0
+```
 
-# Delete remote tag
-git push origin --delete v1.3.0
+```
+tag v2.1.0
+Tagger: GitHub Actions <action@github.com>
+Date:   Mon Nov 24 10:30:00 2025
+
+Release v2.1.0
+
+Features:
+- persistent notification state system
+- HTTP webhook notifications
+- Discord notifications
+- Redis cache layer
+
+Bug Fixes:
+- SSL certificate validation error
+- MongoDB health check timeout
 ```
 
 ---
 
-## Docker Images
+## Imágenes Docker Automáticas
 
-### Build Image
+### Estrategia de Tags
+
+El proceso de CI/CD construye imágenes con múltiples tags semánticos:
+
+#### Tags Generados
+
+```
+ghcr.io/emilioaray-dev/bcv-service:2.1.0    # Versión específica
+ghcr.io/emilioaray-dev/bcv-service:2.1     # Versión minor
+ghcr.io/emilioaray-dev/bcv-service:2       # Versión major  
+ghcr.io/emilioaray-dev/bcv-service:latest  # Última versión estable
+```
+
+### Dockerfile Actual
+
+```dockerfile
+# Usa Node.js LTS
+FROM node:24-alpine
+
+# Instala pnpm y deps necesarios
+RUN npm install -g pnpm
+RUN apk add --no-cache ca-certificates
+
+# Crea directorio de trabajo
+WORKDIR /app
+
+# Copia dependencias
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copia código fuente
+COPY . .
+
+# Compila TypeScript
+RUN pnpm build
+
+# Expone puerto
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/healthz || exit 1
+
+# Comando de inicio
+CMD ["node", "dist/app.js"]
+```
+
+### Multi-Platform Build
 
 ```bash
-# Build with version tag
-docker build -t bcv-service:1.3.0 .
-
-# Tag as latest
-docker tag bcv-service:1.3.0 bcv-service:latest
-
-# Multi-platform build
+# Build multi-platform (AMD64, ARM64)
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t bcv-service:1.3.0 \
-  --push \
-  .
+  -t ghcr.io/emilioaray-dev/bcv-service:2.1.0 \
+  --push .
 ```
 
-### Tag Strategy
+### Despliegue con Docker Compose
 
-```bash
-# Version tags
-bcv-service:1.3.0       # Specific version
-bcv-service:1.3         # Minor version
-bcv-service:1           # Major version
-bcv-service:latest      # Latest stable
-
-# Environment tags
-bcv-service:staging
-bcv-service:production
-
-# Git commit SHA
-bcv-service:abc123f
-```
-
-### Push to Registry
-
-```bash
-# Docker Hub
-docker login
-docker push username/bcv-service:1.3.0
-docker push username/bcv-service:latest
-
-# GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-docker push ghcr.io/username/bcv-service:1.3.0
-
-# AWS ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789.dkr.ecr.us-east-1.amazonaws.com
-docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/bcv-service:1.3.0
+```yaml
+# docker-compose.yml
+services:
+  bcv-service:
+    image: ghcr.io/emilioaray-dev/bcv-service:2.1.0  # ← Versión específica
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+      - API_KEYS_FILE=/run/secrets/api_keys
+    secrets:
+      - mongodb_uri
+      - api_keys
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 ```
 
 ---
 
-## Rollback
+## Rollback y Despliegue Manual
 
-### Rollback Strategy
+### Rollback (versión anterior)
 
-Si el release tiene problemas en producción:
+Si hay problemas con un release automatizado:
 
-#### 1. Quick Rollback (Kubernetes)
-
-```bash
-# Rollback to previous version
-kubectl rollout undo deployment/bcv-service -n production
-
-# Rollback to specific revision
-kubectl rollout undo deployment/bcv-service --to-revision=2 -n production
-
-# Check rollout history
-kubectl rollout history deployment/bcv-service -n production
-```
-
-#### 2. Docker Rollback
+#### 1. Despliegue Manual de Versión Anterior
 
 ```bash
-# Redeploy previous version
+# Despliegue con Docker Compose
 docker-compose down
-docker-compose up -d bcv-service:1.2.4
+docker-compose pull bcv-service:v2.0.0  # Usar versión anterior
+docker-compose up -d
 ```
 
-#### 3. Git Rollback
+#### 2. Despliegue con Kubernetes
 
 ```bash
-# Revert release commit
-git revert v1.3.0
+# Rollback a versión anterior
+kubectl set image deployment/bcv-service \
+  bcv-service=ghcr.io/emilioaray-dev/bcv-service:2.0.0 \
+  -n production
 
-# Or create hotfix branch
-git checkout -b hotfix/v1.3.1 v1.2.4
-# Fix issue
-git commit -m "fix: critical bug"
-# Follow release process for 1.3.1
+# Verificar despliegue
+kubectl rollout status deployment/bcv-service -n production
 ```
 
-### Rollback Checklist
-
-- [ ] Identify issue severity
-- [ ] Notify team of rollback
-- [ ] Execute rollback
-- [ ] Verify rollback successful
-- [ ] Monitor system stability
-- [ ] Create hotfix branch if needed
-- [ ] Document incident
-- [ ] Post-mortem analysis
-
----
-
-## Hotfix Process
-
-Para bugs críticos en producción:
-
-### 1. Create Hotfix Branch
+#### 3. Git Revert de Commits Problemáticos
 
 ```bash
-# Branch from production tag
-git checkout -b hotfix/v1.3.1 v1.3.0
+# Si el problema es un commit específico, revertirlo
+git revert abc1234  # SHA del commit problemático
+git push origin main
+
+# Esto generará un nuevo release automático si el revert es significativo
 ```
 
-### 2. Fix Bug
+### Despliegue Manual (no recomendado)
+
+En casos excepcionales, se puede hacer un despliegue manual:
+
+#### 1. Actualizar Versión Manualmente
 
 ```bash
-# Make minimal changes
-vim src/services/buggy-service.ts
-
-# Test fix
-pnpm test
-
-# Commit
-git commit -m "fix: critical memory leak in WebSocket service"
+# Actualizar package.json manualmente
+npm version patch  # o minor, major
 ```
 
-### 3. Bump Version (Patch)
+#### 2. Actualizar CHANGELOG Manualmente
 
 ```bash
-# Update version to 1.3.1
-npm version patch
-
-# Update CHANGELOG
+# Editar CHANGELOG.md manualmente
 vim CHANGELOG.md
 ```
 
-### 4. Fast-Track Release
+#### 3. Crear Git Tag Manualmente
 
 ```bash
-# Push hotfix
-git push origin hotfix/v1.3.1
-
-# Create tag
-git tag -a v1.3.1 -m "Hotfix v1.3.1"
-git push origin v1.3.1
-
-# Deploy immediately
-kubectl set image deployment/bcv-service \
-  bcv-service=bcv-service:1.3.1 \
-  -n production
+# Crear tag
+git tag -a v2.1.1 -m "Manual release v2.1.1"
+git push origin v2.1.1
 ```
 
-### 5. Merge Back
+**Nota**: Esto interrumpe el flujo automático y se desaconseja a menos que sea estrictamente necesario.
+
+### Monitoreo Post-Release
+
+Después de cada release, monitorizar:
+
+#### 1. Métricas de Prometheus
 
 ```bash
-# Merge to main
-git checkout main
-git merge hotfix/v1.3.1
-git push origin main
+# Ver estado del servicio
+curl http://localhost:3000/metrics | grep -E "(up|http_requests_total|bcv_latest_rate)"
+```
 
-# Delete hotfix branch
-git branch -d hotfix/v1.3.1
-git push origin --delete hotfix/v1.3.1
+#### 2. Health Checks
+
+```bash
+# Verificar health
+curl http://localhost:3000/health
+curl http://localhost:3000/readyz
+curl http://localhost:3000/healthz
+```
+
+#### 3. Logs
+
+```bash
+# Verificar que el servicio esté funcionando
+docker-compose logs bcv-service
+
+# Buscar errores
+docker-compose logs bcv-service | grep -i error
+```
+
+#### 4. Notificaciones
+
+Verificar que el sistema de notificaciones funcione correctamente:
+- WebSocket connections
+- Discord notifications
+- HTTP webhook deliveries
+- Estado persistente de notificaciones
+
+---
+
+## Próximos Releases
+
+### Estrategia de Versionado
+
+El proyecto seguirá usando versionado semántico automatizado con Conventional Commits. Los desarrolladores deben:
+
+#### 1. Seguir Convenciones de Commits
+
+```bash
+# ✅ Bien - Siguiendo conventional commits
+git commit -m "feat(notification-state): implement dual-layer notification system
+
+- Add MongoDB as primary persistent storage
+- Add Redis as cache layer for fast read/write
+- Prevent duplicate notifications on service restart
+- Implement significant change detection (threshold ≥0.01)
+
+Closes #8"
+
+# ✅ Bien - Con breaking change
+git commit -m "feat!: change API response format
+
+BREAKING CHANGE: API responses now use 'data' field instead of root level
+
+Before:
+{ rate: 36.5 }
+
+After:
+{ success: true, data: { rate: 36.5 } }
+```
+
+#### 2. Evitar Commits Vagos
+
+```bash
+# ❌ Mal - No sigue conventional commits
+git commit -m "fix bug"
+git commit -m "update code"
+git commit -m "WIP"
 ```
 
 ---
 
-## Release Automation
-
-### GitHub Actions (Futuro)
-
-```yaml
-# .github/workflows/release.yml
-name: Release
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Build Docker image
-        run: |
-          docker build -t bcv-service:${{ github.ref_name }} .
-          docker push bcv-service:${{ github.ref_name }}
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-```
-
----
-
-## References
+## Referencias
 
 - [Semantic Versioning](https://semver.org/)
-- [Keep a Changelog](https://keepachangelog.com/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
-- [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
+- [Keep a Changelog](https://keepachangelog.com/)
+- [Semantic Release Documentation](https://semantic-release.gitbook.io/)
+- [GitHub Actions for Package Publishing](https://docs.github.com/en/actions/publishing-packages)
+- [Docker Multi-Platform Builds](https://docs.docker.com/build/building/multi-platform/)
+
+---
+
+**Última actualización**: 2025-11-24  
+**Versión actual del servicio**: 2.1.0  
+**Estado**: ✅ Sistema de release automatizado implementado y operativo

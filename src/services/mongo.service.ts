@@ -79,7 +79,8 @@ export class MongoService implements ICacheService {
         }
       ),
 
-      // 2. Index for getRateByDate() - regex search on date field
+      // 2. Index for getRateByDate() and getRatesByDateRange() - date field queries
+      // Used for single date lookups and range queries ($gte, $lte)
       this.collection.createIndex(
         { date: 1 },
         {
@@ -198,6 +199,27 @@ export class MongoService implements ICacheService {
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
+      .toArray();
+
+    return result;
+  }
+
+  async getRatesByDateRange(
+    startDate: string,
+    endDate: string,
+    limit = 100
+  ): Promise<Rate[]> {
+    const normalizedLimit = Math.min(limit, 1000); // Prevent excessive loads
+
+    const result = await this.collection
+      .find({
+        date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      })
+      .sort({ date: 1, createdAt: 1 }) // Sort by date first, then creation time
+      .limit(normalizedLimit)
       .toArray();
 
     return result;

@@ -1,0 +1,302 @@
+{
+  "totalRecords": 1364,
+  "dateRange": {
+    "earliest": "2025-11-20",
+    "latest": "2025-11-25"
+  },
+  "uniqueFields": [
+    "_id",
+    "id",
+    "createdAt",
+    "date",
+    "rates",
+    "source",
+    "denomination"
+  ],
+  "fieldTypes": {
+    "_id": [
+      "object"
+    ],
+    "id": [
+      "string"
+    ],
+    "createdAt": [
+      "string"
+    ],
+    "date": [
+      "string"
+    ],
+    "rates": [
+      "array"
+    ],
+    "source": [
+      "string"
+    ],
+    "denomination": [
+      "object"
+    ]
+  },
+  "sampleRecords": {
+    "earliest": {
+      "_id": "691e835436c6d2e5b513c0c9",
+      "id": "2025-11-20-bcv",
+      "createdAt": "2025-11-20T02:56:20.284Z",
+      "date": "2025-11-20",
+      "rates": [
+        {
+          "currency": "EUR",
+          "rate": 277.61389726,
+          "name": "Euro"
+        },
+        {
+          "currency": "CNY",
+          "rate": 33.80373595,
+          "name": "Yuan"
+        },
+        {
+          "currency": "TRY",
+          "rate": 5.67580352,
+          "name": "Lira Turca"
+        },
+        {
+          "currency": "RUB",
+          "rate": 2.97977081,
+          "name": "Rublo Ruso"
+        },
+        {
+          "currency": "USD",
+          "rate": 240.3209,
+          "name": "Dólar"
+        }
+      ],
+      "source": "bcv"
+    },
+    "latest": {
+      "_id": "69210b11004e71ed86a744ff",
+      "id": "2025-11-25-bcv",
+      "createdAt": "2025-11-23T19:00:01.186Z",
+      "date": "2025-11-25",
+      "rates": [
+        {
+          "currency": "EUR",
+          "rate": 280.04870937,
+          "name": "Euro"
+        },
+        {
+          "currency": "CNY",
+          "rate": 34.2057462,
+          "name": "Yuan"
+        },
+        {
+          "currency": "TRY",
+          "rate": 5.72783475,
+          "name": "Lira Turca"
+        },
+        {
+          "currency": "RUB",
+          "rate": 3.07773768,
+          "name": "Rublo Ruso"
+        },
+        {
+          "currency": "USD",
+          "rate": 243.1105,
+          "name": "Dólar"
+        }
+      ],
+      "source": "bcv"
+    },
+    "random": [
+      {
+        "_id": "6923539ff90eb23b20108871",
+        "id": "2020-04-16-bcv",
+        "createdAt": "2025-11-23T18:34:07.887081Z",
+        "date": "2020-04-16",
+        "rates": [
+          {
+            "currency": "EUR",
+            "rate": 131911.88512639,
+            "name": "Euro",
+            "normalized_bs": 0.13191188512639
+          },
+          {
+            "currency": "CNY",
+            "rate": 17103.53352484,
+            "name": "Yuan",
+            "normalized_bs": 0.017103533524840002
+          },
+          {
+            "currency": "TRY",
+            "rate": 17537.91102797,
+            "name": "Lira Turca",
+            "normalized_bs": 0.01753791102797
+          },
+          {
+            "currency": "RUB",
+            "rate": 1607.69297371,
+            "name": "Rublo Ruso",
+            "normalized_bs": 0.00160769297371
+          },
+          {
+            "currency": "USD",
+            "rate": 120860.4093,
+            "name": "Dólar",
+            "normalized_bs": 0.1208604093
+          }
+        ],
+        "source": "bcv",
+        "denomination": {
+          "code": "BS_S",
+          "name": "Bolívar Soberano",
+          "note": "Moneda vigente desde 20-ago-2018 hasta 30-sep-2021"
+        }
+      },
+      {
+        "_id": "692351f856e8161a4c532973",
+        "id": "2021-11-25-bcv",
+        "createdAt": "2025-11-23T18:27:04.277183Z",
+        "date": "2021-11-25",
+        "rates": [
+          {
+            "currency": "EUR",
+            "rate": 5.11172564,
+            "name": "Euro"
+          },
+          {
+            "currency": "CNY",
+            "rate": 0.71401752,
+            "name": "Yuan"
+          },
+          {
+            "currency": "TRY",
+            "rate": 0.37304039,
+            "name": "Lira Turca"
+          },
+          {
+            "currency": "RUB",
+            "rate": 0.0609266,
+            "name": "Rublo Ruso"
+          },
+          {
+            "currency": "USD",
+            "rate": 4.564,
+            "name": "Dólar"
+          }
+        ],
+        "source": "bcv"
+      },
+      {
+        "_id": "6923501cfa521ada0a0d0c80",
+        "id": "2025-03-07-bcv",
+        "createdAt": "2025-11-23T18:19:08.953703Z",
+        "date": "2025-03-07",
+        "rates": [
+          {
+            "currency": "EUR",
+            "rate": 70.20667764,
+            "name": "Euro"
+          },
+          {
+            "currency": "CNY",
+            "rate": 8.93504271,
+            "name": "Yuan"
+          },
+          {
+            "currency": "TRY",
+            "rate": 1.77858967,
+            "name": "Lira Turca"
+          },
+          {
+            "currency": "RUB",
+            "rate": 0.72711468,
+            "name": "Rublo Ruso"
+          },
+          {
+            "currency": "USD",
+            "rate": 64.746,
+            "name": "Dólar"
+          }
+        ],
+        "source": "bcv"
+      },
+      {
+        "_id": "69235000fa521ada0a0d0c33",
+        "id": "2025-07-04-bcv",
+        "createdAt": "2025-11-23T18:18:40.778296Z",
+        "date": "2025-07-04",
+        "rates": [
+          {
+            "currency": "EUR",
+            "rate": 130.17411633,
+            "name": "Euro"
+          },
+          {
+            "currency": "CNY",
+            "rate": 15.42754877,
+            "name": "Yuan"
+          },
+          {
+            "currency": "TRY",
+            "rate": 2.77636059,
+            "name": "Lira Turca"
+          },
+          {
+            "currency": "RUB",
+            "rate": 1.39823318,
+            "name": "Rublo Ruso"
+          },
+          {
+            "currency": "USD",
+            "rate": 110.5569,
+            "name": "Dólar"
+          }
+        ],
+        "source": "bcv"
+      },
+      {
+        "_id": "69235005fa521ada0a0d0c3f",
+        "id": "2025-06-13-bcv",
+        "createdAt": "2025-11-23T18:18:45.147924Z",
+        "date": "2025-06-13",
+        "rates": [
+          {
+            "currency": "EUR",
+            "rate": 117.08250143,
+            "name": "Euro"
+          },
+          {
+            "currency": "CNY",
+            "rate": 14.08968247,
+            "name": "Yuan"
+          },
+          {
+            "currency": "TRY",
+            "rate": 2.5694444,
+            "name": "Lira Turca"
+          },
+          {
+            "currency": "RUB",
+            "rate": 1.26343432,
+            "name": "Rublo Ruso"
+          },
+          {
+            "currency": "USD",
+            "rate": 101.0822,
+            "name": "Dólar"
+          }
+        ],
+        "source": "bcv"
+      }
+    ]
+  },
+  "uniqueSources": [
+    "bcv"
+  ],
+  "recordsByYear": {
+    "2020": 185,
+    "2021": 239,
+    "2022": 241,
+    "2023": 240,
+    "2024": 241,
+    "2025": 218
+  }
+}

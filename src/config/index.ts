@@ -85,6 +85,18 @@ export const config = {
     10
   ),
 
+  // Specific webhook URLs for different notification types
+  serviceStatusWebhookUrl: readSecret(
+    'SERVICE_STATUS_WEBHOOK_URL',
+    'SERVICE_STATUS_WEBHOOK_URL_FILE',
+    process.env.SERVICE_STATUS_WEBHOOK_URL || ''
+  ),
+  deploymentWebhookUrl: readSecret(
+    'DEPLOYMENT_WEBHOOK_URL',
+    'DEPLOYMENT_WEBHOOK_URL_FILE',
+    process.env.DEPLOYMENT_WEBHOOK_URL || ''
+  ),
+
   // Redis Configuration
   redis: {
     host: process.env.REDIS_HOST || 'localhost',

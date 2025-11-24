@@ -59,6 +59,8 @@ services:
       # Optional: Webhook URLs for notifications
       - WEBHOOK_URL=${WEBHOOK_URL:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - SERVICE_STATUS_WEBHOOK_URL=${SERVICE_STATUS_WEBHOOK_URL:-}
+      - DEPLOYMENT_WEBHOOK_URL=${DEPLOYMENT_WEBHOOK_URL:-}
 
       # Optional: Swagger production server URL
       - SWAGGER_PROD_URL=${SWAGGER_PROD_URL:-}

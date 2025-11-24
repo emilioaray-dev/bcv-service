@@ -1,248 +1,56 @@
-# Quick Start - Desarrollo por Fases
+# Quick Start - BCV Service
 
-Guía rápida para comenzar el desarrollo del proyecto BCV Service usando la estrategia de ramas por fase.
+Guía rápida para comenzar a usar y desarrollar el servicio de tasas de cambio del BCV.
 
 ## 📊 Estado Actual
 
 ```
-✅ Commit inicial completado
-✅ 2,378 líneas de código implementadas
-✅ Documentación completa creada
-✅ Estrategia de branching definida
+✅ Arquitectura SOLID implementada
+✅ Sistema de notificaciones multi-canal (WebSocket, Discord, Webhook)
+✅ Observabilidad completa (Prometheus, Health checks, Logging)
+✅ Seguridad implementada (API Key, Rate limiting, Helmet)
+✅ Versionamiento automático con Conventional Commits
+✅ Documentación completa del API en Swagger
 ```
 
-**Último commit**: `ca3bdcd` - docs: add branch strategy guide for phased development
-**Base commit**: `156222b` - feat: initial BCV exchange rate service
+**Versión actual**: 2.1.0
+**Último release**: Conventional Commits + Semantic Release automatizado
 
 ---
 
-## 🚀 Comandos Rápidos
+## 🚀 Inicio Rápido
 
-### Ver el estado actual
+### Prerrequisitos
+- Node.js 18+
+- pnpm 8+
+- MongoDB 4.4+ (opcional en modo consola)
+- Docker 20+ (opcional para contenedores)
+
+### Instalación Rápida
+
 ```bash
-git log --oneline -5
-git status
+# Clonar el repositorio
+git clone https://github.com/emilioaray-dev/bcv-service.git
+cd bcv-service
+
+# Instalar dependencias
+pnpm install
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales
+
+# Iniciar en desarrollo
+pnpm dev
 ```
 
-### Iniciar Fase 1 (Seguridad Crítica)
-```bash
-# Crear rama de fase
-git checkout -b phase-1/security-critical main
+### Configuración Básica
 
-# Crear primera feature: Secrets Management
-git checkout -b feat/secrets-management phase-1/security-critical
-
-# Trabajar en la feature...
-# Cuando esté lista:
-git add .
-git commit -m "feat(security): implement secrets management system
-
-- Rotate MongoDB credentials
-- Add Docker Secrets integration
-- Create secrets initialization script
-
-Closes #1"
-
-git push origin feat/secrets-management
-
-# Crear PR hacia phase-1/security-critical
-```
-
-### Merge de feature a fase
-```bash
-git checkout phase-1/security-critical
-git merge --no-ff feat/secrets-management
-git push origin phase-1/security-critical
-```
-
-### Merge de fase a main (cuando todas las features estén completas)
-```bash
-git checkout main
-git merge --no-ff phase-1/security-critical
-git tag -a v0.2.0 -m "Release v0.2.0 - Phase 1: Security Critical"
-git push origin main --tags
-```
-
----
-
-## 📋 Roadmap de Fases
-
-### Fase 1: Seguridad Crítica (1-2 días)
-```bash
-git checkout -b phase-1/security-critical main
-```
-
-**Features**:
-- [ ] `feat/secrets-management` - Gestión de secretos
-- [ ] `feat/api-authentication` - Autenticación API
-- [ ] `feat/production-rate-limiting` - Rate limiting mejorado
-
-**Target**: `v0.2.0`
-
----
-
-### Fase 2: Calidad y Estabilidad (3-4 días)
-```bash
-git checkout -b phase-2/quality-stability main
-```
-
-**Features**:
-- [ ] `feat/unit-tests` - Tests unitarios completos
-- [ ] `feat/structured-logging` - Winston logging
-- [ ] `feat/zod-validation-complete` - Validación completa
-- [ ] `feat/health-checks` - Health check endpoints
-
-**Target**: `v0.3.0`
-
----
-
-### Fase 3: Optimización (2-3 días)
-```bash
-git checkout -b phase-3/optimization main
-```
-
-**Features**:
-- [ ] `feat/redis-cache-decision` - Decisión Redis
-- [ ] `feat/integration-tests` - Tests de integración
-- [ ] `feat/graceful-shutdown` - Graceful shutdown
-- [ ] `feat/api-documentation` - Swagger docs
-
-**Target**: `v0.4.0`
-
----
-
-### Fase 4: Observabilidad (2-3 días)
-```bash
-git checkout -b phase-4/observability main
-```
-
-**Features**:
-- [ ] `feat/prometheus-metrics` - Métricas Prometheus
-- [ ] `feat/monitoring-dashboard` - Dashboard Grafana
-- [ ] `feat/alerting-system` - Sistema de alertas
-
-**Target**: `v1.0.0` - **PRODUCTION READY** 🎉
-
----
-
-## 📝 Plantillas de Commits
-
-### Feature commit
-```bash
-git commit -m "feat(scope): descripción corta
-
-Detalles de la implementación:
-- Punto 1
-- Punto 2
-- Punto 3
-
-Closes #issue-number"
-```
-
-### Fix commit
-```bash
-git commit -m "fix(scope): descripción del fix
-
-Describe el problema y la solución.
-
-Fixes #issue-number"
-```
-
-### Docs commit
-```bash
-git commit -m "docs: descripción del cambio
-
-Actualización de documentación para X.
-
-Refs #issue-number"
-```
-
-### Test commit
-```bash
-git commit -m "test: descripción de los tests
-
-- Tests para funcionalidad X
-- Coverage: 85%
-
-Closes #issue-number"
-```
-
----
-
-## 🔍 Comandos Útiles
-
-### Ver ramas
-```bash
-# Todas las ramas
-git branch -a
-
-# Solo ramas remotas
-git branch -r
-
-# Ramas con último commit
-git branch -v
-```
-
-### Ver diferencias
-```bash
-# Entre ramas
-git diff main..phase-1/security-critical
-
-# Archivos cambiados
-git diff --name-only main..phase-1/security-critical
-
-# Estadísticas
-git diff --stat main..phase-1/security-critical
-```
-
-### Ver historial
-```bash
-# Log gráfico
-git log --graph --oneline --all --decorate
-
-# Log de una rama específica
-git log phase-1/security-critical --oneline
-
-# Commits entre dos puntos
-git log main..phase-1/security-critical --oneline
-```
-
-### Limpiar ramas
-```bash
-# Eliminar rama local
-git branch -d feat/nombre-feature
-
-# Eliminar rama remota
-git push origin --delete feat/nombre-feature
-
-# Limpiar referencias obsoletas
-git fetch --prune
-```
-
----
-
-## 🎯 Checklist de PR
-
-Antes de crear un Pull Request, verificar:
-
-- [ ] Código funciona localmente con `pnpm dev`
-- [ ] Tests pasan: `pnpm test`
-- [ ] Linter sin errores: `pnpm lint`
-- [ ] Build exitoso: `pnpm build`
-- [ ] README.md actualizado si es necesario
-- [ ] CHANGELOG.md actualizado
-- [ ] Commit message sigue convenciones
-- [ ] Branch actualizado con main: `git merge main`
-
----
-
-## 📚 Documentos de Referencia
-
-- **MEJORAS.md**: Plan completo de mejoras (12 issues identificados)
-- **RESUMEN_MEJORAS.md**: Resumen ejecutivo de cambios implementados
-- **BRANCH_STRATEGY.md**: Guía detallada de estrategia de branching
-- **README.md**: Setup e instrucciones de uso
-- **PLAN.md**: Plan inicial del proyecto
+Variables esenciales en `.env`:
+- `PORT`: Puerto del servicio (default: 3000)
+- `MONGODB_URI`: Conexión a MongoDB
+- `API_KEY`: API key para autenticación
+- `BCV_WEBSITE_URL`: URL del sitio del BCV
 
 ---
 
@@ -250,124 +58,225 @@ Antes de crear un Pull Request, verificar:
 
 ### Desarrollo local
 ```bash
-# Instalar dependencias
-pnpm install
-
-# Modo desarrollo (watch mode)
+# Iniciar modo desarrollo (watch mode)
 pnpm dev
 
-# Build
+# Build del proyecto
 pnpm build
 
 # Ejecutar build
 pnpm start
 
-# Linting
+# Linting con Biome
 pnpm lint
 pnpm lint:fix
 
-# Format
+# Formateo de código
 pnpm format
 
-# Tests
+# Tests unitarios
 pnpm test
 pnpm test:watch
+pnpm test:ui
+
+# Cobertura de tests
+pnpm test:coverage
 ```
 
 ### Docker
 ```bash
-# Build imagen
+# Build imagen Docker
 pnpm docker:build
 
 # Run container
 pnpm docker:run
 
-# Docker Compose
+# Docker Compose (desarrollo)
 docker-compose up -d
 docker-compose logs -f bcv-service
 docker-compose down
 ```
 
----
-
-## 🔐 Variables de Entorno
-
-Copiar `.env.example` a `.env` y configurar:
-
+### Docker en Producción
 ```bash
-cp .env.example .env
+# Con Docker Compose
+docker-compose -f docker-compose.production.yml up -d
+
+# Con Docker Secrets
+echo "your-mongodb-uri" | docker secret create mongodb_uri -
+echo "your-api-key" | docker secret create api_keys -
 ```
 
-Variables principales:
-- `PORT`: Puerto del servidor (default: 3000)
-- `MONGODB_URI`: URI de MongoDB
-- `SAVE_TO_DATABASE`: true/false para modo consola
-- `CRON_SCHEDULE`: Programación de tareas
-- `NODE_ENV`: development/production
+---
 
-**IMPORTANTE**: Rotar credenciales antes de producción (Ver Fase 1)
+## 🔐 Seguridad
+
+### API Key Authentication
+Todos los endpoints REST requieren header `X-API-Key`:
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:3000/api/rate/latest
+```
+
+### Rate Limiting
+- Límite: 100 requests por 15 minutos por IP
+- Aplica solo a rutas `/api/*`
+- Headers estándar incluidos
+
+### Headers de Seguridad
+- CSP (Content Security Policy)
+- HSTS (HTTP Strict Transport Security)
+- X-Frame-Options
+- X-XSS-Protection
+
+---
+
+## 📡 Endpoints API
+
+### REST API
+- `GET /api/rate/latest` - Tasa más reciente
+- `GET /api/rate/history` - Historial (parámetro `limit` opcional)
+- `GET /api/rate/:date` - Tasa para fecha específica (YYYY-MM-DD)
+- `GET /healthz` - Health check liveness
+- `GET /readyz` - Health check readiness
+- `GET /health` - Health check completo
+- `GET /metrics` - Métricas Prometheus
+- `GET /docs` - Documentación Swagger UI
+
+### WebSocket
+Conexión en `ws://localhost:3000` para notificaciones en tiempo real
+
+---
+
+## 📈 Observabilidad
+
+### Métricas Prometheus
+Endpoint: `http://localhost:3000/metrics`
+- Métricas de requests HTTP
+- Conexiones WebSocket
+- Operaciones de scraping BCV
+- Métricas del proceso Node.js
+
+### Health Checks Kubernetes
+- `/healthz`: Liveness probe (rápido, sin I/O)
+- `/readyz`: Readiness probe (conectividad BD)
+- `/health`: Diagnóstico completo
+
+### Logging
+- Formato JSON para producción
+- Formato colorizado para desarrollo
+- 5 niveles: error, warn, info, http, debug
+- Rotación diaria de archivos
+
+---
+
+## 🔔 Notificaciones
+
+### WebSocket
+Notificaciones en tiempo real a clientes conectados
+
+### Discord
+Notificaciones a canales de Discord cuando cambian las tasas
+
+### HTTP Webhooks
+Notificaciones a endpoints HTTP con firma HMAC-SHA256
+
+### Sistema Persistente de Estado
+- Prevención de notificaciones duplicadas al reiniciar
+- Detección de cambios significativos (umbral ≥0.01)
+- Arquitectura dual-layer: MongoDB + Redis cache opcional
+
+---
+
+## 🏗️ Arquitectura
+
+### Patrones Implementados
+- **SOLID**: Arquitectura completa con Inversify
+- **Dependency Injection**: Inversify IoC container
+- **Repository Pattern**: MongoDB service
+- **Observer Pattern**: WebSocket notifications
+- **Strategy Pattern**: Diferentes estrategias de configuración
+
+### Servicios Principales
+- `BCVService`: Scraping del BCV
+- `MongoService`: Persistencia
+- `WebSocketService`: Comunicación real-time
+- `SchedulerService`: Tareas programadas
+- `MetricsService`: Métricas Prometheus
+- `NotificationStateService`: Estado persistente de notificaciones
+
+---
+
+## 🔄 Versionamiento Automático
+
+El proyecto implementa **Conventional Commits + Semantic Release**:
+- Commits con formato convencional generan versiones automáticamente
+- `feat`: Nueva funcionalidad → MINOR (1.0.0 → 1.1.0)
+- `fix`: Corrección de bug → PATCH (1.0.0 → 1.0.1)
+- `BREAKING CHANGE`: Cambio importante → MAJOR (1.0.0 → 2.0.0)
+
+---
+
+## 🔧 Configuración Avanzada
+
+### Variables de Entorno
+- `CRON_SCHEDULE`: Programación scraping (default: "0 2,10,18 * * *")
+- `NODE_ENV`: Entorno (development/production)
+- `SAVE_TO_DATABASE`: Habilitar almacenamiento (default: true)
+- `LOG_LEVEL`: Nivel logging (error/warn/info/http/debug)
+- `CACHE_ENABLED`: Redis cache (default: true)
+- `DISCORD_WEBHOOK_URL`: URL webhook Discord
+- `WEBHOOK_URL`: URL webhook genérico
+- `WEBHOOK_SECRET`: Clave para firma HMAC
+
+### Docker Secrets
+Soporte para secrets en archivos:
+- `MONGODB_URI_FILE`
+- `API_KEYS_FILE`
+- `DISCORD_WEBHOOK_URL_FILE`
+- `WEBHOOK_URL_FILE`
 
 ---
 
 ## 🐛 Solución de Problemas
 
-### El servidor no inicia
+### Problemas Comunes
+
+**Error SSL en scraping**: Ya resuelto con agente HTTPS personalizado
+**Notificaciones duplicadas**: Sistema persistente ya implementado
+**Conexión a BD**: Verificar MONGODB_URI y conectividad
+**Rate limiting**: Ajustar según necesidades en producción
+
+### Comandos de Diagnóstico
 ```bash
-# Verificar puerto ocupado
-lsof -i :3000
+# Verificar métricas
+curl http://localhost:3000/metrics
 
-# Verificar dependencias
-pnpm install
+# Verificar health checks
+curl http://localhost:3000/health
 
-# Limpiar y reinstalar
-rm -rf node_modules dist
-pnpm install
-```
-
-### Error SSL en scraping
-```bash
-# Ya está resuelto en el código
-# Verificar NODE_ENV
-echo $NODE_ENV
-
-# En desarrollo: certificados no verificados
-# En producción: verificación activa
-```
-
-### Tests fallan
-```bash
-# Limpiar cache
-rm -rf coverage
-
-# Verificar biome config
-pnpm lint
-
-# Ejecutar tests en verbose
-pnpm test --reporter=verbose
+# Logs del servicio
+docker-compose logs bcv-service
 ```
 
 ---
 
-## 📞 Soporte
+## 📚 Documentación Adicional
 
-- Issues: Ver MEJORAS.md para problemas conocidos
-- Documentación: README.md, PLAN.md
-- Estrategia: BRANCH_STRATEGY.md
-
----
-
-## 🎓 Próximos Pasos
-
-1. **Revisar documentación**: Leer MEJORAS.md y BRANCH_STRATEGY.md
-2. **Configurar environment**: Copiar .env.example a .env
-3. **Iniciar Fase 1**: Crear rama `phase-1/security-critical`
-4. **Primera feature**: Implementar secrets management
-5. **Seguir roadmap**: Continuar con features de Fase 1
+- **README.md**: Documentación completa del proyecto
+- **API Docs**: `/docs` para documentación interactiva
+- **Guías**: En carpeta `/docs/guides/`
+- **Arquitectura**: En carpeta `/docs/architecture/`
 
 ---
 
-**Última actualización**: 2025-11-11
-**Versión actual**: v0.1.0 (commit inicial)
-**Próxima versión**: v0.2.0 (después de Fase 1)
+## 🎯 Próximos Pasos
 
-¡Buena suerte con el desarrollo! 🚀
+1. **Personalizar configuración**: Ajustar variables de entorno
+2. **Probar API**: Usar endpoints con tu API Key
+3. **Configurar notificaciones**: WebSocket, Discord o Webhooks
+4. **Monitorear**: Configurar Prometheus/Grafana para métricas
+5. **Desplegar**: Usar Docker Compose o Kubernetes
+
+---
+
+**¡Listo para usar!** El servicio está completamente funcional con arquitectura robusta y seguridad implementada. 🚀

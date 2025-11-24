@@ -753,6 +753,242 @@ Usar **Vitest** como framework de testing:
 - [Vitest Documentation](https://vitest.dev/)
 - Tests: `test/unit/**/*.test.ts`
 - Commit: Fase 3 - Testing
+SIGNIFICANT CHANGE? (≥0.01)
+---
+
+## ADR-008: Sistema Persistente de Estado de Notificaciones
+
+**Fecha**: 2025-11-17
+
+**Estado**: ✅ Aceptado e implementado
+
+**Autores**: Celsius Aray
+
+### Contexto
+
+El sistema original de notificaciones tenía problemas críticos:
+
+- **Notificaciones duplicadas al reiniciar**: Al reiniciar el servicio, se enviaba una notificación aunque las tasas no hubieran cambiado realmente, porque el estado anterior estaba solo en memoria.
+- **Falta de persistencia**: No había referencia histórica para determinar si las tasas habían cambiado significativamente.
+- **Inconsistencia en despliegues**: Durante actualizaciones o scaling horizontal, diferentes instancias podían tener estados diferentes.
+
+Problemas específicos:
+- Spurious notifications on service restarts
+- Potential duplicate notifications during deployments
+- Inconsistent change detection across service instances
+- Imposibilidad de escalar horizontalmente con notificaciones confiables
+
+### Decisión
+
+Implementar un **sistema persistente de estado de notificaciones** con arquitectura dual-layer:
+
+1. **Almacenamiento Persistente (MongoDB)**:
+   - Colección `notification_states`
+   - Documento único con `_id: "last_notification"`
+   - Campos: `lastNotifiedRate`, `lastNotificationDate`, `createdAt`, `updatedAt`
+   - Garantiza consistencia a través de reinicios y despliegues
+
+2. **Capa de Caché (Redis)**:
+   - Clave `notification_state:last_notification`
+   - Read-through cache: Si no está en Redis, se obtiene de MongoDB y se cachea
+   - Write-through: Actualizaciones van a ambos sistemas simultáneamente
+   - Fallback automático: Si Redis falla, opera con MongoDB-only
+
+3. **Lógica de Detección de Cambios**:
+   - Umbral de cambio absoluto: ≥ 0.01 en cualquier moneda (no porcentaje)
+   - Comparación contra última tasa notificada (persistente)
+   - Soporte multi-moneda: USD, EUR, CNY, TRY, RUB
+   - Prevención de spam: Solo notifica cambios significativos
+
+4. **Integración con Servicios de Notificación**:
+   - `NotificationStateService` como servicio central
+   - Integración con `DiscordService`, `WebhookService`
+   - Información de tendencia y porcentaje de cambio en notificaciones
+
+### Consecuencias
+
+#### Positivas
+
+- ✅ **Eliminación de notificaciones duplicadas**: Nunca más notificaciones espurias al reiniciar
+- ✅ **Consistencia garantizada**: Mismo estado en todos los despliegues
+- ✅ **Escalabilidad horizontal**: Múltiples instancias comparten mismo estado
+- ✅ **Mejor experiencia de usuario**: Solo notificaciones cuando hay cambios reales
+- ✅ **Resiliencia**: Funciona incluso si Redis está caído (fallback a MongoDB)
+- ✅ **Performance**: Redis proporciona lecturas sub-milisegundo
+
+#### Negativas
+
+- ⚠️ **Complejidad adicional**: Dos sistemas de almacenamiento en lugar de uno
+- ⚠️ **Dependencias**: Ahora requiere tanto MongoDB como Redis
+- ⚠️ **Sincronización**: Lógica adicional para mantener ambos sistemas consistentes
+
+#### Métricas de Impacto
+
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| Notificaciones por reinicio | 1 (innecesaria) | 0 |
+| Consistencia en despliegues | ❌ | ✅ |
+| Escalabilidad horizontal | ❌ | ✅ |
+| Detención de spam | ❌ | ✅ |
+
+### Alternativas Consideradas
+
+1. **Solo MongoDB (sin Redis)**:
+   - ✅ Más simple
+   - ❌ Mayor latencia en verificaciones frecuentes
+   - ❌ Mayor carga en base de datos
+
+2. **Solo Redis (sin persistencia)**:
+   - ✅ Ultra rápido
+   - ❌ Pérdida de estado si Redis se reinicia
+   - ❌ No resuelve problema original
+
+3. **Archivo local**:
+   - ✅ Simple
+   - ❌ No funciona en contenedores efímeros
+   - ❌ No escalable horizontalmente
+
+### Implementación
+
+**Estructura de Servicios**:
+```
+src/
+├── services/
+│   ├── notification-state.service.ts  # Servicio principal
+│   └── mongo.service.ts              # Para persistencia
+└── interfaces/
+    └── INotificationStateService.ts  # Contrato
+```
+
+**Flujo de Datos**:
+```
+BCV Service → NotificationStateService → Redis (cache)
+                                    └→ MongoDB (persistencia)
+```
+
+**Uso en Código**:
+```typescript
+// En lugar de comparar con estado en memoria
+const hasChange = this.hasRateChanged(this.lastRate, currentRate);
+
+// Usar estado persistente
+const hasSignificantChange = await this.notificationStateService.hasSignificantChangeAndNotify(rateData);
+```
+
+### Referencias
+
+- Implementación: `src/services/notification-state.service.ts`
+- Guía: `docs/guides/NOTIFICATION_STATE_SERVICE.md`
+- Commit: `4036ef5` - feat(notification-state): implement persistent notification state system
+
+---
+
+## ADR-009: Arquitectura Multi-Canal de Notificaciones
+
+**Fecha**: 2025-11-23
+
+**Estado**: ✅ Aceptado e implementado
+
+**Autores**: Celsius Aray
+
+### Contexto
+
+El sistema original solo soportaba notificaciones a Discord para cambios de tasas. Se identificaron necesidades adicionales:
+
+- **Notificaciones de estado del servicio**: Alertas cuando el servicio cambia a estado no saludable
+- **Notificaciones de deployment**: Confirmación cuando se completa un deployment exitoso o fallido
+- **Integración HTTP genérica**: Webhooks para integración con otros sistemas
+- **Separación de responsabilidades**: Cada tipo de notificación tiene requisitos diferentes
+
+Problemas con la arquitectura monolítica:
+- Código mezclado para diferentes tipos de notificaciones
+- Difícil extender a nuevos canales
+- Configuración compleja con múltiples URLs en una sola variable
+- Imposible deshabilitar selectivamente ciertos tipos de notificaciones
+
+### Decisión
+
+Implementar una **arquitectura multi-canal de notificaciones** con servicios separados:
+
+1. **Servicios Especializados**:
+   - `DiscordService`: Notificaciones de cambios de tasas
+   - `DiscordStatusService`: Notificaciones de estado del servicio
+   - `DiscordDeploymentService`: Notificaciones de deployment
+   - `WebhookService`: Notificaciones HTTP genéricas con soporte multi-evento
+
+2. **Configuración Flexible**:
+   ```bash
+   # URLs específicas por tipo de notificación
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/rates
+   SERVICE_STATUS_WEBHOOK_URL=https://discord.com/api/webhooks/status
+   DEPLOYMENT_WEBHOOK_URL=https://discord.com/api/webhooks/deployment
+
+   # Webhook genérico con soporte para eventos específicos
+   WEBHOOK_URL=https://your-app.com/webhook
+   SERVICE_STATUS_WEBHOOK_URL=https://your-app.com/service-status
+   DEPLOYMENT_WEBHOOK_URL=https://your-app.com/deployment
+   ```
+
+3. **Eventos Estandarizados**:
+   - `rate.updated` / `rate.changed`: Cambios en tasas
+   - `service.healthy` / `service.unhealthy` / `service.degraded`: Estado del servicio
+   - `deployment.started` / `deployment.success` / `deployment.failure`: Eventos de deployment
+
+4. **Seguridad y Fiabilidad**:
+   - HMAC-SHA256 para webhooks
+   - Exponential backoff con retries
+   - Métricas de Prometheus para monitoreo de entrega
+   - Tiempos de timeout configurables
+
+### Consecuencias
+
+#### Positivas
+
+- ✅ **Separación de responsabilidades**: Cada servicio tiene un propósito único
+- ✅ **Extensibilidad**: Fácil añadir nuevos canales de notificación
+- ✅ **Configuración granular**: Habilitar/deshabilitar tipos específicos
+- ✅ **Flexibilidad**: Cada tipo de notificación puede usar URL diferente
+- ✅ **Seguridad**: Firmas HMAC para webhooks
+- ✅ **Observabilidad**: Métricas detalladas por tipo de evento
+
+#### Negativas
+
+- ⚠️ **Mayor cantidad de servicios**: Más archivos y clases
+- ⚠️ **Configuración más compleja**: Más variables de entorno
+- ⚠️ **Mantenimiento**: Más código a mantener
+
+### Patrón de Diseño
+
+**Strategy Pattern**: Cada servicio implementa la misma interfaz básica pero con lógica específica.
+
+**Interface Segregation**: Interfaces específicas por tipo de notificación:
+- `IDiscordService`
+- `IDiscordStatusService`
+- `IDiscordDeploymentService`
+- `IWebhookService`
+
+### Implementación
+
+**Estructura**:
+```
+src/
+├── services/
+│   ├── discord.service.ts           # Tasas de cambio
+│   ├── discord-status.service.ts    # Estado del servicio
+│   ├── discord-deployment.service.ts # Deployment
+│   └── webhook.service.ts           # Webhooks HTTP
+└── interfaces/
+    ├── IDiscordService.ts
+    ├── IDiscordStatusService.ts
+    ├── IDiscordDeploymentService.ts
+    └── IWebhookService.ts
+```
+
+### Referencias
+
+- Implementación: `src/services/discord*.ts`, `src/services/webhook.service.ts`
+- Scripts de prueba: `scripts/test-discord-notification.ts`, `scripts/test-webhook-notifications.ts`
+- Guías: `docs/guides/DISCORD_TESTING.md`
 
 ---
 
@@ -810,5 +1046,7 @@ Usar **Vitest** como framework de testing:
 | 005 | WebSocket | ✅ | Medio |
 | 006 | Biome | ✅ | Bajo |
 | 007 | Vitest | ✅ | Medio |
+| 008 | Estado Persistente Notificaciones | ✅ | Alto |
+| 009 | Arquitectura Multi-Canal Notificaciones | ✅ | Alto |
 
-**Última actualización**: 2025-01-12
+**Última actualización**: 2025-11-24

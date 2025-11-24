@@ -1,91 +1,112 @@
-# Webhook Integration Guide
+# Guía de Integración con Webhooks HTTP
 
-This guide explains how to configure and use HTTP webhooks to receive real-time notifications for BCV exchange rate changes, service status updates, and deployment events.
+Esta guía explica cómo configurar y usar webhooks HTTP para recibir notificaciones en tiempo real sobre cambios en tasas de cambio del BCV, actualizaciones de estado del servicio y eventos de despliegue.
 
-## Table of Contents
+## Tabla de Contenidos
 
-- [Overview](#overview)
-- [Configuration](#configuration)
-- [Webhook Payload](#webhook-payload)
-- [Security](#security)
-- [Events](#events)
-- [Retry Logic](#retry-logic)
-- [Example Implementation](#example-implementation)
-- [Monitoring](#monitoring)
+- [Descripción General](#descripción-general)
+- [Configuración](#configuración)
+- [Payload de Webhook](#payload-de-webhook)
+- [Seguridad](#seguridad)
+- [Eventos](#eventos)
+- [Lógica de Reintento](#lógica-de-reintento)
+- [Implementación de Ejemplo](#implementación-de-ejemplo)
+- [Monitoreo](#monitoreo)
 - [Troubleshooting](#troubleshooting)
 
-## Overview
+## Descripción General
 
-The BCV service can send HTTP POST requests to a configured webhook URL for various events:
-- Exchange rate changes (using persistent notification state to prevent duplicates)
-- Service health status changes
-- Deployment events (start, success, failure)
+El servicio BCVService puede enviar solicitudes HTTP POST a una URL de webhook configurada para varios eventos:
+- Cambios en tasas de cambio (usando estado persistente de notificaciones para prevenir duplicados)
+- Cambios en el estado de salud del servicio
+- Eventos de despliegue (inicio, éxito, fallo)
 
-This allows your application to receive real-time updates without polling the API.
+Esto permite a tu aplicación recibir actualizaciones en tiempo real sin necesidad de hacer polling de la API.
 
-### Persistent Notification State
+### Sistema de Estado Persistente de Notificaciones
 
-The service now implements a persistent notification state system that:
-- Stores the last notified rates in MongoDB for persistence across restarts
-- Uses Redis as a cache layer for faster read/write operations
-- Prevents duplicate notifications when the service is restarted
-- Uses absolute difference (≥0.01) instead of percentage change for determining significant changes
-- Tracks changes in all currencies (USD, EUR, CNY, TRY, RUB, etc.)
+El servicio ahora implementa un sistema persistente de estado de notificaciones que:
+- Almacena las últimas tasas notificadas en MongoDB para persistencia a través de reinicios
+- Usa Redis como capa de cache para operaciones de lectura/escritura más rápidas
+- Previene notificaciones duplicadas cuando se reinicia el servicio
+- Usa diferencia absoluta (≥0.01) en lugar de cambio porcentual para determinar cambios significativos
+- Rastrea cambios en todas las monedas (USD, EUR, CNY, TRY, RUB, etc.)
 
-### Features
+### Características
 
-- **HMAC-SHA256 Signature**: Verify webhook authenticity
-- **Exponential Backoff Retry**: Automatic retry with exponential backoff (up to 3 attempts)
-- **Prometheus Metrics**: Track webhook delivery success/failure rates
-- **Configurable Timeout**: Set custom timeout for webhook requests
-- **Rate Change Detection**: Only triggered when rates change significantly (>0.1%)
+- **Firma HMAC-SHA256**: Verifica la autenticidad del webhook
+- **Reintento con Backoff Exponencial**: Reintento automático con backoff exponencial (hasta 3 intentos)
+- **Métricas Prometheus**: Rastrea tasas de éxito/fallo de entrega de webhook
+- **Timeout Configurable**: Configura timeout personalizado para solicitudes de webhook
+- **Detección de Cambio de Tasa**: Solo se activa cuando las tasas cambian significativamente (≥0.01)
+- **Sistema Multi-Canal**: Integra con WebSockets, Discord y Webhooks HTTP simultáneamente
+- **Firma HMAC para Seguridad**: Cada solicitud incluye firma HMAC-SHA256 para verificación
 
-## Configuration
+## Configuración
 
-### Environment Variables
+### Variables de Entorno
 
-Configure the webhook service using the following environment variables:
+Configura el servicio de webhook usando las siguientes variables de entorno:
 
 ```bash
-# Required: Webhook endpoint URL
-WEBHOOK_URL=https://your-app.com/api/webhook/bcv-rates
+# Requerido: URL del endpoint de webhook
+WEBHOOK_URL=https://tu-app.com/api/webhook/bcv-rates
 
-# Required (recommended): Secret key for HMAC signature
-WEBHOOK_SECRET=your-super-secret-key-here
+# Requerido (recomendado): Clave secreta para firma HMAC
+WEBHOOK_SECRET=tu-clave-secreta-aqui
 
-# Optional: Timeout in milliseconds (default: 5000)
+# Opcional: Timeout en milisegundos (predeterminado: 5000)
 WEBHOOK_TIMEOUT=5000
 
-# Optional: Maximum retry attempts (default: 3)
+# Opcional: Número máximo de reintentos (predeterminado: 3)
 WEBHOOK_MAX_RETRIES=3
+
+# Opcional: URLs específicas para diferentes tipos de eventos
+SERVICE_STATUS_WEBHOOK_URL=https://tu-app.com/api/webhook/bcv-service-status
+DEPLOYMENT_WEBHOOK_URL=https://tu-app.com/api/webhook/bcv-deployment
 ```
 
-### Using Docker Secrets (Recommended for Production)
+### Uso de Docker Secrets (Recomendado para Producción)
 
-For enhanced security in production environments:
+Para mayor seguridad en entornos de producción:
 
 ```bash
-# Create Docker secrets
-echo "https://your-app.com/api/webhook/bcv-rates" | docker secret create webhook_url -
-echo "your-super-secret-key" | docker secret create webhook_secret -
+# Crear Docker secrets
+echo "https://tu-app.com/api/webhook/bcv-rates" | docker secret create webhook_url -
+echo "tu-clave-secreta" | docker secret create webhook_secret -
 
-# Use in environment configuration
+# Usar en configuración de entorno
 WEBHOOK_URL_FILE=/run/secrets/webhook_url
 WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
 ```
 
-## Webhook Payload
+### URLs Específicas por Tipo de Evento
 
-### Payload Structure
+También puedes configurar URLs diferentes para tipos específicos de eventos:
 
-When a rate change is detected, the service sends a JSON payload with the following structure:
+```bash
+# URL general (usada si no hay URL específica)
+WEBHOOK_URL=https://tu-app.com/api/webhook/bcv
+
+# URL específica para eventos de estado del servicio
+SERVICE_STATUS_WEBHOOK_URL=https://tu-app.com/api/webhook/service-status
+
+# URL específica para eventos de despliegue
+DEPLOYMENT_WEBHOOK_URL=https://tu-app.com/api/webhook/deployment
+```
+
+## Payload de Webhook
+
+### Estructura del Payload
+
+Cuando se detecta un cambio de tasa, el servicio envía un payload JSON con la siguiente estructura:
 
 ```json
 {
   "event": "rate.changed",
-  "timestamp": "2025-11-17T10:30:00.000Z",
+  "timestamp": "2025-11-24T10:30:00.000Z",
   "data": {
-    "date": "2025-11-17",
+    "date": "2025-11-24",
     "rates": [
       {
         "currency": "USD",
@@ -122,35 +143,35 @@ When a rate change is detected, the service sends a JSON payload with the follow
 }
 ```
 
-### Field Descriptions
+### Descripción de Campos
 
-| Field | Type | Description |
+| Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `event` | string | Event type: `rate.updated` or `rate.changed` |
-| `timestamp` | string | ISO 8601 timestamp when the webhook was sent |
-| `data.date` | string | Date of the exchange rate (YYYY-MM-DD) |
-| `data.rates` | array | Array of currency rates |
-| `data.rates[].currency` | string | Currency code (USD, EUR, etc.) |
-| `data.rates[].rate` | number | Exchange rate in VES |
-| `data.rates[].name` | string | Full currency name |
-| `data.change` | object | Change information (only when `event` is `rate.changed`) |
-| `data.change.previousRate` | number | Previous USD rate |
-| `data.change.currentRate` | number | Current USD rate |
-| `data.change.percentageChange` | number | Percentage change (e.g., 0.2747 = 0.2747%) |
+| `event` | string | Tipo de evento: `rate.updated`, `rate.changed`, `service.healthy`, `service.unhealthy`, `service.degraded`, `deployment.success`, `deployment.failure` |
+| `timestamp` | string | Timestamp ISO 8601 cuando se envió el webhook |
+| `data.date` | string | Fecha de la tasa de cambio (AAAA-MM-DD) |
+| `data.rates` | array | Array de tasas de moneda |
+| `data.rates[].currency` | string | Código de moneda (USD, EUR, etc.) |
+| `data.rates[].rate` | number | Tasa de cambio en VES |
+| `data.rates[].name` | string | Nombre completo de la moneda |
+| `data.change` | object | Información de cambio (solo cuando `event` es `rate.changed`) |
+| `data.change.previousRate` | number | Tasa USD anterior |
+| `data.change.currentRate` | number | Tasa USD actual |
+| `data.change.percentageChange` | number | Cambio porcentual (ej., 0.2747 = 0.2747%) |
 
-## Security
+## Seguridad
 
-### HMAC Signature Verification
+### Verificación de Firma HMAC
 
-All webhook requests include an `X-Webhook-Signature` header containing an HMAC-SHA256 signature:
+Todas las solicitudes de webhook incluyen un header `X-Webhook-Signature` que contiene una firma HMAC-SHA256:
 
 ```
 X-Webhook-Signature: sha256=a3f5b1c2d4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2
 ```
 
-### Verifying the Signature
+### Verificando la Firma
 
-#### Node.js Example
+#### Ejemplo en Node.js
 
 ```javascript
 const crypto = require('crypto');
@@ -160,120 +181,125 @@ function verifyWebhookSignature(payload, signature, secret) {
   hmac.update(payload, 'utf8');
   const expectedSignature = `sha256=${hmac.digest('hex')}`;
 
-  // Constant-time comparison to prevent timing attacks
+  // Comparación en tiempo constante para prevenir ataques de temporización
   return crypto.timingSafeEqual(
     Buffer.from(signature),
     Buffer.from(expectedSignature)
   );
 }
 
-// In your webhook handler
-app.post('/api/webhook/bcv-rates', express.json(), (req, res) => {
+// En tu handler de webhook
+app.post('/api/webhook/bcv-rates', express.json({ verify: (req, res, buf) => {
+  req.rawBody = buf;
+}}), (req, res) => {
   const signature = req.headers['x-webhook-signature'];
-  const payload = JSON.stringify(req.body);
+  const payload = req.rawBody;
 
   if (!verifyWebhookSignature(payload, signature, process.env.WEBHOOK_SECRET)) {
-    return res.status(401).json({ error: 'Invalid signature' });
+    return res.status(401).json({ error: 'Firma inválida' });
   }
 
-  // Process the webhook...
+  // Procesar el webhook...
   res.status(200).json({ received: true });
 });
 ```
 
-#### Python Example
+#### Ejemplo en Python
 
 ```python
 import hmac
 import hashlib
 
-def verify_webhook_signature(payload: str, signature: str, secret: str) -> bool:
+def verify_webhook_signature(payload: bytes, signature: str, secret: str) -> bool:
     expected_signature = 'sha256=' + hmac.new(
         secret.encode('utf-8'),
-        payload.encode('utf-8'),
+        payload,
         hashlib.sha256
     ).hexdigest()
 
     return hmac.compare_digest(signature, expected_signature)
 
-# In your webhook handler (Flask example)
+# En tu handler de webhook (Flask example)
 @app.route('/api/webhook/bcv-rates', methods=['POST'])
 def handle_webhook():
     signature = request.headers.get('X-Webhook-Signature')
-    payload = request.get_data(as_text=True)
+    payload = request.get_data()
 
     if not verify_webhook_signature(payload, signature, os.getenv('WEBHOOK_SECRET')):
-        return {'error': 'Invalid signature'}, 401
+        return {'error': 'Firma inválida'}, 401
 
-    # Process the webhook...
+    # Procesar el webhook...
     return {'received': True}, 200
 ```
 
-### Request Headers
+### Headers de Solicitud
 
-The webhook request includes the following headers:
+La solicitud de webhook incluye los siguientes headers:
 
-| Header | Description | Example |
+| Header | Descripción | Ejemplo |
 |--------|-------------|---------|
-| `Content-Type` | Always `application/json` | `application/json` |
-| `User-Agent` | Service identifier | `BCV-Service-Webhook/1.0` |
-| `X-Webhook-Signature` | HMAC-SHA256 signature | `sha256=a3f5b1c2...` |
-| `X-Webhook-Event` | Event type | `rate.changed` |
-| `X-Webhook-Timestamp` | Event timestamp | `2025-11-17T10:30:00.000Z` |
-| `X-Webhook-Attempt` | Attempt number (1-3) | `1` |
+| `Content-Type` | Siempre `application/json` | `application/json` |
+| `User-Agent` | Identificador de servicio | `BCV-Service-Webhook/2.1.0` |
+| `X-Webhook-Signature` | Firma HMAC-SHA256 | `sha256=a3f5b1c2...` |
+| `X-Webhook-Event` | Tipo de evento | `rate.changed` |
+| `X-Webhook-Timestamp` | Timestamp del evento | `2025-11-24T10:30:00.000Z` |
+| `X-Webhook-Attempt` | Número de intento (1-3) | `1` |
 
-## Events
+## Eventos
 
-### Event Types
+### Tipos de Eventos
 
-#### Rate Change Events
+#### Eventos de Cambio de Tasa
 
 ##### `rate.updated`
 
-Sent when rates are fetched for the first time or after a restart.
+Enviado cuando se obtienen tasas por primera vez o después de un reinicio.
 
 ```json
 {
   "event": "rate.updated",
-  "timestamp": "2025-11-17T10:30:00.000Z",
+  "timestamp": "2025-11-24T10:30:00.000Z",
   "data": {
-    "date": "2025-11-17",
-    "rates": [...]
-    // No "change" field
+    "date": "2025-11-24",
+    "rates": [...],
+    "rate": 36.50
+    // No incluye campo "change"
   }
 }
 ```
 
 ##### `rate.changed`
 
-Sent when rates change by absolute difference >= 0.01 compared to the previous rate (in any currency).
+Enviado cuando las tasas cambian por diferencia absoluta ≥ 0.01 comparado con la tasa anterior (en cualquier moneda).
 
 ```json
 {
   "event": "rate.changed",
-  "timestamp": "2025-11-17T10:30:00.000Z",
+  "timestamp": "2025-11-24T10:30:00.000Z",
   "data": {
-    "date": "2025-11-17",
+    "date": "2025-11-24",
     "rates": [...],
+    "rate": 36.50,
     "change": {
       "previousRate": 36.40,
       "currentRate": 36.50,
-      "percentageChange": 0.2747
+      "percentageChange": 0.2747,
+      "significantChange": true
     }
   }
 }
 ```
 
-#### Service Status Events
+#### Eventos de Estado del Servicio
 
 ##### `service.healthy`
 
-Sent when the service changes to a healthy status.
+Enviado cuando el servicio cambia a estado saludable.
 
 ```json
 {
   "event": "service.healthy",
-  "timestamp": "2025-11-23T18:00:00.000Z",
+  "timestamp": "2025-11-24T18:00:00.000Z",
   "data": {
     "status": "healthy",
     "uptime": 3600,
@@ -289,6 +315,17 @@ Sent when the service changes to a healthy status.
           "enabled": true,
           "connected": true
         }
+      },
+      "scheduler": {
+        "status": "healthy",
+        "message": "Scheduler is running"
+      },
+      "websocket": {
+        "status": "healthy",
+        "message": "WebSocket service is healthy",
+        "details": {
+          "connectedClients": 5
+        }
       }
     },
     "previousStatus": "unhealthy"
@@ -298,12 +335,12 @@ Sent when the service changes to a healthy status.
 
 ##### `service.unhealthy`
 
-Sent when the service changes to an unhealthy status.
+Enviado cuando el servicio cambia a estado no saludable.
 
 ```json
 {
   "event": "service.unhealthy",
-  "timestamp": "2025-11-23T18:05:00.000Z",
+  "timestamp": "2025-11-24T18:05:00.000Z",
   "data": {
     "status": "unhealthy",
     "uptime": 3900,
@@ -320,12 +357,12 @@ Sent when the service changes to an unhealthy status.
 
 ##### `service.degraded`
 
-Sent when the service changes to a degraded status.
+Enviado cuando el servicio cambia a estado degradado.
 
 ```json
 {
   "event": "service.degraded",
-  "timestamp": "2025-11-23T18:10:00.000Z",
+  "timestamp": "2025-11-24T18:10:00.000Z",
   "data": {
     "status": "degraded",
     "uptime": 4200,
@@ -344,72 +381,79 @@ Sent when the service changes to a degraded status.
 }
 ```
 
-#### Deployment Events
+#### Eventos de Despliegue
 
 ##### `deployment.success`
 
-Sent when the service starts successfully.
+Enviado cuando el servicio inicia exitosamente.
 
 ```json
 {
   "event": "deployment.success",
-  "timestamp": "2025-11-23T17:30:00.000Z",
+  "timestamp": "2025-11-24T17:30:00.000Z",
   "data": {
-    "deploymentId": "start-1700723400000",
+    "deploymentId": "start-1700880600000",
     "environment": "production",
-    "version": "2.0.1",
-    "message": "Servidor BCV iniciado en el puerto 3000"
+    "version": "2.1.0",
+    "message": "Servidor BCV iniciado en puerto 3000",
+    "architecture": "SOLID with Inversify DI",
+    "features": {
+      "notifications": true,
+      "websockets": true,
+      "discrod_integration": true,
+      "webhook_integration": true
+    }
   }
 }
 ```
 
 ##### `deployment.failure`
 
-Sent when the service stops (during graceful shutdown).
+Enviado cuando el servicio se detiene (durante apagado gracioso).
 
 ```json
 {
   "event": "deployment.failure",
-  "timestamp": "2025-11-23T19:00:00.000Z",
+  "timestamp": "2025-11-24T19:00:00.000Z",
   "data": {
-    "deploymentId": "shutdown-1700727600000",
+    "deploymentId": "shutdown-1700883600000",
     "environment": "production",
-    "version": "2.0.1",
-    "message": "Aplicación BCV Service cerrándose gracefulmente"
+    "version": "2.1.0",
+    "message": "Aplicación BCV Service cerrándose correctamente"
   }
 }
 ```
 
-## Retry Logic
+## Lógica de Reintento
 
-### Exponential Backoff
+### Backoff Exponencial
 
-If a webhook delivery fails, the service automatically retries with exponential backoff:
+Si una entrega de webhook falla, el servicio reintenta automáticamente con backoff exponencial:
 
-| Attempt | Delay Before Retry |
-|---------|-------------------|
-| 1 | Immediate |
-| 2 | 1 second |
-| 3 | 2 seconds |
+| Intento | Retraso Antes de Reintento |
+|---------|---------------------------|
+| 1 | Inmediato |
+| 2 | 1 segundo |
+| 3 | 2 segundos |
 
-### Failure Conditions
+### Condiciones de Fallo
 
-Webhooks are considered failed when:
+Los webhooks se consideran fallidos cuando:
 
-- HTTP response status code is not 2xx
-- Request times out (default: 5 seconds)
-- Network error occurs
+- El código de estado de respuesta HTTP no es 2xx
+- La solicitud supera el timeout (predeterminado: 5 segundos)
+- Ocurre un error de red
 
-### Success Criteria
+### Criterios de Éxito
 
-A webhook is considered successful when:
+Un webhook se considera exitoso cuando:
 
-- HTTP response status code is 2xx (200-299)
-- Response received before timeout
+- El código de estado de respuesta HTTP es 2xx (200-299)
+- La respuesta se recibe antes del timeout
 
-## Example Implementation
+## Implementación de Ejemplo
 
-### Express.js Webhook Handler
+### Handler de Webhook en Express.js
 
 ```javascript
 const express = require('express');
@@ -417,182 +461,217 @@ const crypto = require('crypto');
 
 const app = express();
 
-// Middleware to verify webhook signature
+// Middleware para capturar cuerpo raw para verificación de firma
+app.use('/api/webhook/bcv-rates', express.json({ verify: (req, res, buf) => {
+  req.rawBody = buf;
+}}));
+
+// Middleware para verificar firma de webhook
 function verifyWebhook(req, res, next) {
   const signature = req.headers['x-webhook-signature'];
   const secret = process.env.WEBHOOK_SECRET;
 
-  // Store raw body for signature verification
-  const rawBody = JSON.stringify(req.body);
+  if (!signature || !secret) {
+    return res.status(401).json({ error: 'Falta firma o clave secreta' });
+  }
 
+  const rawBody = req.rawBody;
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(rawBody, 'utf8');
   const expectedSignature = `sha256=${hmac.digest('hex')}`;
 
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-    return res.status(401).json({ error: 'Invalid signature' });
+    return res.status(401).json({ error: 'Firma inválida' });
   }
 
   next();
 }
 
-// Webhook endpoint
-app.post('/api/webhook/bcv-rates', express.json(), verifyWebhook, (req, res) => {
+// Endpoint de webhook
+app.post('/api/webhook/bcv-rates', verifyWebhook, async (req, res) => {
   const { event, timestamp, data } = req.body;
 
-  console.log(`Received ${event} at ${timestamp}`);
+  console.log(`Evento recibido: ${event} a las ${timestamp}`);
 
-  // Process rate change
-  if (event === 'rate.changed') {
-    const { change, rates } = data;
-    console.log(`Rate changed from ${change.previousRate} to ${change.currentRate}`);
-    console.log(`Percentage change: ${change.percentageChange}%`);
+  try {
+    // Procesar cambio de tasa
+    if (event === 'rate.changed') {
+      const { change, rates, date } = data;
+      console.log(`Tasa cambiada de ${change.previousRate} a ${change.currentRate}`);
+      console.log(`Cambio porcentual: ${change.percentageChange}%`);
+      
+      // Actualizar base de datos, notificar usuarios, etc.
+      await updateRatesInDatabase(rates, date);
+      await notifyUsers(change);
+    }
 
-    // Update database, send notifications, etc.
-    updateRatesInDatabase(rates);
-    notifyUsers(change);
+    // Procesar evento de estado del servicio
+    if (event.startsWith('service.')) {
+      const { status, checks } = data;
+      console.log(`Estado del servicio: ${status}`);
+      
+      // Actualizar dashboard de monitoreo, notificar equipo de ops, etc.
+      await updateServiceStatus(status, checks);
+    }
+
+    // Procesar evento de despliegue
+    if (event.startsWith('deployment.')) {
+      const { deploymentId, environment, message } = data;
+      console.log(`Evento de despliegue: ${message}`);
+      
+      // Actualizar sistema de monitoreo, notificar equipo, etc.
+      await logDeploymentEvent(deploymentId, environment, message);
+    }
+
+    // Siempre responder con 200 para prevenir reintentos
+    res.status(200).json({ received: true, processed: true });
+  } catch (error) {
+    console.error('Error procesando webhook:', error);
+    // Devolver 200 para evitar reintentos, pero registrar el error
+    res.status(200).json({ received: true, error: error.message });
   }
-
-  // Always respond with 200 to prevent retries
-  res.status(200).json({ received: true });
 });
 
 app.listen(3000, () => {
-  console.log('Webhook server running on port 3000');
+  console.log('Servidor de webhook corriendo en puerto 3000');
 });
 ```
 
-### Best Practices
+### Buenas Prácticas
 
-1. **Respond Quickly**: Return a 200 response as soon as possible (within timeout)
-2. **Process Asynchronously**: Handle heavy processing in background jobs
-3. **Idempotency**: Use `timestamp` or `data.date` to prevent duplicate processing
-4. **Validate Signature**: Always verify the HMAC signature
-5. **Log Requests**: Log all webhook requests for debugging and audit purposes
-6. **Handle Retries**: Be prepared to receive the same webhook multiple times
+1. **Responder Rápidamente**: Devuelve una respuesta 200 tan pronto sea posible (dentro del timeout)
+2. **Procesar Asincrónicamente**: Maneja el procesamiento pesado en trabajos en segundo plano
+3. **Idempotencia**: Usa `timestamp` o `data.date` para prevenir procesamiento duplicado
+4. **Validar Firma**: Siempre verifica la firma HMAC
+5. **Registrar Solicitudes**: Registra todas las solicitudes de webhook para debugging y auditoría
+6. **Manejar Reintentos**: Prepárate para recibir el mismo webhook múltiples veces
 
-## Monitoring
+## Monitoreo
 
-### Prometheus Metrics
+### Métricas Prometheus
 
-The webhook service exposes the following Prometheus metrics:
+El servicio de webhook expone las siguientes métricas Prometheus:
 
-#### `bcv_webhook_delivery_total`
+#### `webhook_notifications_total`
 
-Counter of webhook delivery attempts.
+Contador de intentos de entrega de webhook.
 
-**Labels:**
-- `status`: `success` or `failure`
-- `event`: `rate.updated` or `rate.changed`
+**Etiquetas:**
+- `status`: `success` o `failure`
+- `event_type`: `rate.updated`, `rate.changed`, `service.healthy`, etc.
 
-**Example Query:**
+**Ejemplo de Consulta:**
 ```promql
-# Total successful webhook deliveries
-bcv_webhook_delivery_total{status="success"}
+# Total de entregas exitosas de webhook
+webhook_notifications_total{status="success"}
 
-# Webhook failure rate
-rate(bcv_webhook_delivery_total{status="failure"}[5m])
+# Tasa de fallo de webhook
+rate(webhook_notifications_total{status="failure"}[5m])
 ```
 
-#### `bcv_webhook_delivery_duration_seconds`
+#### `webhook_delivery_duration_seconds`
 
-Histogram of webhook delivery duration.
+Histograma de duración de entrega de webhook.
 
-**Labels:**
-- `status`: `success` or `failure`
-- `event`: `rate.updated` or `rate.changed`
+**Etiquetas:**
+- `status`: `success` o `failure`
+- `event_type`: tipo de evento
 
-**Example Query:**
+**Ejemplo de Consulta:**
 ```promql
-# p95 webhook delivery latency
-histogram_quantile(0.95, rate(bcv_webhook_delivery_duration_seconds_bucket[5m]))
+# Latencia de entrega de webhook p95
+histogram_quantile(0.95, rate(webhook_delivery_duration_seconds_bucket[5m]))
 
-# Average delivery duration
-rate(bcv_webhook_delivery_duration_seconds_sum[5m]) / rate(bcv_webhook_delivery_duration_seconds_count[5m])
+# Duración promedio de entrega
+rate(webhook_delivery_duration_seconds_sum[5m]) / rate(webhook_delivery_duration_seconds_count[5m])
 ```
 
-### Grafana Dashboard Example
+### Dashboard de Grafana Ejemplo
 
 ```promql
-# Webhook success rate (%)
-(rate(bcv_webhook_delivery_total{status="success"}[5m]) / rate(bcv_webhook_delivery_total[5m])) * 100
+# Tasa de éxito de webhook (%)
+(rate(webhook_notifications_total{status="success"}[5m]) / rate(webhook_notifications_total[5m])) * 100
 
-# Webhook deliveries per minute
-rate(bcv_webhook_delivery_total[1m]) * 60
+# Entregas de webhook por minuto
+rate(webhook_notifications_total[1m]) * 60
+
+# Eventos por tipo
+rate(webhook_notifications_total{event_type="rate.changed"}[5m])
+rate(webhook_notifications_total{event_type="rate.updated"}[5m])
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Problemas Comunes
 
-#### Webhook Not Receiving Requests
+#### Webhook No Recibe Solicitudes
 
-1. **Check Configuration**:
+1. **Verificar Configuración**:
    ```bash
-   # Verify webhook URL is configured
+   # Verificar que la URL de webhook esté configurada
    echo $WEBHOOK_URL
    ```
 
-2. **Check Logs**:
+2. **Verificar Logs**:
    ```bash
-   # Look for webhook-related logs
+   # Buscar logs relacionados con webhooks
    docker logs bcv-service | grep -i webhook
    ```
 
-3. **Check Rate Changes**:
-   Webhooks are only sent when rates change significantly (>0.1%)
+3. **Verificar Cambios de Tasa**:
+   Los webhooks solo se envían cuando las tasas cambian significativamente (≥0.01)
 
-#### Signature Verification Failing
+#### Verificación de Firma Fallando
 
-1. **Ensure Secret Matches**:
-   - The secret used to verify must match `WEBHOOK_SECRET`
-   - Check for extra whitespace or encoding issues
+1. **Asegurar Coincidencia de Clave**:
+   - La clave usada para verificar debe coincidir con `WEBHOOK_SECRET`
+   - Verificar espacios extra o problemas de codificación
 
-2. **Verify Payload**:
-   - Use the exact raw JSON body (before parsing)
-   - Don't modify or re-serialize the payload
+2. **Verificar Payload**:
+   - Usar el cuerpo JSON raw exacto (antes de parsear)
+   - No modificar ni reserializar el payload
 
-#### High Failure Rate
+#### Tasa Alta de Fallos
 
-1. **Check Timeout**:
+1. **Verificar Timeout**:
    ```bash
-   # Increase timeout if needed
-   WEBHOOK_TIMEOUT=10000  # 10 seconds
+   # Aumentar timeout si es necesario
+   WEBHOOK_TIMEOUT=10000  # 10 segundos
    ```
 
-2. **Check Endpoint Performance**:
-   - Ensure your endpoint responds quickly
-   - Process heavy work asynchronously
+2. **Verificar Rendimiento del Endpoint**:
+   - Asegurar que el endpoint responda rápidamente
+   - Procesar trabajo pesado asíncronamente
 
-3. **Check Network Connectivity**:
-   - Verify firewall rules
-   - Check DNS resolution
+3. **Verificar Conectividad de Red**:
+   - Verificar reglas de firewall
+   - Verificar resolución DNS
 
-### Testing Webhooks Locally
+### Pruebas de Webhooks Localmente
 
-#### Using ngrok
+#### Usando ngrok
 
 ```bash
-# Start ngrok tunnel
+# Iniciar túnel ngrok
 ngrok http 3000
 
-# Configure webhook URL
-export WEBHOOK_URL=https://your-subdomain.ngrok.io/api/webhook/bcv-rates
+# Configurar URL de webhook
+export WEBHOOK_URL=https://tu-subdominio.ngrok.io/api/webhook/bcv-rates
 
-# Start BCV service
+# Iniciar servicio BCV
 pnpm dev
 ```
 
-#### Manual Testing with curl
+#### Pruebas Manuales con curl
 
 ```bash
-# Generate HMAC signature
-SECRET="your-secret-key"
-PAYLOAD='{"event":"rate.changed","timestamp":"2025-11-17T10:30:00.000Z","data":{"date":"2025-11-17","rates":[{"currency":"USD","rate":36.5,"name":"Dólar"}]}}'
+# Generar firma HMAC
+SECRET="tu-clave-secreta"
+PAYLOAD='{"event":"rate.changed","timestamp":"2025-11-24T10:30:00.000Z","data":{"date":"2025-11-24","rates":[{"currency":"USD","rate":36.5,"name":"Dólar"}]}}'
 
 SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
 
-# Send test webhook
+# Enviar webhook de prueba
 curl -X POST http://localhost:3000/api/webhook/bcv-rates \
   -H "Content-Type: application/json" \
   -H "X-Webhook-Signature: sha256=$SIGNATURE" \
@@ -600,20 +679,25 @@ curl -X POST http://localhost:3000/api/webhook/bcv-rates \
   -d "$PAYLOAD"
 ```
 
-## Related Documentation
+## Documentación Relacionada
 
-- [Observability Guide](./OBSERVABILITY.md) - Prometheus metrics and monitoring
-- [Setup Local](./SETUP_LOCAL.md) - Local development setup
-- [Secrets Management](./SECRETS_MANAGEMENT.md) - Secure configuration
-- [Discord Testing](./DISCORD_TESTING.md) - Testing Discord notifications
+- [Guía de Observabilidad](./OBSERVABILITY.md) - Métricas Prometheus y monitoreo
+- [Configuración Local](./SETUP_LOCAL.md) - Configuración de desarrollo local
+- [Gestión de Secretos](./SECRETS_MANAGEMENT.md) - Configuración segura
+- [Prueba de Discord](./DISCORD_TESTING.md) - Prueba de notificaciones Discord
 
 ---
 
-**Need Help?**
+**¿Necesitas ayuda?**
 
-If you encounter issues not covered in this guide:
+Si encuentras problemas no cubiertos en esta guía:
 
-1. Check the [Troubleshooting](#troubleshooting) section
-2. Review service logs: `docker logs bcv-service`
-3. Check Prometheus metrics at `/metrics`
-4. Open an issue on [GitHub](https://github.com/emilioaray-dev/bcv-service/issues)
+1. Revisa la sección [Troubleshooting](#troubleshooting)
+2. Revisa los logs del servicio: `docker logs bcv-service`
+3. Revisa las métricas Prometheus en `/metrics`
+4. Abre un issue en [GitHub](https://github.com/emilioaray-dev/bcv-service/issues)
+
+---
+
+**Última actualización**: 2025-11-24
+**Versión del servicio**: 2.1.0

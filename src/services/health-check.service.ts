@@ -1,6 +1,7 @@
 import { config } from '@/config';
 import { TYPES } from '@/config/types';
 import type { IBCVService } from '@/interfaces/IBCVService';
+import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
 import type {
   HealthCheck,
   HealthCheckResult,
@@ -9,7 +10,6 @@ import type {
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
-import type { IWebhookService } from '@/interfaces/IWebhookService';
 import { getCurrencyRate } from '@/services/bcv.service';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
@@ -36,7 +36,8 @@ export class HealthCheckService implements IHealthCheckService {
     @inject(TYPES.SchedulerService) private schedulerService: ISchedulerService,
     @inject(TYPES.BCVService) private bcvService: IBCVService,
     @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
-    @inject(TYPES.WebhookService) private webhookService: IWebhookService
+    @inject(TYPES.DiscordStatusService)
+    private discordStatusService: IDiscordStatusService
   ) {
     this.startTime = Date.now();
   }
@@ -127,7 +128,7 @@ export class HealthCheckService implements IHealthCheckService {
           eventType = 'service.degraded';
         }
 
-        await this.webhookService.sendServiceStatusNotification(
+        await this.discordStatusService.sendStatusNotification(
           eventType,
           {
             status: overallStatus,

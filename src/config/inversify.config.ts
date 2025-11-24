@@ -7,6 +7,8 @@ import { Container } from 'inversify';
 // Services
 import { BCVService } from '@/services/bcv.service';
 import { DiscordService } from '@/services/discord.service';
+import { DiscordStatusService } from '@/services/discord-status.service';
+import { DiscordDeploymentService } from '@/services/discord-deployment.service';
 import { HealthCheckService } from '@/services/health-check.service';
 import { MetricsService } from '@/services/metrics.service';
 import { MongoService } from '@/services/mongo.service';
@@ -18,6 +20,8 @@ import { WebSocketService } from '@/services/websocket.service';
 
 // Interfaces
 import type { IBCVService } from '@/interfaces/IBCVService';
+import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
+import type { IDiscordDeploymentService } from '@/interfaces/IDiscordDeploymentService';
 import type { IHealthCheckService } from '@/interfaces/IHealthCheckService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { INotificationStateService } from '@/interfaces/INotificationStateService';
@@ -70,6 +74,14 @@ export function createContainer(server: HttpServer): Container {
     .to(DiscordService)
     .inSingletonScope();
   container
+    .bind<IDiscordStatusService>(TYPES.DiscordStatusService)
+    .to(DiscordStatusService)
+    .inSingletonScope();
+  container
+    .bind<IDiscordDeploymentService>(TYPES.DiscordDeploymentService)
+    .to(DiscordDeploymentService)
+    .inSingletonScope();
+  container
     .bind<IWebhookService>(TYPES.WebhookService)
     .to(WebhookService)
     .inSingletonScope();
@@ -100,6 +112,7 @@ export function createContainer(server: HttpServer): Container {
       getLatestRate: async () => null,
       getRateByDate: async () => null,
       getRateHistory: async () => [],
+      getRatesByDateRange: async () => [],
       getAllRates: async () => [],
       getNotificationState: async () => null,
       saveNotificationState: async () => {},

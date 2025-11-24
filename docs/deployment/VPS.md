@@ -8,12 +8,13 @@ Guía completa para deployar BCV Service en un VPS (Virtual Private Server) usan
 2. [Configuración Inicial del Servidor](#configuración-inicial-del-servidor)
 3. [Instalación de Dependencias](#instalación-de-dependencias)
 4. [Deploy de la Aplicación](#deploy-de-la-aplicación)
-5. [Reverse Proxy con Nginx](#reverse-proxy-con-nginx)
-6. [SSL/TLS con Let's Encrypt](#ssltls-with-lets-encrypt)
-7. [Process Manager con PM2](#process-manager-con-pm2)
-8. [Monitoreo y Logs](#monitoreo-y-logs)
-9. [Backup y Mantenimiento](#backup-y-mantenimiento)
-10. [Troubleshooting](#troubleshooting)
+5. [Configuración de Secrets](#configuración-de-secrets)
+6. [Reverse Proxy con Nginx](#reverse-proxy-con-nginx)
+7. [SSL/TLS con Let's Encrypt](#ssltls-with-lets-encrypt)
+8. [Process Manager con PM2](#process-manager-con-pm2)
+9. [Monitoreo y Logs](#monitoreo-y-logs)
+10. [Backup y Mantenimiento](#backup-y-mantenimiento)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -299,6 +300,108 @@ sudo systemctl restart mongod
 
 ---
 
+## Configuración de Secrets
+
+### 1. Gestión de Secrets
+
+El servicio BCV maneja múltiples tipos de secrets sensibles que deben mantenerse seguros:
+
+- `MONGODB_URI` - Conexión a base de datos MongoDB
+- `API_KEYS` - API keys para autenticación (array JSON de strings)
+- `WEBHOOK_SECRET` - Secret para firma de peticiones webhook
+- `JWT_SECRET` - Secret para generación de tokens JWT
+
+### 2. Configurar Variables de Entorno Seguras
+
+```bash
+# Crear directorio para secrets
+mkdir -p ~/secrets
+
+# Generar secrets seguros
+WEBHOOK_SECRET=$(openssl rand -hex 32)
+JWT_SECRET=$(openssl rand -hex 32)
+
+# Crear archivo .env con secrets
+vim .env
+
+# Contenido actualizado:
+NODE_ENV=production
+PORT=3000
+SAVE_TO_DATABASE=true
+MONGODB_URI=mongodb://bcv_user:SecurePassword123!@localhost:27017/bcv?authSource=admin
+BCV_WEBSITE_URL=https://www.bcv.org.ve
+CRON_SCHEDULE=0 2,10,18 * * *
+LOG_LEVEL=info
+API_KEYS=["your-api-key-1", "your-api-key-2"]
+WEBHOOK_SECRET=$WEBHOOK_SECRET
+JWT_SECRET=$JWT_SECRET
+
+# Asegurar permisos restrictivos
+chmod 600 .env
+sudo chown celsius:celsius .env
+```
+
+### 3. Configuración con Docker (Opcional)
+
+Si deseas usar Docker en lugar de PM2 para mayor aislamiento:
+
+```bash
+# Instalar Docker
+sudo apt install -y docker.io
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Agregar usuario al grupo docker
+sudo usermod -aG docker celsius
+
+# Crear archivo de secrets
+echo "mongodb://bcv_user:SecurePassword123!@localhost:27017/bcv" > ~/secrets/mongodb_uri
+echo '["your-api-key-1", "your-api-key-2"]' > ~/secrets/api_keys
+echo "$WEBHOOK_SECRET" > ~/secrets/webhook_secret
+echo "$JWT_SECRET" > ~/secrets/jwt_secret
+
+# Establecer permisos restrictivos
+chmod 600 ~/secrets/*
+
+# Crear docker-compose.yml
+vim ~/apps/bcv-service/docker-compose.yml
+
+# Contenido:
+version: '3.8'
+
+services:
+  bcv-service:
+    image: node:24-alpine
+    container_name: bcv-service
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ./secrets:/run/secrets:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BCV_WEBSITE_URL=https://www.bcv.org.ve
+      - CRON_SCHEDULE=0 2,10,18 * * *
+      - SAVE_TO_DATABASE=true
+      - LOG_LEVEL=info
+      - MONGODB_URI_FILE=/run/secrets/mongodb_uri
+      - API_KEYS_FILE=/run/secrets/api_keys
+      - WEBHOOK_SECRET_FILE=/run/secrets/webhook_secret
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+    expose:
+      - "3000"
+    command: sh -c "npm install --production && npm run start"
+    restart: unless-stopped
+    depends_on:
+      - mongo
+
+# Iniciar con Docker
+cd ~/apps/bcv-service
+sudo docker-compose up -d
+```
+
+---
+
 ## Reverse Proxy con Nginx
 
 ### 1. Configurar Nginx
@@ -344,6 +447,12 @@ server {
         allow 127.0.0.1;
         deny all;
         proxy_pass http://localhost:3000/metrics;
+    }
+
+    # Health check endpoints (sin autenticación)
+    location ~ ^/(healthz|readyz|health) {
+        proxy_pass http://localhost:3000$request_uri;
+        access_log off;
     }
 
     # Rate limiting
@@ -475,7 +584,11 @@ module.exports = {
     max_memory_restart: '512M',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 3000,
+      BCV_WEBSITE_URL: 'https://www.bcv.org.ve',
+      CRON_SCHEDULE: '0 2,10,18 * * *',
+      SAVE_TO_DATABASE: 'true',
+      LOG_LEVEL: 'info'
     },
     env_file: '.env',
     error_file: './logs/pm2-error.log',
@@ -671,7 +784,46 @@ crontab -e
 0 2 * * * /home/celsius/scripts/backup-mongo.sh >> /home/celsius/logs/backup.log 2>&1
 ```
 
-### 2. Backup Remoto (rsync)
+### 2. Backup de Configuración y Secrets
+
+```bash
+# Crear script de backup de configuración
+vim ~/scripts/backup-config.sh
+
+# Contenido:
+#!/bin/bash
+BACKUP_DIR="/home/celsius/backups/config"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $BACKUP_DIR
+
+# Backup del archivo .env
+cp ~/apps/bcv-service/.env "$BACKUP_DIR/.env_$DATE"
+
+# Backup de configuraciones
+cp /etc/nginx/sites-available/bcv-service "$BACKUP_DIR/nginx_config_$DATE"
+cp ~/apps/bcv-service/ecosystem.config.js "$BACKUP_DIR/pm2_config_$DATE"
+
+# Mantener solo últimos 7 días
+find $BACKUP_DIR -type f -mtime +7 -exec rm -f {} \;
+
+# Opcional: encriptar backup de .env
+# gpg --symmetric --cipher-algo AES256 --compress-algo 1 \
+#   --output "$BACKUP_DIR/.env_$DATE.gpg" "$BACKUP_DIR/.env_$DATE"
+
+echo "Backup de configuración completado: $DATE"
+
+# Dar permisos de ejecución
+chmod +x ~/scripts/backup-config.sh
+
+# Configurar cron para backup de configuración
+crontab -e
+
+# Agregar línea:
+30 2 * * * /home/celsius/scripts/backup-config.sh >> /home/celsius/logs/backup-config.log 2>&1
+```
+
+### 3. Backup Remoto (rsync)
 
 ```bash
 # Sincronizar backups a servidor remoto
@@ -681,9 +833,13 @@ rsync -avz --delete \
 
 # O a S3 con AWS CLI
 aws s3 sync ~/backups/ s3://my-bucket/bcv-backups/
+
+# Opcional: backup encriptado
+# Encriptar antes de subir
+# tar czf - ~/backups/ | gpg --symmetric --compress-algo 1 | aws s3 cp - s3://my-bucket/encrypted-backups/$(date +%Y%m%d).gpg
 ```
 
-### 3. Updates y Mantenimiento
+### 4. Updates y Mantenimiento
 
 ```bash
 # Script de update
@@ -885,16 +1041,18 @@ location /api/ {
 - [ ] Nginx instalado y configurado
 - [ ] Código cloneado y build exitoso
 - [ ] Variables de entorno configuradas (.env)
+- [ ] Secrets configurados de forma segura (WEBHOOK_SECRET, JWT_SECRET)
 - [ ] PM2 configurado y startup habilitado
 - [ ] Nginx reverse proxy funcionando
 - [ ] SSL/TLS configurado (Let's Encrypt)
 - [ ] Auto-renovación SSL activa
-- [ ] Backups automáticos configurados
+- [ ] Backups automáticos configurados (MongoDB y configuración)
 - [ ] Monitoreo configurado (logs, métricas)
 - [ ] DNS apuntando al servidor
-- [ ] Health checks respondiendo correctamente
+- [ ] Health checks respondiendo correctamente (healthz, readyz)
 - [ ] WebSocket funcionando
 - [ ] Rate limiting activo
+- [ ] Endpoints de métricas protegidos (solo acceso local)
 
 ---
 

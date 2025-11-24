@@ -6,8 +6,10 @@ import { CacheKeys } from '@/interfaces/IRedisService';
 import {
   validateDateParam,
   validateHistoryQuery,
+  validateDateRangeQuery,
 } from '@/middleware/validation.middleware';
 import type { ICacheService } from '@/services/cache.interface';
+import { fillDateGaps } from '@/utils/date-fill';
 import log from '@/utils/logger';
 import { type Request, type Response, Router } from 'express';
 import { inject, injectable } from 'inversify';
@@ -48,6 +50,11 @@ export class RateController {
       RATE_ROUTES.BY_DATE,
       validateDateParam,
       this.getRateByDate.bind(this)
+    );
+    this.router.get(
+      `${RATE_ROUTES.HISTORY}/range`,
+      validateDateRangeQuery,
+      this.getRatesByDateRange.bind(this)
     );
   }
 
@@ -194,6 +201,133 @@ export class RateController {
       });
     } catch (error) {
       log.error('Error obteniendo tasa por fecha', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+      });
+    }
+  }
+
+  private async getRatesByDateRange(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+    try {
+      if (!config.saveToDatabase) {
+        // En modo consola, indicar que no hay acceso a base de datos
+        res.status(405).json({
+          success: false,
+          error: 'Modo consola activado: No hay acceso a la base de datos',
+          message: 'SAVE_TO_DATABASE está configurado como false',
+        });
+        return;
+      }
+
+      const { startDate, endDate, fillGaps } = req.query;
+      const limit = Number.parseInt(req.query.limit as string) || 100;
+      const shouldFillGaps = Boolean(fillGaps);
+
+      log.info('Fetching rates by date range', {
+        startDate,
+        endDate,
+        limit,
+        fillGaps: shouldFillGaps,
+        requestId: req.get('x-request-id'),
+      });
+
+      // La validación de formato y lógica se hace en el middleware validateDateRangeQuery
+
+      // Generar clave de cache basada en los parámetros de la consulta
+      const cacheKey = `history:range:${startDate}:${endDate}:${limit}:${shouldFillGaps}`;
+
+      // Cache-Aside Pattern: Intentar leer del cache Redis primero
+      if (config.redis.enabled) {
+        const cached = await this.redisService.get(cacheKey);
+        if (cached) {
+          const duration = Date.now() - startTime;
+          log.info('Cache hit: history by date range', {
+            startDate,
+            endDate,
+            limit,
+            fillGaps: shouldFillGaps,
+            count: Array.isArray(cached) ? cached.length : 0,
+            durationMs: duration,
+            source: 'redis',
+          });
+          res.json({
+            success: true,
+            data: cached,
+            count: Array.isArray(cached) ? cached.length : 0,
+            range: {
+              start: startDate,
+              end: endDate,
+              limit,
+              fillGaps: shouldFillGaps,
+            },
+          });
+          return;
+        }
+        log.debug('Cache miss: history by date range', { startDate, endDate, limit, fillGaps: shouldFillGaps });
+      }
+
+      // Cache miss o Redis deshabilitado - consultar MongoDB
+      const rates = await this.cacheService.getRatesByDateRange(
+        startDate as string,
+        endDate as string,
+        limit
+      );
+
+      if (!rates || rates.length === 0) {
+        res.status(404).json({
+          success: false,
+          error: `No se encontraron tasas para el rango ${startDate} - ${endDate}`,
+        });
+        return;
+      }
+
+      // Apply gap filling if requested
+      const finalRates = shouldFillGaps
+        ? fillDateGaps(rates, startDate as string, endDate as string)
+        : rates.map(rate => ({ ...rate, isFilled: false }));
+
+      // Guardar en cache para próximas consultas
+      if (config.redis.enabled) {
+        await this.redisService.set(cacheKey, finalRates, config.cacheTTL.history);
+      }
+
+      const duration = Date.now() - startTime;
+      log.info('Successfully fetched rates by date range', {
+        startDate,
+        endDate,
+        limit,
+        fillGaps: shouldFillGaps,
+        count: finalRates.length,
+        originalCount: rates.length,
+        filledCount: shouldFillGaps ? finalRates.length - rates.length : 0,
+        durationMs: duration,
+        source: 'mongodb',
+        cached: config.redis.enabled,
+      });
+
+      res.json({
+        success: true,
+        data: finalRates,
+        count: finalRates.length,
+        range: {
+          start: startDate,
+          end: endDate,
+          limit,
+          fillGaps: shouldFillGaps,
+        },
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      log.error('Error obteniendo tasas por rango de fechas', {
+        error,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        limit: req.query.limit,
+        fillGaps: req.query.fillGaps,
+        durationMs: duration,
+      });
       res.status(500).json({
         success: false,
         error: 'Error interno del servidor',

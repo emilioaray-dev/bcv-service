@@ -1,34 +1,38 @@
-# Notification State Service Guide
+# Guía del Servicio de Estado Persistente de Notificaciones
 
-This guide explains the persistent notification state system implemented in the BCV service.
+Esta guía explica el sistema de estado persistente de notificaciones implementado en el servicio BCV Service.
 
-## Table of Contents
+## Tabla de Contenidos
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Persistent Storage](#persistent-storage)
-- [Redis Cache Layer](#redis-cache-layer)
-- [Change Detection](#change-detection)
-- [Integration with Other Services](#integration-with-other-services)
+- [Descripción General](#descripción-general)
+- [Arquitectura](#arquitectura)
+- [Almacenamiento Persistente](#almacenamiento-persistente)
+- [Capa de Caché con Redis](#capa-de-caché-con-redis)
+- [Detección de Cambios](#detección-de-cambios)
+- [Integración con Otros Servicios](#integración-con-otros-servicios)
+- [Sistema de Notificaciones Multi-Canal](#sistema-de-notificaciones-multi-canal)
+- [Arquitectura de Estado Dual-Layer](#arquitectura-de-estado-dual-layer)
+- [Prevención de Notificaciones Duplicadas](#prevención-de-notificaciones-duplicadas)
 
-## Overview
+## Descripción General
 
-The Notification State Service provides a robust mechanism for tracking the last notified exchange rates. This prevents duplicate notifications when the service restarts and ensures accurate change detection across deployments.
+El servicio de Estado de Notificaciones proporciona un mecanismo robusto para rastrear las últimas tasas de cambio notificadas. Esto previene notificaciones duplicadas cuando se reinicia el servicio y garantiza una detección precisa de cambios a través de despliegues.
 
-### Problem Solved
+### Problema Resuelto
 
-Previously, the service relied on in-memory state to determine if notifications were needed. This caused:
-- Spurious notifications on service restarts (since there was no historical reference)
-- Potential duplicate notifications during deployments
-- Inconsistent change detection across service instances
+Anteriormente, el servicio confiaba en el estado en memoria para determinar si se necesitaban notificaciones. Esto causaba:
+- **Notificaciones espurias al reiniciar el servicio** (ya que no había referencia histórica)
+- **Posibles notificaciones duplicadas durante despliegues**
+- **Detección inconsistente de cambios a través de instancias del servicio**
+- **Falta de control sobre el estado de notificaciones entre reinicios**
 
-### Solution
+### Solución Implementada
 
-The persistent notification state system stores the last notified rates in MongoDB and uses Redis as a cache layer for optimal performance.
+El sistema de estado persistente de notificaciones almacena las últimas tasas notificadas en MongoDB y usa Redis como capa de cache para un rendimiento óptimo. Además, implementa un sistema multi-canal de notificaciones (WebSocket, Discord, Webhook HTTP).
 
-## Architecture
+## Arquitectura
 
-The service implements a dual-layer storage architecture:
+El servicio implementa una arquitectura de doble capa (dual-layer):
 
 ```
 ┌─────────────────┐    ┌─────────────┐
@@ -46,96 +50,273 @@ The service implements a dual-layer storage architecture:
                        └─────────────┘
 ```
 
-### Components
+### Componentes Principales
 
-1. **NotificationStateService**: Main service handling state operations
-2. **MongoDB**: Persistent storage for notification state
-3. **Redis**: Cache layer for faster read/write operations
+1. **NotificationStateService**: Servicio principal que maneja operaciones de estado
+2. **MongoDB**: Almacenamiento persistente para el estado de notificaciones
+3. **Redis**: Capa de cache para operaciones rápidas de lectura/escritura
+4. **DiscordService**: Servicio de notificaciones a Discord
+5. **WebhookService**: Servicio de notificaciones HTTP con firma HMAC
+6. **WebSocketService**: Servicio de notificaciones en tiempo real
 
-## Persistent Storage
+## Almacenamiento Persistente
 
-### MongoDB Integration
+### Integración con MongoDB
 
-The service stores notification state in the `notification_states` collection:
+El servicio almacena el estado de notificaciones en la colección `notification_states`:
 
 ```typescript
 interface NotificationState {
-  _id: string;                  // Identifier (e.g., "last_notification")
-  lastNotifiedRate: BCVRateData; // The last rate that was notified
-  lastNotificationDate: Date;   // Timestamp of last notification
-  createdAt: Date;              // Creation timestamp
-  updatedAt: Date;              // Last update timestamp
+  _id: ObjectId;                // Identificador único (usado como "last_notification")
+  lastNotifiedRate: BCVRateData; // Las últimas tasas que fueron notificadas
+  lastNotificationDate: Date;    // Timestamp de la última notificación
+  createdAt: Date;              // Timestamp de creación
+  updatedAt: Date;              // Timestamp de última actualización
 }
 ```
 
-### Data Lifecycle
+### Ciclo de Vida de Datos
 
-- **Read**: First attempts to read from Redis, falls back to MongoDB
-- **Write**: Writes to both MongoDB (persistence) and Redis (performance)
-- **Fallback**: Continues to operate normally if Redis is unavailable
+- **Lectura**: Primero intenta leer desde Redis, si falla, recurre a MongoDB
+- **Escritura**: Escribe en ambos MongoDB (persistencia) y Redis (rendimiento)
+- **Modo de Respaldo**: Continúa operando normalmente si Redis no está disponible
 
-## Redis Cache Layer
+### Operaciones CRUD
 
-### Performance Benefits
+- **Guardar estado**: `saveNotificationState(rateData)` - Guarda las tasas notificadas
+- **Obtener estado**: `getLastNotificationState()` - Recupera la última notificación guardada
+- **Comparación persistente**: `hasSignificantChangeAndNotify(rateData)` - Compara y notifica
 
-- **Fast Reads**: Redis provides sub-millisecond read performance
-- **Reduced DB Load**: Frequent state checks don't hit MongoDB
-- **High Throughput**: Handles multiple concurrent state operations efficiently
+## Capa de Caché con Redis
 
-### Cache Strategy
+### Beneficios de Rendimiento
 
-- **Read-Through**: If data not in Redis, fetch from MongoDB and cache
-- **Write-Through**: Updates go to both Redis and MongoDB simultaneously
-- **Fallback Mode**: Operates normally with MongoDB-only when Redis unavailable
+- **Lecturas Rápidas**: Redis proporciona lectura en sub-milisegundos
+- **Reducción de Carga en BD**: Chequeos frecuentes de estado no golpean MongoDB
+- **Alto Rendimiento**: Maneja eficientemente múltiples operaciones concurrentes
+- **Tiempo de respuesta reducido**: Lecturas de estado en < 1ms
 
-## Change Detection
+### Estrategia de Caché
 
-### Absolute Difference Threshold
+- **Read-Through**: Si los datos no están en Redis, los busca en MongoDB y los cachea
+- **Write-Through**: Las actualizaciones van simultáneamente a Redis y MongoDB
+- **Modo de Respaldo**: Opera normalmente solo con MongoDB cuando Redis no está disponible
 
-The system uses absolute difference instead of percentage:
+### Configuración de Redis
 
-- **Threshold**: ≥ 0.01 difference in any currency rate
-- **Comparison**: Against the last notified rate (stored persistently)
-- **Granularity**: Per-currency detection (USD, EUR, CNY, TRY, RUB, etc.)
+- **Conexión**: Configurable a través de variables de entorno
+- **TTL**: Opcional para caducidad de entradas de cache (actualmente no aplicable al estado de notificaciones)
+- **Cluster**: Soporte para modo cluster si se requiere alta disponibilidad
 
-### Example
+## Detección de Cambios
 
-If USD rate changes from 38.50 to 38.51 (difference of 0.01), a notification is triggered.
-If USD rate changes from 38.50 to 38.505 (difference of 0.005), no notification is triggered.
+### Umbral de Diferencia Absoluta
 
-## Integration with Other Services
+El sistema utiliza diferencia absoluta en lugar de porcentaje:
 
-### BCV Service
+- **Umbral**: ≥ 0.01 diferencia en cualquier tasa de moneda
+- **Comparación**: Respecto a la última tasa notificada (almacenada persistentemente)
+- **Granularidad**: Detección por moneda (USD, EUR, CNY, TRY, RUB, etc.)
+- **Soporte multi-moneda**: Detecta cambios en todas las monedas disponibles
 
-The BCV service now delegates change detection to the NotificationStateService:
+### Ejemplo de Detección
+
+- Si la tasa USD cambia de 38.50 a 38.51 (diferencia de 0.01), se activa una notificación
+- Si la tasa USD cambia de 38.50 a 38.505 (diferencia de 0.005), **no** se activa notificación
+- El sistema considera cambios en **cualquiera** de las monedas: USD, EUR, CNY, TRY, RUB
+
+### Cálculo de Cambios
 
 ```typescript
-// Instead of comparing with in-memory state
-const hasChange = this.hasRateChanged(this.lastRate, currentRate);
-
-// Use persistent state comparison
-const hasSignificantChange = await this.notificationStateService.hasSignificantChangeAndNotify(rateData);
+// Ejemplo de cálculo de cambio
+const difference = Math.abs(currentRate - previousRate);
+const isSignificant = difference >= 0.01;
 ```
 
-### Discord & Webhook Services
+## Integración con Otros Servicios
 
-Both services receive the comparison with the last notified state, showing trend indicators and percentage changes:
+### Servicio BCV
 
-- **Discord notifications** include trend emojis (↗️/↘️) and percentage changes
-- **Webhook notifications** carry detailed change information
-- **Rate threshold** prevents spam from minor fluctuations
+El servicio BCV delega la detección de cambios al NotificationStateService:
 
-## Configuration
+```typescript
+// Antes: comparación con estado en memoria
+const hasChange = this.hasRateChanged(this.lastRate, currentRate);
 
-### Dependencies
+// Ahora: comparación con estado persistente
+const hasSignificantChange = 
+  await this.notificationStateService.hasSignificantChangeAndNotify(rateData);
 
-The service relies on:
-- MongoDB connection (for persistence)
-- Redis connection (for performance cache)
-- Proper dependency injection via Inversify
+if (hasSignificantChange) {
+  // Enviar notificaciones a través de los diferentes canales
+  await this.sendNotifications(rateData);
+}
+```
 
-### Error Handling
+### Servicios de Notificaciones
 
-- **Redis failures**: Falls back to MongoDB-only operation
-- **MongoDB failures**: Logs errors, may temporarily disable notification state
-- **Connection timeouts**: Handled gracefully with appropriate logging
+Los servicios de notificación reciben la comparación con el estado persistente:
+
+- **DiscordService**: Incluye emojis de tendencia (↗️/↘️) y cambios porcentuales
+- **WebhookService**: Proporciona información detallada del cambio con firma HMAC-SHA256
+- **WebSocketService**: Envía actualizaciones en tiempo real con información de cambio
+
+## Sistema de Notificaciones Multi-Canal
+
+### Canales Disponibles
+
+1. **WebSocket**: Comunicación en tiempo real con clientes suscritos
+2. **Discord**: Notificaciones estructuradas a canales de Discord
+3. **HTTP Webhooks**: Notificaciones a endpoints personalizados con firma HMAC
+
+### Gestión de Notificaciones
+
+El servicio de estado persistente coordina la notificación a través de múltiples canales:
+
+```typescript
+// Flujo de notificación coordinado
+async hasSignificantChangeAndNotify(rateData: BCVRateData): Promise<boolean> {
+  // 1. Obtener estado anterior
+  const lastState = await this.getLastNotificationState();
+  
+  // 2. Comparar con umbrales
+  const hasChange = this.checkSignificantChange(lastState?.lastNotifiedRate, rateData);
+  
+  if (hasChange) {
+    // 3. Enviar a todos los canales
+    await Promise.allSettled([
+      this.discordService.sendRateUpdateNotification(rateData, lastState?.lastNotifiedRate),
+      this.webhookService.sendRateUpdateNotification(rateData, lastState?.lastNotifiedRate),
+      this.webSocketService.broadcastRateUpdate(this.createRateUpdateEvent(rateData))
+    ]);
+    
+    // 4. Guardar nuevo estado
+    await this.saveNotificationState(rateData);
+  }
+  
+  return hasChange;
+}
+```
+
+## Arquitectura de Estado Dual-Layer
+
+### Diseño de Arquitectura
+
+El sistema combina dos capas para balancear rendimiento y persistencia:
+
+#### Capa Primaria: MongoDB
+- **Persistencia**: Almacena definitivamente el estado
+- **Fiabilidad**: Sistema persistente que sobrevive a reinicios
+- **Consistencia**: Mantiene el estado a través de despliegues
+- **Replicación**: Compatible con replica sets para alta disponibilidad
+
+#### Capa Secundaria: Redis (Opcional)
+- **Rendimiento**: Lectura/escritura extremadamente rápida
+- **Caché**: Reduce la carga en MongoDB
+- **Tolerancia a fallas**: El sistema funciona sin Redis
+- **Escalabilidad**: Maneja alta concurrencia
+
+### Estrategia de Respaldo (Fallback)
+
+1. **Redis disponible**: Operación normal con doble capa
+2. **Redis no disponible**: Sistema opera solo con MongoDB
+3. **Redis restaurado**: Recupera automáticamente funcionalidad de cache
+
+## Prevención de Notificaciones Duplicadas
+
+### Mecanismos de Prevención
+
+#### 1. Estado Persistente
+- Almacena la última tasa notificada en MongoDB
+- Sobrevive a reinicios del servicio
+- Mantiene coherencia entre despliegues
+
+#### 2. Comparación Inteligente
+- Compara contra la última tasa notificada (no la última consultada)
+- Umbral de 0.01 para evitar spam por fluctuaciones menores
+- Detección por moneda individual
+
+#### 3. Control de Frecuencia
+- Previene notificaciones múltiples por el mismo cambio
+- Coordina entre diferentes servicios de notificación
+- Mantiene consistencia en todos los canales
+
+### Flujo de Notificación
+
+```
+1. BCVService obtiene nuevas tasas
+2. → NotificationStateService compara con estado persistente
+3. → Si cambio ≥ 0.01, prepara notificaciones
+4. → Envia a Discord, Webhook, WebSocket simultáneamente
+5. → Guarda nuevo estado en MongoDB y Redis
+6. → Cliente recibe notificación única por cambio significativo
+```
+
+## Configuración
+
+### Variables de Entorno Relevantes
+
+```env
+# MongoDB (requerido)
+MONGODB_URI=mongodb://user:pass@host:port/database
+
+# Redis (opcional, para cache de estado de notificaciones)
+REDIS_URL=redis://localhost:6379
+CACHE_ENABLED=true  # Habilita Redis como capa de cache
+CACHE_TTL_NOTIFS=3600  # TTL opcional para entradas de estado de notificaciones (segundos)
+```
+
+### Archivos de Secrets (Producción)
+
+```env
+# Para Docker Secrets
+MONGODB_URI_FILE=/run/secrets/mongodb_uri
+REDIS_URL_FILE=/run/secrets/redis_url  # Opcional
+```
+
+### Integración con Inversify
+
+El servicio está completamente integrado con el contenedor IoC:
+
+```typescript
+// Inversify configuration
+container.bind<INotificationStateService>(TYPES.NotificationStateService)
+  .to(NotificationStateService)
+  .inSingletonScope();
+
+// Inyección en servicios que lo usan
+constructor(
+  @inject(TYPES.NotificationStateService) 
+  private notificationStateService: INotificationStateService
+) {}
+```
+
+### Manejo de Errores
+
+- **Fallos de Redis**: Sistema opera con MongoDB-only
+- **Fallos de MongoDB**: Se registran errores, puede deshabilitar estado persistente temporalmente
+- **Timeouts**: Manejados con logging apropiado y comportamiento degrade
+
+## Beneficios del Sistema
+
+### ✅ Eliminación de Notificaciones Duplicadas
+- **Eliminadas por completo**: Ningún reinicio del servicio causa notificaciones espurias
+- **Consistencia garantizada**: El estado se mantiene a través de reinicios y despliegues
+- **Experiencia de usuario mejorada**: Solo notificaciones cuando hay cambios reales
+
+### ✅ Escalabilidad Horizontal
+- **Soporte para múltiples instancias**: Cada instancia puede leer del estado común
+- **Prevención de duplicados**: Aunque se ejecuten múltiples instancias
+- **Coordinación automática**: No se requiere coordinación manual entre instancias
+
+### ✅ Observabilidad y Control
+- **Métricas de estado**: Seguimiento del estado persistente
+- **Auditoría de notificaciones**: Registro de todas las notificaciones enviadas
+- **Control de tendencias**: Cálculo de direcciones y porcentajes de cambio
+- **Sistema anti-spam**: Prevención de notificaciones por fluctuaciones menores
+
+---
+
+**Última actualización**: 2025-11-24
+**Versión del servicio**: 2.1.0
+**Estado**: ✅ Completamente implementado y operativo
