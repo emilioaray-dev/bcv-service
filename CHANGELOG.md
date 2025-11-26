@@ -2,7 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [4.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v4.0.0...v4.1.0) (2025-11-26)
+## [1.4.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v1.4.0) (2025-11-26)
+
+### ⚠️ Version Correction Notice
+
+This release corrects the version numbering scheme. Previous releases (2.x.x, 3.x.x, 4.x.x) were incorrectly marked as BREAKING CHANGES when they were only features and fixes. The project now correctly continues from v1.3.2 → v1.4.0.
+
+### Bug Fixes
+
+* **notifications:** use package.json version instead of npm_package_version env var ([dba836f](https://github.com/emilioaray-dev/bcv-service/commit/dba836f))
+  - Fixes deployment notification error 400 in Docker containers
+  - The npm_package_version environment variable is only available when running with npm/pnpm scripts
+  - Docker containers execute with 'node dist/app.js' directly, making this variable unavailable
+  - This caused deployment.success notifications to send 'unknown' as the version, which Discord rejected with HTTP 400
+
+### Features
+
+* **notifications:** integrate Discord services with webhook queue system ([1768abd](https://github.com/emilioaray-dev/bcv-service/commit/1768abdfc64deedff32e1c8e695b92046f43043b))
+* **webhooks:** add persistent delivery tracking, retry queue, and lifecycle notifications ([ab3ff30](https://github.com/emilioaray-dev/bcv-service/commit/ab3ff30304d9fab07b1fc16a764f332fbec12bf8))
+* **notifications:** implement Discord-specific services and historical data gap-filling ([596dcf1](https://github.com/emilioaray-dev/bcv-service/commit/596dcf1))
+
+---
+
+## Historical Releases (Incorrect Version Numbering - Archived for Reference)
+
+### [4.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v4.0.0...v4.1.0) (2025-11-26) - Now v1.4.0
 
 ### Features
 

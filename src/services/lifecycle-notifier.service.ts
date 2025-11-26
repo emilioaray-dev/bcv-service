@@ -6,6 +6,7 @@ import { TYPES } from '@/config/types';
 import type { IDiscordDeploymentService } from '@/interfaces/IDiscordDeploymentService';
 import type { IDiscordStatusService } from '@/interfaces/IDiscordStatusService';
 import { logger as log } from '@/utils/logger';
+import packageJson from '../../package.json';
 
 /**
  * Servicio para notificar eventos del ciclo de vida del servidor
@@ -69,7 +70,7 @@ export class LifecycleNotifierService {
         {
           deploymentId: `startup-${Date.now()}`,
           environment: config.nodeEnv,
-          version: process.env.npm_package_version || 'unknown',
+          version: packageJson.version,
           message: `Servidor iniciado en ${startupInfo.hostname}`,
         }
       );

@@ -17,6 +17,7 @@ import helmet from 'helmet';
 import type { Container } from 'inversify';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import packageJson from '../package.json';
 
 import type { IBCVService } from '@/interfaces/IBCVService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
@@ -286,7 +287,7 @@ export class Application {
             'deployment.success',
             {
               environment: config.nodeEnv,
-              version: process.env.npm_package_version || 'unknown',
+              version: packageJson.version,
               deploymentId: `start-${Date.now()}`,
               message: `Servidor BCV iniciado en el puerto ${port}`,
             }
@@ -367,7 +368,7 @@ export class Application {
           'deployment.failure', // O podríamos usar un evento especializado
           {
             environment: config.nodeEnv,
-            version: process.env.npm_package_version || 'unknown',
+            version: packageJson.version,
             deploymentId: `shutdown-${Date.now()}`,
             message: 'Aplicación BCV Service cerrándose gracefulmente',
           }
