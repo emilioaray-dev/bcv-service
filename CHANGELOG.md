@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v3.0.0...v4.0.0) (2025-11-26)
+
+### ⚠ BREAKING CHANGES
+
+* **webhooks:** WebhookService constructor now requires WebhookDeliveryService and WebhookQueueService dependencies
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+### Features
+
+* **webhooks:** add persistent delivery tracking, retry queue, and lifecycle notifications ([ab3ff30](https://github.com/emilioaray-dev/bcv-service/commit/ab3ff30304d9fab07b1fc16a764f332fbec12bf8))
+
+### Bug Fixes
+
+* **types:** add server property to HealthCheckResult checks ([e4d3526](https://github.com/emilioaray-dev/bcv-service/commit/e4d3526b1882682e4d56b3bef3b6c71f13343812))
+
 ## [3.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v2.1.0...v3.0.0) (2025-11-24)
 
 ### ⚠ BREAKING CHANGES
