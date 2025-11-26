@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.1.0](https://github.com/emilioaray-dev/bcv-service/compare/v4.0.0...v4.1.0) (2025-11-26)
+
+### Features
+
+* **notifications:** integrate Discord services with webhook queue system ([1768abd](https://github.com/emilioaray-dev/bcv-service/commit/1768abdfc64deedff32e1c8e695b92046f43043b))
+
 ## [4.0.0](https://github.com/emilioaray-dev/bcv-service/compare/v3.0.0...v4.0.0) (2025-11-26)
 
 ### ⚠ BREAKING CHANGES
