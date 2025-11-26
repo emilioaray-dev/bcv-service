@@ -7,6 +7,8 @@ import { logger } from '../utils/logger';
 
 import type { HealthCheckResult } from '@/interfaces/IHealthCheckService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IWebhookDeliveryService } from '@/interfaces/IWebhookDeliveryService';
+import type { IWebhookQueueService } from '@/interfaces/IWebhookQueueService';
 import type {
   IWebhookService,
   WebhookConfig,
@@ -36,7 +38,11 @@ export class WebhookService implements IWebhookService {
 
   constructor(
     @inject(TYPES.MetricsService)
-    private readonly metricsService: IMetricsService
+    private readonly metricsService: IMetricsService,
+    @inject(TYPES.WebhookDeliveryService)
+    private readonly deliveryService: IWebhookDeliveryService,
+    @inject(TYPES.WebhookQueueService)
+    private readonly queueService: IWebhookQueueService
   ) {
     this.webhookConfig = {
       url: config.webhookUrl || '',
@@ -241,6 +247,17 @@ export class WebhookService implements IWebhookService {
         // Record success metrics
         this.metricsService.recordWebhookSuccess(payload.event, duration);
 
+        // Record delivery in database
+        await this.deliveryService.recordDelivery({
+          event: payload.event,
+          url: this.maskUrl(webhookUrl),
+          payload,
+          success: true,
+          statusCode: result.statusCode,
+          attempts: attempt,
+          duration,
+        });
+
         return {
           ...result,
           duration,
@@ -276,6 +293,42 @@ export class WebhookService implements IWebhookService {
     // Record failure metrics
     this.metricsService.recordWebhookFailure(payload.event, duration);
 
+    // Record delivery in database
+    await this.deliveryService.recordDelivery({
+      event: payload.event,
+      url: this.maskUrl(webhookUrl),
+      payload,
+      success: false,
+      error: lastError?.message || 'Unknown error',
+      attempts: this.webhookConfig.maxRetries,
+      duration,
+    });
+
+    // Add to queue for later retry
+    try {
+      const queueId = await this.queueService.enqueue(
+        payload.event,
+        webhookUrl,
+        payload,
+        {
+          maxAttempts: 5,
+          priority: this.getEventPriority(payload.event),
+          delaySeconds: 300, // Wait 5 minutes before first retry
+        }
+      );
+
+      logger.warn('Webhook queued for retry after immediate failures', {
+        queueId,
+        event: payload.event,
+        url: this.maskUrl(webhookUrl),
+      });
+    } catch (queueError) {
+      logger.error('Failed to queue webhook for retry', {
+        error: queueError,
+        event: payload.event,
+      });
+    }
+
     return {
       success: false,
       url: webhookUrl,
@@ -283,6 +336,24 @@ export class WebhookService implements IWebhookService {
       attempt: this.webhookConfig.maxRetries,
       duration,
     };
+  }
+
+  /**
+   * Determine event priority for queue
+   */
+  private getEventPriority(event: string): 'high' | 'normal' | 'low' {
+    // Critical events have high priority
+    if (event === 'service.unhealthy' || event === 'deployment.failure') {
+      return 'high';
+    }
+
+    // Deployment events have normal priority
+    if (event.startsWith('deployment.')) {
+      return 'normal';
+    }
+
+    // Rate changes are low priority (not critical)
+    return 'low';
   }
 
   /**

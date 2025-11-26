@@ -1,4 +1,6 @@
 import type { IMetricsService } from '@/interfaces/IMetricsService';
+import type { IWebhookDeliveryService } from '@/interfaces/IWebhookDeliveryService';
+import type { IWebhookQueueService } from '@/interfaces/IWebhookQueueService';
 import { WebhookService } from '@/services/webhook.service';
 import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -30,6 +32,8 @@ vi.mock('@/config', () => ({
 describe('WebhookService', () => {
   let webhookService: WebhookService;
   let mockMetricsService: IMetricsService;
+  let mockDeliveryService: IWebhookDeliveryService;
+  let mockQueueService: IWebhookQueueService;
 
   beforeEach(() => {
     mockMetricsService = {
@@ -47,7 +51,51 @@ describe('WebhookService', () => {
       setRedisConnected: vi.fn(),
     };
 
-    webhookService = new WebhookService(mockMetricsService);
+    mockDeliveryService = {
+      recordDelivery: vi.fn().mockResolvedValue(undefined),
+      getDeliveriesByEvent: vi.fn().mockResolvedValue([]),
+      getDeliveriesByUrl: vi.fn().mockResolvedValue([]),
+      getRecentDeliveries: vi.fn().mockResolvedValue([]),
+      getDeliveryStats: vi.fn().mockResolvedValue({
+        totalDeliveries: 0,
+        successfulDeliveries: 0,
+        failedDeliveries: 0,
+        successRate: 0,
+        averageDuration: 0,
+      }),
+      getDeliveryStatsByEvent: vi.fn().mockResolvedValue({
+        totalDeliveries: 0,
+        successfulDeliveries: 0,
+        failedDeliveries: 0,
+        successRate: 0,
+        averageDuration: 0,
+      }),
+      wasRecentlyDelivered: vi.fn().mockResolvedValue(false),
+    };
+
+    mockQueueService = {
+      enqueue: vi.fn().mockResolvedValue('queue-id-123'),
+      processQueue: vi.fn().mockResolvedValue(undefined),
+      markAsCompleted: vi.fn().mockResolvedValue(undefined),
+      markAsFailed: vi.fn().mockResolvedValue(undefined),
+      getPendingWebhooks: vi.fn().mockResolvedValue([]),
+      getQueueStats: vi.fn().mockResolvedValue({
+        pending: 0,
+        processing: 0,
+        failed: 0,
+        completed: 0,
+        total: 0,
+      }),
+      cleanOldWebhooks: vi.fn().mockResolvedValue(0),
+      startWorker: vi.fn(),
+      stopWorker: vi.fn(),
+    };
+
+    webhookService = new WebhookService(
+      mockMetricsService,
+      mockDeliveryService,
+      mockQueueService
+    );
     vi.clearAllMocks();
   });
 

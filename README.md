@@ -22,7 +22,7 @@ Microservicio en Node.js con TypeScript que consulta periódicamente la tasa ofi
 ### Arquitectura y Calidad
 - ✅ **Arquitectura SOLID** con Inversify para Dependency Injection
 - ✅ Logging estructurado con Winston
-- ✅ Testing con Vitest (66% coverage, 55 tests)
+- ✅ Testing con Vitest (139 tests pasando)
 - ✅ Gestión segura de secretos con Docker Secrets
 - ✅ Formateo y calidad de código con Biome
 - ✅ **Seguridad web** con Helmet.js (CSP, HSTS, XSS protection)
@@ -91,11 +91,15 @@ La documentación está organizada en las siguientes secciones:
 - [**Secrets Management**](docs/guides/SECRETS_MANAGEMENT.md) - Gestión segura de credenciales
 - [**Logging**](docs/guides/LOGGING.md) - Sistema de logging estructurado
 - [**Observability**](docs/guides/OBSERVABILITY.md) - Health checks y métricas de Prometheus
+- [**Webhook Integration**](docs/guides/WEBHOOK_INTEGRATION.md) - Integración con webhooks HTTP
+- [**Confirmación de Webhooks**](GUIA_CONFIRMACION_WEBHOOKS.md) - Sistema de tracking y notificaciones de ciclo de vida
+- [**Cola de Webhooks**](GUIA_COLA_WEBHOOKS.md) - Sistema de reintentos persistente
 
 ### Arquitectura
 - [**Plan de Arquitectura**](docs/architecture/PLAN.md) - Planificación arquitectónica
 - [**Mejoras**](docs/architecture/MEJORAS.md) - Mejoras implementadas
 - [**Resumen de Mejoras**](docs/architecture/RESUMEN_MEJORAS.md) - Resumen ejecutivo
+- [**Mejoras y Recomendaciones**](MEJORAS_Y_RECOMENDACIONES.md) - 25 tickets priorizados de mejoras
 
 ### Desarrollo
 - [**Branch Strategy**](docs/development/BRANCH_STRATEGY.md) - Estrategia de branching
@@ -372,6 +376,51 @@ El servicio implementa un sistema de estado persistente de notificaciones que:
 - Previene notificaciones duplicadas al reiniciar el servicio
 - Usa una diferencia absoluta (≥0.01) en lugar de porcentaje para detectar cambios significativos
 - Rastrea cambios en todas las monedas (USD, EUR, CNY, TRY, RUB, etc.)
+
+### 📊 Webhook Delivery Tracking (Nuevo)
+
+El servicio incluye un sistema de tracking persistente de entregas de webhooks que:
+- **Almacena historial completo** de todas las entregas (exitosas y fallidas) en MongoDB
+- **API endpoints** para consultar entregas por evento, URL, o fecha
+- **Estadísticas de entregas** con tasas de éxito/fallo y tiempos promedio
+- **Debugging mejorado** con logs detallados de cada intento
+- **Métricas Prometheus** para monitoreo en tiempo real
+
+Ver [GUIA_CONFIRMACION_WEBHOOKS.md](./GUIA_CONFIRMACION_WEBHOOKS.md) para detalles de implementación.
+
+### 🔄 Webhook Retry Queue (Nuevo)
+
+Sistema de cola persistente para webhooks fallidos que:
+- **Sobrevive a reinicios** del servidor (cola en MongoDB)
+- **Reintentos automáticos** con backoff exponencial (5, 10, 20, 40, 60 minutos)
+- **Worker automático** que procesa la cola cada minuto
+- **Máximo 5 intentos** antes de marcar como fallido permanentemente
+- **Priorización** de eventos (high/normal/low)
+- **Limpieza automática** de webhooks completados antiguos
+
+**Ejemplo de flujo:**
+```
+Webhook falla después de 3 intentos inmediatos
+    ↓
+Agregado a cola persistente en MongoDB
+    ↓
+Worker reintenta cada X minutos (backoff exponencial)
+    ↓
+Éxito → Marcado como completado
+Fallo después de 5 intentos → Marcado como fallido permanentemente
+```
+
+Ver [GUIA_COLA_WEBHOOKS.md](./GUIA_COLA_WEBHOOKS.md) para detalles de implementación.
+
+### 🚀 Lifecycle Notifications (Nuevo)
+
+Notificaciones automáticas del ciclo de vida del servidor:
+- **Startup**: Notifica cuando el servidor inicia exitosamente
+- **Shutdown**: Notifica cuando el servidor se apaga graciosamente (SIGTERM, SIGINT)
+- **Heartbeat** (opcional): Notificaciones periódicas de que el servidor sigue vivo
+- **Uncaught Exceptions**: Notifica antes de que el servidor se caiga por errores no manejados
+
+Ver [GUIA_CONFIRMACION_WEBHOOKS.md](./GUIA_CONFIRMACION_WEBHOOKS.md) sección "Lifecycle Notifier" para detalles.
 
 ### Configuración
 
@@ -735,7 +784,10 @@ src/
 │   ├── websocket.service.ts  # Servidor WebSocket
 │   ├── scheduler.service.ts  # Cron jobs
 │   ├── health-check.service.ts # Health checks
-│   └── metrics.service.ts    # Métricas de Prometheus
+│   ├── metrics.service.ts    # Métricas de Prometheus
+│   ├── webhook-delivery.service.ts # Tracking de entregas de webhooks
+│   ├── webhook-queue.service.ts # Cola de reintentos persistente
+│   └── lifecycle-notifier.service.ts # Notificaciones de startup/shutdown
 ├── controllers/               # Controladores HTTP
 │   ├── rate.controller.ts    # Endpoints de tasas
 │   ├── health.controller.ts  # Endpoints de health
@@ -1103,6 +1155,18 @@ Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detall
 
 ---
 
-**Versión:** 1.1.1
+**Versión:** 3.0.0
 **Última actualización:** Noviembre 2025
 **Estado:** Production Ready 🚀
+
+## 🆕 Novedades en v3.0.0
+
+### Webhook Enhancements
+- ✅ **Webhook Delivery Tracking**: Historial completo de entregas con API para consultas
+- ✅ **Webhook Retry Queue**: Cola persistente con reintentos automáticos
+- ✅ **Lifecycle Notifications**: Notificaciones de startup/shutdown del servidor
+
+### Documentación
+- ✅ Guías completas de implementación (GUIA_CONFIRMACION_WEBHOOKS.md, GUIA_COLA_WEBHOOKS.md)
+- ✅ 25 tickets de mejoras priorizadas (MEJORAS_Y_RECOMENDACIONES.md)
+- ✅ Documentación actualizada con nuevos servicios

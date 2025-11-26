@@ -679,12 +679,140 @@ curl -X POST http://localhost:3000/api/webhook/bcv-rates \
   -d "$PAYLOAD"
 ```
 
+## Nuevas Características de Webhooks (v3.0.0)
+
+### 📊 Webhook Delivery Tracking
+
+El servicio ahora incluye un sistema completo de tracking de entregas de webhooks que:
+
+- **Almacena historial completo** de todas las entregas en MongoDB
+- **API endpoints** para consultar entregas por evento, URL, o rango de fechas
+- **Estadísticas agregadas** con tasas de éxito/fallo y duraciones promedio
+- **Debugging mejorado** con información detallada de cada intento
+
+#### Endpoints Disponibles
+
+```bash
+# Ver últimas entregas
+GET /api/v1/webhooks/deliveries/recent?limit=50
+
+# Ver entregas de un evento específico
+GET /api/v1/webhooks/deliveries/event/rate.changed?limit=50
+
+# Ver entregas a una URL específica
+GET /api/v1/webhooks/deliveries/url?url=https://example.com/webhook
+
+# Ver estadísticas generales
+GET /api/v1/webhooks/deliveries/stats
+
+# Ver estadísticas de un evento
+GET /api/v1/webhooks/deliveries/stats/event/rate.changed
+```
+
+**Respuesta de ejemplo:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "event": "rate.changed",
+      "url": "https://example.com/webhook",
+      "payload": { ... },
+      "success": true,
+      "statusCode": 200,
+      "attempts": 1,
+      "duration": 243,
+      "timestamp": "2025-11-26T10:00:00.000Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+Ver [GUIA_CONFIRMACION_WEBHOOKS.md](../../GUIA_CONFIRMACION_WEBHOOKS.md) para detalles completos.
+
+### 🔄 Webhook Retry Queue
+
+Sistema de cola persistente que garantiza entrega de webhooks incluso después de reinicios:
+
+**Características:**
+- ✅ Cola persistente en MongoDB que sobrevive reinicios
+- ✅ Reintentos automáticos con backoff exponencial (5, 10, 20, 40, 60 minutos)
+- ✅ Worker que procesa la cola cada minuto
+- ✅ Máximo 5 intentos antes de marcar como fallido permanentemente
+- ✅ Priorización de eventos (high, normal, low)
+- ✅ Limpieza automática de webhooks completados antiguos
+
+**Flujo de funcionamiento:**
+1. Webhook falla después de 3 intentos inmediatos
+2. Se agrega a la cola persistente en MongoDB
+3. Worker procesa cada minuto los webhooks pendientes
+4. Reintenta con backoff exponencial hasta 5 veces
+5. Si tiene éxito → marcado como completado
+6. Si falla 5 veces → marcado como fallido permanentemente
+
+#### Endpoints de Monitoreo de Cola
+
+```bash
+# Ver estadísticas de la cola
+GET /api/v1/webhooks/queue/stats
+
+# Ver webhooks pendientes
+GET /api/v1/webhooks/queue/pending?limit=20
+
+# Forzar procesamiento de la cola
+POST /api/v1/webhooks/queue/process
+
+# Limpiar webhooks completados antiguos
+POST /api/v1/webhooks/queue/clean?days=7
+```
+
+**Respuesta de stats:**
+```json
+{
+  "success": true,
+  "data": {
+    "pending": 5,
+    "processing": 1,
+    "failed": 3,
+    "completed": 142,
+    "total": 151
+  }
+}
+```
+
+Ver [GUIA_COLA_WEBHOOKS.md](../../GUIA_COLA_WEBHOOKS.md) para guía completa de implementación.
+
+### 🚀 Lifecycle Notifications
+
+Notificaciones automáticas del ciclo de vida del servidor:
+
+- **Startup**: Notifica cuando el servidor inicia exitosamente
+- **Shutdown**: Notifica cuando el servidor se apaga graciosamente
+- **Heartbeat**: Notificaciones periódicas opcionales
+- **Uncaught Exceptions**: Notifica errores críticos antes del crash
+
+**Configuración:**
+```bash
+# Habilitar lifecycle notifications
+ENABLE_LIFECYCLE_NOTIFICATIONS=true
+
+# Configurar heartbeat (opcional)
+LIFECYCLE_HEARTBEAT_ENABLED=true
+LIFECYCLE_HEARTBEAT_INTERVAL=300000  # 5 minutos
+```
+
+Ver [GUIA_CONFIRMACION_WEBHOOKS.md](../../GUIA_CONFIRMACION_WEBHOOKS.md) sección "Lifecycle Notifier" para detalles.
+
 ## Documentación Relacionada
 
 - [Guía de Observabilidad](./OBSERVABILITY.md) - Métricas Prometheus y monitoreo
 - [Configuración Local](./SETUP_LOCAL.md) - Configuración de desarrollo local
 - [Gestión de Secretos](./SECRETS_MANAGEMENT.md) - Configuración segura
 - [Prueba de Discord](./DISCORD_TESTING.md) - Prueba de notificaciones Discord
+- [Confirmación de Webhooks](../../GUIA_CONFIRMACION_WEBHOOKS.md) - Sistema completo de tracking
+- [Cola de Webhooks](../../GUIA_COLA_WEBHOOKS.md) - Sistema de reintentos persistente
 
 ---
 
@@ -699,5 +827,5 @@ Si encuentras problemas no cubiertos en esta guía:
 
 ---
 
-**Última actualización**: 2025-11-24
-**Versión del servicio**: 2.1.0
+**Última actualización**: 2025-11-26
+**Versión del servicio**: 3.0.0

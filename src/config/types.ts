@@ -20,6 +20,9 @@ export const TYPES = {
   DiscordDeploymentService: Symbol.for('DiscordDeploymentService'),
   WebhookService: Symbol.for('WebhookService'),
   NotificationStateService: Symbol.for('NotificationStateService'),
+  WebhookDeliveryService: Symbol.for('WebhookDeliveryService'),
+  WebhookQueueService: Symbol.for('WebhookQueueService'),
+  LifecycleNotifierService: Symbol.for('LifecycleNotifierService'),
 
   // Controllers
   RateController: Symbol.for('RateController'),

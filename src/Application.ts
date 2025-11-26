@@ -23,9 +23,11 @@ import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookQueueService } from '@/interfaces/IWebhookQueueService';
 import type { IWebhookService } from '@/interfaces/IWebhookService';
 // Interfaces
 import type { ICacheService } from '@/services/cache.interface';
+import type { LifecycleNotifierService } from '@/services/lifecycle-notifier.service';
 
 // Controllers
 import type { HealthController } from '@/controllers/health.controller';
@@ -56,6 +58,8 @@ export class Application {
   private bcvService: IBCVService;
   private metricsService: IMetricsService;
   private webhookService: IWebhookService;
+  private webhookQueueService!: IWebhookQueueService;
+  private lifecycleNotifierService!: LifecycleNotifierService;
 
   constructor() {
     // Inicializar Express y HTTP Server
@@ -81,6 +85,13 @@ export class Application {
     this.webhookService = this.container.get<IWebhookService>(
       TYPES.WebhookService
     );
+    this.webhookQueueService = this.container.get<IWebhookQueueService>(
+      TYPES.WebhookQueueService
+    );
+    this.lifecycleNotifierService =
+      this.container.get<LifecycleNotifierService>(
+        TYPES.LifecycleNotifierService
+      );
 
     // Configurar la aplicación
     this.configure();
@@ -292,6 +303,18 @@ export class Application {
     // Iniciar el scheduler
     this.schedulerService.start();
 
+    // Iniciar worker de cola de webhooks (procesa cada 60 segundos)
+    this.webhookQueueService.startWorker(60);
+    log.info('Webhook queue worker started', { intervalSeconds: 60 });
+
+    // Enviar notificación de ciclo de vida (startup)
+    try {
+      await this.lifecycleNotifierService.notifyServerStarted();
+      log.info('Lifecycle notification (startup) sent');
+    } catch (error) {
+      log.error('Error sending lifecycle notification (startup)', { error });
+    }
+
     // Ejecutar una consulta inmediata al iniciar
     setTimeout(async () => {
       await this.schedulerService.executeImmediately();
@@ -328,7 +351,17 @@ export class Application {
     const gracefulShutdown = async () => {
       log.info('Iniciando cierre graceful de la aplicación...');
 
-      // Enviar notificación de cierre del servicio
+      // Enviar notificación de ciclo de vida (shutdown)
+      try {
+        await this.lifecycleNotifierService.notifyServerShutdown(
+          'Aplicación cerrándose gracefulmente'
+        );
+        log.info('Lifecycle notification (shutdown) sent');
+      } catch (error) {
+        log.error('Error sending lifecycle notification (shutdown)', { error });
+      }
+
+      // Enviar notificación de cierre del servicio via webhook
       try {
         await this.webhookService.sendDeploymentNotification(
           'deployment.failure', // O podríamos usar un evento especializado
@@ -343,6 +376,10 @@ export class Application {
       } catch (error) {
         log.error('Error enviando notificación de cierre', { error });
       }
+
+      // Detener el worker de cola de webhooks
+      this.webhookQueueService.stopWorker();
+      log.info('Webhook queue worker stopped');
 
       // Detener el scheduler
       this.schedulerService.stop();

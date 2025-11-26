@@ -10,11 +10,14 @@ import { DiscordDeploymentService } from '@/services/discord-deployment.service'
 import { DiscordStatusService } from '@/services/discord-status.service';
 import { DiscordService } from '@/services/discord.service';
 import { HealthCheckService } from '@/services/health-check.service';
+import { LifecycleNotifierService } from '@/services/lifecycle-notifier.service';
 import { MetricsService } from '@/services/metrics.service';
 import { MongoService } from '@/services/mongo.service';
 import { NotificationStateService } from '@/services/notification-state.service';
 import { RedisService } from '@/services/redis.service';
 import { SchedulerService } from '@/services/scheduler.service';
+import { WebhookDeliveryService } from '@/services/webhook-delivery.service';
+import { WebhookQueueService } from '@/services/webhook-queue.service';
 import { WebhookService } from '@/services/webhook.service';
 import { WebSocketService } from '@/services/websocket.service';
 
@@ -28,6 +31,8 @@ import type { INotificationStateService } from '@/interfaces/INotificationStateS
 import type { IRedisService } from '@/interfaces/IRedisService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookDeliveryService } from '@/interfaces/IWebhookDeliveryService';
+import type { IWebhookQueueService } from '@/interfaces/IWebhookQueueService';
 import type { IWebhookService } from '@/interfaces/IWebhookService';
 import type { ICacheService } from '@/services/cache.interface';
 import type { IDiscordService } from '@/services/discord.service';
@@ -138,6 +143,18 @@ export function createContainer(server: HttpServer): Container {
   container
     .bind<INotificationStateService>(TYPES.NotificationStateService)
     .to(NotificationStateService)
+    .inSingletonScope();
+  container
+    .bind<IWebhookDeliveryService>(TYPES.WebhookDeliveryService)
+    .to(WebhookDeliveryService)
+    .inSingletonScope();
+  container
+    .bind<IWebhookQueueService>(TYPES.WebhookQueueService)
+    .to(WebhookQueueService)
+    .inSingletonScope();
+  container
+    .bind(TYPES.LifecycleNotifierService)
+    .to(LifecycleNotifierService)
     .inSingletonScope();
 
   // Bind Controllers
