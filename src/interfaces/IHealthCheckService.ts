@@ -17,6 +17,7 @@ export interface HealthCheckResult {
   timestamp: string;
   uptime: number;
   checks: {
+    server?: HealthCheck;
     mongodb?: HealthCheck;
     scheduler?: HealthCheck;
     bcv?: HealthCheck;
