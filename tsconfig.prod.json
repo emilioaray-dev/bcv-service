@@ -31,5 +31,12 @@
     "declarationMap": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "coverage", "test", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "test",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

@@ -97,6 +97,7 @@ export class WebhookDeliveryService implements IWebhookDeliveryService {
         ...delivery,
       };
 
+      // biome-ignore lint/suspicious/noExplicitAny: MongoDB OptionalId type compatibility
       await this.collection.insertOne(record as any);
 
       log.debug('Webhook delivery recorded', {

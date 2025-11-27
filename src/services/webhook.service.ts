@@ -251,6 +251,57 @@ export class WebhookService implements IWebhookService {
   }
 
   /**
+   * Transform payload to Discord-compatible format if URL is Discord
+   */
+  private transformPayloadForDiscord(
+    payload: WebhookPayload,
+    webhookUrl: string
+  ): WebhookPayload | Record<string, unknown> {
+    // Check if URL is a Discord webhook
+    if (!webhookUrl.includes('discord.com/api/webhooks')) {
+      return payload;
+    }
+
+    // Transform to Discord format
+    type RateItem = { currency: string; rate: number; name?: string };
+    const rates = (payload.data.rates || []) as RateItem[];
+    const currentUsdRate = rates.find((r) => r.currency === 'USD')?.rate || 0;
+    const change = payload.data.change;
+
+    let changeText = '';
+    let color = 0x3498db; // Blue by default
+
+    if (change) {
+      const diff = change.currentRate - change.previousRate;
+      const changeEmoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+      changeText = `\n${changeEmoji} **Cambio:** ${diff > 0 ? '+' : ''}${diff.toFixed(4)} Bs. (${change.percentageChange > 0 ? '+' : ''}${change.percentageChange.toFixed(2)}%)`;
+      color = diff > 0 ? 0xe74c3c : diff < 0 ? 0x2ecc71 : 0x3498db; // Red up, Green down, Blue no change
+    }
+
+    // Build Discord embed
+    const embed = {
+      title: '💱 Actualización de Tasa BCV',
+      description: `**Tasa USD:** ${currentUsdRate.toFixed(4)} Bs.${changeText}`,
+      color,
+      fields: rates
+        .filter((r) => r.currency !== 'USD')
+        .map((r) => ({
+          name: `${r.name || r.currency}`,
+          value: `${r.rate.toFixed(4)} Bs.`,
+          inline: true,
+        })),
+      timestamp: payload.timestamp,
+      footer: {
+        text: 'BCV Service',
+      },
+    };
+
+    return {
+      embeds: [embed],
+    };
+  }
+
+  /**
    * Send webhook with exponential backoff retry strategy
    */
   private async sendWithRetry(
@@ -407,7 +458,13 @@ export class WebhookService implements IWebhookService {
     attempt: number,
     webhookUrl: string
   ): Promise<WebhookDeliveryResult> {
-    const payloadString = JSON.stringify(payload);
+    // Transform payload for Discord if needed
+    const transformedPayload = this.transformPayloadForDiscord(
+      payload,
+      webhookUrl
+    );
+
+    const payloadString = JSON.stringify(transformedPayload);
     const signature = this.generateSignature(payloadString);
 
     const headers: Record<string, string> = {
@@ -424,7 +481,7 @@ export class WebhookService implements IWebhookService {
     }
 
     try {
-      const response = await axios.post(webhookUrl, payload, {
+      const response = await axios.post(webhookUrl, transformedPayload, {
         headers,
         timeout: this.webhookConfig.timeout,
         validateStatus: (status) => status >= 200 && status < 300,

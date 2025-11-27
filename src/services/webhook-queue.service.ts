@@ -144,6 +144,7 @@ export class WebhookQueueService implements IWebhookQueueService {
     };
 
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: MongoDB OptionalId type compatibility
       await this.collection.insertOne(item as any);
       log.debug('Webhook queued', { id, event, url: this.maskUrl(url) });
       return id;
