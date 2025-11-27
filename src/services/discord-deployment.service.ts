@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { inject, injectable } from 'inversify';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -17,15 +16,15 @@ import type { IWebhookQueueService } from '@/interfaces/IWebhookQueueService';
  * de manera visual y organizada.
  *
  * Features:
- * - Reintentos automáticos con backoff exponencial
- * - Cola persistente para notificaciones fallidas
+ * - Encola todas las notificaciones de deployment en la cola persistente
+ * - Evita bloquear el startup del servidor con intentos síncronos
+ * - Reintentos automáticos con backoff exponencial via la cola
  * - Sobrevive a reinicios del servidor
  */
 @injectable()
 export class DiscordDeploymentService implements IDiscordDeploymentService {
   private readonly webhookUrl: string;
   private readonly enabled: boolean;
-  private readonly maxRetries = 3;
 
   constructor(
     @inject(TYPES.WebhookQueueService)
@@ -57,61 +56,9 @@ export class DiscordDeploymentService implements IDiscordDeploymentService {
     }
 
     const message = this.buildDiscordMessage(event, deploymentInfo);
-    let lastError: Error | null = null;
 
-    // Intentar enviar con reintentos
-    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-      try {
-        // Backoff exponencial para reintentos
-        if (attempt > 1) {
-          const delay = 2 ** (attempt - 2) * 1000; // 1s, 2s, 4s
-          logger.info('Reintentando notificación Discord deployment', {
-            attempt,
-            maxRetries: this.maxRetries,
-            delayMs: delay,
-          });
-          await this.sleep(delay);
-        }
-
-        await axios.post(this.webhookUrl, message, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 5000,
-        });
-
-        logger.info('Notificación de deployment enviada a Discord', {
-          webhookUrl: '***HIDDEN***',
-          event,
-          deploymentId: deploymentInfo.deploymentId,
-          attempt,
-        });
-        return; // Éxito, salir
-      } catch (error: unknown) {
-        lastError = error as Error;
-
-        logger.error('Intento de notificación Discord deployment falló', {
-          attempt,
-          maxRetries: this.maxRetries,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-
-        // Si es el último intento, continuar al encolado
-        if (attempt === this.maxRetries) {
-          break;
-        }
-      }
-    }
-
-    // Todos los intentos fallaron - encolar para retry posterior
-    logger.warn(
-      'Notificación Discord deployment falló después de todos los intentos',
-      {
-        maxRetries: this.maxRetries,
-        lastError: lastError?.message,
-      }
-    );
-
+    // Encolar directamente sin intentos inmediatos
+    // Esto evita bloquear el startup del servidor y asegura entrega persistente
     try {
       const queueId = await this.queueService.enqueue(
         event,
@@ -120,21 +67,23 @@ export class DiscordDeploymentService implements IDiscordDeploymentService {
         {
           maxAttempts: 5,
           priority: event === 'deployment.failure' ? 'high' : 'normal',
-          delaySeconds: 300, // Esperar 5 minutos antes del primer retry
+          delaySeconds: 0, // Enviar inmediatamente cuando el worker procese
         }
       );
 
-      logger.info('Notificación Discord deployment encolada para retry', {
+      logger.info('Notificación Discord deployment encolada', {
         queueId,
         event,
         deploymentId: deploymentInfo.deploymentId,
+        version: deploymentInfo.version,
       });
     } catch (queueError) {
       logger.error('Error encolando notificación Discord deployment', {
         error: queueError,
         event,
+        deploymentId: deploymentInfo.deploymentId,
       });
-      throw lastError; // Lanzar el error original
+      // No lanzar error - las notificaciones son nice-to-have
     }
   }
 
@@ -232,9 +181,5 @@ export class DiscordDeploymentService implements IDiscordDeploymentService {
         },
       ],
     };
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
