@@ -2,12 +2,6 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [4.1.1](https://github.com/emilioaray-dev/bcv-service/compare/v4.1.0...v4.1.1) (2025-11-26)
-
-### Bug Fixes
-
-* **notifications:** use package.json version instead of npm_package_version env var ([f59e37c](https://github.com/emilioaray-dev/bcv-service/commit/f59e37c96dfad5937db19bf656f3072a20473544))
-
 ## [1.4.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v1.4.0) (2025-11-26)
 
 ### ⚠️ Version Correction Notice
