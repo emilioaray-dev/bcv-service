@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.5.0...v1.5.1) (2025-11-27)
+
+### Bug Fixes
+
+* **ci:** add confirmation message to cleanup step ([8bf5d02](https://github.com/emilioaray-dev/bcv-service/commit/8bf5d02b78e0606701037ab4c45b5c0dd49ed1f8))
+
 ## [1.5.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.4.2...v1.5.0) (2025-11-27)
 
 ### Features
