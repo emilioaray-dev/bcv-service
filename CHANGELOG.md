@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.4.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.4.0...v1.4.1) (2025-11-27)
+
+### Bug Fixes
+
+* **ci:** correct YAML syntax error in workflow separator line ([461edad](https://github.com/emilioaray-dev/bcv-service/commit/461edadb1a1851f84e1399509206094a986d10eb))
+* **notifications:** queue deployment notifications immediately to prevent startup blocking ([9b75e03](https://github.com/emilioaray-dev/bcv-service/commit/9b75e0356a049f4de528dd316cd12781e92e3b00))
+
 ## [1.4.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.3.2...v1.4.0) (2025-11-26)
 
 ### ⚠️ Version Correction Notice
