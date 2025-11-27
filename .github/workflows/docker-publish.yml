@@ -198,8 +198,8 @@ jobs:
           docker system prune -f
           # Clean up npm cache as well
           npm cache clean --force
-          # Clean up any temporary files
-          rm -rf /tmp/*
+          # Clean up temporary files, excluding protected systemd directories
+          find /tmp -mindepth 1 -maxdepth 1 -not -name 'systemd-private-*' -exec rm -rf {} + 2>/dev/null || true
 
       # 7. Build y Push Docker image
       - name: 🔨 Build and push Docker image
