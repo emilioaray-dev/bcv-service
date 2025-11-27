@@ -5,6 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc && tsc-alias",
+    "build:prod": "tsc --project tsconfig.prod.json && tsc-alias",
     "start": "node dist/app.js",
     "dev": "tsx watch src/app.ts",
     "lint": "biome check src",

@@ -189,7 +189,19 @@ jobs:
             type=raw,value=latest
             type=raw,value=main
 
-      # 6. Build y Push Docker image
+      # 6. Clean up disk space before Docker build
+      - name: 🧹 Clean up disk space
+        run: |
+          # Clean up pnpm cache
+          pnpm store prune
+          # Clean up Docker cache
+          docker system prune -f
+          # Clean up npm cache as well
+          npm cache clean --force
+          # Clean up any temporary files
+          rm -rf /tmp/*
+
+      # 7. Build y Push Docker image
       - name: 🔨 Build and push Docker image
         uses: docker/build-push-action@v5
         with:
