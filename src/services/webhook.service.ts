@@ -166,7 +166,49 @@ export class WebhookService implements IWebhookService {
       },
     };
 
-    return await this.sendWithRetry(payload, this.deploymentWebhookUrl);
+    // Encolar directamente las notificaciones de deployment
+    // Esto evita bloquear el startup del servidor
+    try {
+      const queueId = await this.queueService.enqueue(
+        event,
+        this.deploymentWebhookUrl,
+        payload,
+        {
+          maxAttempts: 5,
+          priority: event === 'deployment.failure' ? 'high' : 'normal',
+          delaySeconds: 0, // Enviar inmediatamente cuando el worker procese
+        }
+      );
+
+      logger.info('Deployment notification queued', {
+        queueId,
+        event,
+        deploymentId: deploymentInfo.deploymentId,
+        version: deploymentInfo.version,
+      });
+
+      return {
+        success: true,
+        url: this.deploymentWebhookUrl,
+        statusCode: 202, // Accepted (queued)
+        attempt: 0,
+        duration: 0,
+      };
+    } catch (queueError) {
+      logger.error('Failed to queue deployment notification', {
+        error: queueError,
+        event,
+        deploymentId: deploymentInfo.deploymentId,
+      });
+
+      return {
+        success: false,
+        url: this.deploymentWebhookUrl,
+        error: queueError instanceof Error ? queueError.message : 'Unknown error',
+        attempt: 0,
+        duration: 0,
+      };
+    }
   }
 
   /**
