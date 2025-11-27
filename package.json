@@ -1,6 +1,6 @@
 {
   "name": "bcv-service",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Microservicio para consultar la tasa de cambio del BCV",
   "main": "dist/app.js",
   "scripts": {
@@ -27,7 +27,13 @@
     "commit": "git-cz",
     "commitlint": "commitlint --edit"
   },
-  "keywords": ["bcv", "tasa-cambio", "venezuela", "typescript", "nodejs"],
+  "keywords": [
+    "bcv",
+    "tasa-cambio",
+    "venezuela",
+    "typescript",
+    "nodejs"
+  ],
   "author": "BCV-APP",
   "license": "MIT",
   "devDependencies": {

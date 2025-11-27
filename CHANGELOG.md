@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.4.2...v1.5.0) (2025-11-27)
+
+### Features
+
+* **tests:** add unit tests for services including Metrics, NotificationState, Redis, Scheduler, and WebSocket ([#2](https://github.com/emilioaray-dev/bcv-service/issues/2)) ([fce9d2a](https://github.com/emilioaray-dev/bcv-service/commit/fce9d2a0adcb1d84980ce257f29ecdac6c5353db))
+
 ## [1.4.2](https://github.com/emilioaray-dev/bcv-service/compare/v1.4.1...v1.4.2) (2025-11-27)
 
 ### Bug Fixes
