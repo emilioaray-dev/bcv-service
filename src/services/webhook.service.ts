@@ -204,7 +204,8 @@ export class WebhookService implements IWebhookService {
       return {
         success: false,
         url: this.deploymentWebhookUrl,
-        error: queueError instanceof Error ? queueError.message : 'Unknown error',
+        error:
+          queueError instanceof Error ? queueError.message : 'Unknown error',
         attempt: 0,
         duration: 0,
       };

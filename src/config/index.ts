@@ -48,7 +48,7 @@ export const config = {
       ),
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
-  cronSchedule: process.env.CRON_SCHEDULE || '0 2,10,18 * * *', // Cada 8 horas: 2am, 10am, 6pm
+  cronSchedule: process.env.CRON_SCHEDULE || '0 * * * *', // Cada hora (minuto 0 de cada hora)
   nodeEnv: process.env.NODE_ENV || 'development',
   saveToDatabase:
     process.env.SAVE_TO_DATABASE?.toLowerCase() !== 'false' &&

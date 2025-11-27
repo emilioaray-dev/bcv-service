@@ -3,6 +3,7 @@ import type { IBCVService } from '@/interfaces/IBCVService';
 import type { IMetricsService } from '@/interfaces/IMetricsService';
 import type { ISchedulerService } from '@/interfaces/ISchedulerService';
 import type { IWebSocketService } from '@/interfaces/IWebSocketService';
+import type { IWebhookService } from '@/interfaces/IWebhookService';
 import { getCurrencyRate } from '@/services/bcv.service';
 import type { ICacheService } from '@/services/cache.interface';
 import log from '@/utils/logger';
@@ -33,6 +34,7 @@ export class SchedulerService implements ISchedulerService {
     @inject(TYPES.CacheService) private cacheService: ICacheService,
     @inject(TYPES.WebSocketService) private webSocketService: IWebSocketService,
     @inject(TYPES.MetricsService) private metricsService: IMetricsService,
+    @inject(TYPES.WebhookService) private webhookService: IWebhookService,
     @inject(TYPES.Config) config: {
       cronSchedule: string;
       saveToDatabase: boolean;
@@ -126,6 +128,25 @@ export class SchedulerService implements ISchedulerService {
             change,
             eventType: 'rate-update',
           });
+
+          // Enviar notificación via webhook
+          try {
+            await this.webhookService.sendRateUpdateNotification(
+              newRate,
+              previousRate
+            );
+            log.info('Webhook de cambio de tasa enviado exitosamente');
+          } catch (webhookError: unknown) {
+            log.error('Error enviando webhook de cambio de tasa', {
+              error:
+                webhookError instanceof Error
+                  ? webhookError.message
+                  : 'Unknown error',
+              stack:
+                webhookError instanceof Error ? webhookError.stack : undefined,
+            });
+            // No fallar todo el proceso si el webhook falla
+          }
 
           // Métrica de actualización exitosa
           this.metricsService.incrementBCVUpdateSuccess();
