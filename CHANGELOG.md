@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.6.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.6.0...v1.6.1) (2025-11-28)
+
+### Bug Fixes
+
+* **cors:** allow localhost origins for web app development ([83b52bd](https://github.com/emilioaray-dev/bcv-service/commit/83b52bdaeaa5a27e0a531c3f417a372e070ddd31))
+
 ## [1.6.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.5.1...v1.6.0) (2025-11-28)
 
 ### Features
