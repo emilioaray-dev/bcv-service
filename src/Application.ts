@@ -156,11 +156,13 @@ export class Application {
         const allowedOrigins = [
           ...(config.nodeEnv === 'development'
             ? [
-                'http://localhost:8081',  // React Native default development server
-                'http://localhost:19006'  // Expo default development server
+                'http://localhost:8081', // React Native default development server
+                'http://localhost:19006', // Expo default development server
               ]
             : []),
-          ...(config.corsOrigin ? config.corsOrigin.split(',').map(o => o.trim()) : []),
+          ...(config.corsOrigin
+            ? config.corsOrigin.split(',').map((o) => o.trim())
+            : []),
         ];
 
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -185,7 +187,7 @@ export class Application {
         'X-API-Key',
         'X-Requested-With',
         'Accept',
-        'Origin'
+        'Origin',
       ],
     };
 
