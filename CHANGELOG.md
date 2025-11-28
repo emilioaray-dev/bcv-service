@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.6.0](https://github.com/emilioaray-dev/bcv-service/compare/v1.5.1...v1.6.0) (2025-11-28)
+
+### Features
+
+* add CORS support for React Native apps ([758808e](https://github.com/emilioaray-dev/bcv-service/commit/758808edb7497e861c761445e3ad3d2c716328d8))
+
 ## [1.5.1](https://github.com/emilioaray-dev/bcv-service/compare/v1.5.0...v1.5.1) (2025-11-27)
 
 ### Bug Fixes
