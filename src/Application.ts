@@ -151,15 +151,19 @@ export class Application {
     // Note: API key authentication still applies after CORS preflight
     const corsOptions: cors.CorsOptions = {
       origin: (origin, callback) => {
-        // In production, only allow configured origins
-        // In development, allow localhost origins for React Native/Expo
+        // Always allow localhost origins for development (including web versions of mobile apps)
+        const developmentOrigins = [
+          'http://localhost:8081', // React Native default development server
+          'http://localhost:19006', // Expo default development server
+          'http://localhost:19000', // Alternative Expo development server
+          'http://localhost:3000', // Common React development server
+          'http://localhost:3001', // Alternative React development server
+          'http://localhost:3002', // Additional React development server
+        ];
+
+        // Load additional allowed origins from environment variable
         const allowedOrigins = [
-          ...(config.nodeEnv === 'development'
-            ? [
-                'http://localhost:8081', // React Native default development server
-                'http://localhost:19006', // Expo default development server
-              ]
-            : []),
+          ...developmentOrigins,
           ...(config.corsOrigin
             ? config.corsOrigin.split(',').map((o) => o.trim())
             : []),
