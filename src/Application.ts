@@ -11,6 +11,7 @@ import { apiKeyAuth } from '@/middleware/auth.middleware';
 import log from '@/utils/logger';
 import { createRoutes } from '@/utils/routes';
 import compression from 'compression';
+import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
@@ -145,6 +146,50 @@ export class Application {
         xPoweredBy: false, // Remove X-Powered-By header
       })(req, res, next);
     });
+
+    // CORS configuration
+    // Note: API key authentication still applies after CORS preflight
+    const corsOptions: cors.CorsOptions = {
+      origin: (origin, callback) => {
+        // In production, only allow configured origins
+        // In development, allow localhost origins for React Native/Expo
+        const allowedOrigins = [
+          ...(config.nodeEnv === 'development'
+            ? [
+                'http://localhost:8081',  // React Native default development server
+                'http://localhost:19006'  // Expo default development server
+              ]
+            : []),
+          ...(config.corsOrigin ? config.corsOrigin.split(',').map(o => o.trim()) : []),
+        ];
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          log.warn('CORS blocked', { origin, allowedOrigins });
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      optionsSuccessStatus: 200,
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-API-Key',
+        'X-Requested-With',
+        'Accept',
+        'Origin'
+      ],
+    };
+
+    this.app.use(cors(corsOptions));
 
     // Compression middleware for performance
     this.app.use(

@@ -124,4 +124,7 @@ export const config = {
     latest: Number.parseInt(process.env.CACHE_TTL_LATEST || '300', 10), // 5 minutes
     history: Number.parseInt(process.env.CACHE_TTL_HISTORY || '86400', 10), // 24 hours
   },
+
+  // CORS Configuration
+  corsOrigin: process.env.CORS_ORIGIN || '',
 };
